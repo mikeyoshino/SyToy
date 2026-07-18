@@ -13,6 +13,9 @@
 
 ## Current focus
 
+- 2026-07-18: เพิ่ม reusable `StoreExpandableText` ใน Product Detail: ย่อคำอธิบายเหลือ 3 บรรทัด, fade 0→50%, แสดงปุ่มเฉพาะเมื่อข้อความล้น, ขยายได้เต็มโดยไม่มี fade และย่อกลับได้
+- 2026-07-18: ปรับ shared drawer ใต้ 35rem ให้เป็น fullscreen physical inset โดยไม่ใช้ horizontal transform เพื่อหลีกเลี่ยง iOS visual/layout viewport mismatch และให้ cart โฟกัสปุ่มปิดแทน section ขนาดใหญ่
+- 2026-07-18: แก้ iOS WebKit cart drawer ที่ backdrop เปิดแต่ surface ค้าง off-canvas: ลบ CSS-transition/WAAPI collision, ให้ CSS open state เป็น authoritative visible fallback และเพิ่ม animation timeout ที่ cancel/clear transform เสมอ
 - 2026-07-18: แก้ cart drawer บน mobile Safari/Chrome ที่หดเหลือแถบแคบและอยู่ผิดด้าน ด้วย fixed logical inset + full viewport width ใต้ 35rem และซ่อน focus outline ของ programmatic cart section
 - 2026-07-18: เพิ่ม optional Product model scale ใน Admin create/edit (เช่น 1/12, 1/100), persist ผ่าน EF Core, แสดง scale badge บน thumbnail ของ shared ProductCard และใน Product Detail
 - 2026-07-18: ทำ Catalog filter แบบ collapsible ใต้ 64rem เพื่อลดความยาวหน้า mobile/tablet โดย default ย่อ, แสดงจำนวน filter ที่ใช้อยู่, รองรับ keyboard/ARIA และคง desktop sticky sidebar เปิดเต็มตลอด

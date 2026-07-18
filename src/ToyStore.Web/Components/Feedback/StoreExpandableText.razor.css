@@ -1,0 +1,56 @@
+.store-expandable-text {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.store-expandable-text__viewport {
+  position: relative;
+  width: 100%;
+}
+
+.store-expandable-text__content {
+  margin: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.store-expandable-text--collapsed .store-expandable-text__content {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.store-expandable-text--collapsed.store-expandable-text--overflowing
+  .store-expandable-text__viewport::after {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2.5em;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--color-surface) 50%, transparent) 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.store-expandable-text__toggle {
+  min-height: 2rem;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-ink) 62%, transparent);
+  font: inherit;
+  font-size: .8125rem;
+  font-weight: var(--font-weight-regular);
+  cursor: pointer;
+}
+
+.store-expandable-text__toggle:hover {
+  color: var(--color-ink);
+}

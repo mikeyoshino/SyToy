@@ -1,5 +1,6 @@
 const dialogStates = new WeakMap();
 const drawerAnimationDurationMs = 300;
+const drawerAnimationTimeoutMs = drawerAnimationDurationMs + 200;
 const drawerAnimationEasing = "cubic-bezier(.2,.8,.2,1)";
 
 function isDialog(dialog) {
@@ -10,6 +11,11 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+function usesFullscreenDrawer(dialog) {
+  return dialog.classList.contains("store-drawer")
+    && window.matchMedia("(max-width: 35rem)").matches;
+}
+
 function drawerOffCanvasTransform(dialog) {
   return dialog.classList.contains("store-drawer--start")
     ? "translateX(-100%)"
@@ -17,11 +23,17 @@ function drawerOffCanvasTransform(dialog) {
 }
 
 async function animateDrawer(dialog, opening) {
-  if (!dialog.classList.contains("store-drawer") || prefersReducedMotion()) return;
+  if (!dialog.classList.contains("store-drawer")
+    || usesFullscreenDrawer(dialog)
+    || prefersReducedMotion()) return;
   const surface = dialog.querySelector(".store-dialog__surface");
   if (!(surface instanceof HTMLElement)) return;
 
+  // Keep CSS as the final visible state and use only one animation mechanism.
+  // Cancelling a CSS transition and immediately starting a WAAPI animation can leave
+  // descendants of a top-layer <dialog> frozen off-canvas in iOS WebKit.
   surface.getAnimations().forEach(animation => animation.cancel());
+  surface.style.removeProperty("transform");
   const offCanvas = drawerOffCanvasTransform(dialog);
   const keyframes = opening
     ? [{ transform: offCanvas }, { transform: "translateX(0)" }]
@@ -29,21 +41,29 @@ async function animateDrawer(dialog, opening) {
   const animation = surface.animate(keyframes, {
     duration: drawerAnimationDurationMs,
     easing: drawerAnimationEasing,
-    fill: "both"
+    fill: "none"
+  });
+  let timeoutId;
+  const timeout = new Promise(resolve => {
+    timeoutId = window.setTimeout(resolve, drawerAnimationTimeoutMs);
   });
 
   try {
-    await animation.finished;
+    await Promise.race([animation.finished, timeout]);
   } catch {
     // A rapid open/close can intentionally replace the current animation.
   } finally {
+    window.clearTimeout(timeoutId);
     animation.cancel();
+    surface.style.removeProperty("transform");
   }
 }
 
 async function closeDrawer(dialog) {
   if (!dialog.open) return;
-  if (!dialog.classList.contains("store-drawer") || prefersReducedMotion()) {
+  if (!dialog.classList.contains("store-drawer")
+    || usesFullscreenDrawer(dialog)
+    || prefersReducedMotion()) {
     dialog.close();
     return;
   }

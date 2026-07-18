@@ -1,0 +1,127 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JsRuntime
+
+<div @ref="root"
+     class="store-expandable-text @(isExpanded ? "store-expandable-text--expanded" : "store-expandable-text--collapsed") @(hasOverflow ? "store-expandable-text--overflowing" : null)">
+    <div class="store-expandable-text__viewport">
+        <p id="@contentId" class="store-expandable-text__content">@Text</p>
+    </div>
+    @if (hasOverflow || isExpanded)
+    {
+        <button type="button"
+                class="store-expandable-text__toggle"
+                aria-expanded="@isExpanded.ToString().ToLowerInvariant()"
+                aria-controls="@contentId"
+                @onclick="ToggleAsync">
+            @(isExpanded ? "ย่อรายละเอียด" : "อ่านเพิ่มเติม")
+        </button>
+    }
+</div>
+
+@code {
+    private readonly string contentId = $"store-expandable-text-{Guid.NewGuid():N}";
+    private ElementReference root;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<StoreExpandableText>? dotNetReference;
+    private bool hasOverflow;
+    private bool isExpanded;
+    private bool measureAfterRender;
+    private bool disposed;
+    private string? currentText;
+
+    [Parameter, EditorRequired]
+    public required string Text { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Text == currentText)
+        {
+            return;
+        }
+
+        currentText = Text;
+        isExpanded = false;
+        hasOverflow = false;
+        measureAfterRender = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (module is null)
+            {
+                module = await JsRuntime.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./Components/Feedback/StoreExpandableText.razor.js");
+                dotNetReference = DotNetObjectReference.Create(this);
+                await module.InvokeVoidAsync("initialize", root, dotNetReference);
+                measureAfterRender = false;
+            }
+            else if (measureAfterRender)
+            {
+                measureAfterRender = false;
+                await module.InvokeVoidAsync("measure", root);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit can disconnect while the component is hydrating.
+        }
+        catch (JSException)
+        {
+            // Enhanced navigation can replace the element during measurement.
+        }
+    }
+
+    private Task ToggleAsync()
+    {
+        isExpanded = !isExpanded;
+        measureAfterRender = !isExpanded;
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task SetOverflowAsync(bool value)
+    {
+        if (disposed || isExpanded || hasOverflow == value)
+        {
+            return Task.CompletedTask;
+        }
+
+        hasOverflow = value;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("dispose", root);
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        dotNetReference?.Dispose();
+    }
+}

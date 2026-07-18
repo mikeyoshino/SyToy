@@ -24,7 +24,6 @@
 .product-detail__offer dd { margin: var(--space-1) 0 0; font-weight: var(--font-weight-bold); overflow-wrap: anywhere; }
 .product-detail__description { max-width: 60rem; }
 .product-detail__description h2 { font-size: clamp(1.75rem,4vw,var(--font-size-h2)); }
-.product-detail__description p { margin-top: var(--space-3); line-height: 1.7; white-space: pre-line; }
 .product-detail__cart { width: 100%; min-height: 3.25rem; margin-top: var(--space-6); border: 0; border-radius: var(--radius-md); background: var(--color-accent); color: var(--color-ink); font-weight: var(--font-weight-extrabold); }
 .product-detail__cart:disabled { background: var(--color-line); color: var(--color-muted); }
 .product-detail__preorder { background: var(--color-ink); color: var(--color-surface); }

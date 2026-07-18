@@ -76,6 +76,24 @@ public sealed class StorefrontCatalogPageContractTests
     }
 
     [Fact]
+    public void ProductDetailDescriptionUsesAccessibleThreeLineExpandableTextWithFade()
+    {
+        var detail = WebSource("Components/Pages/ProductDetail.razor");
+        var component = WebSource("Components/Feedback/StoreExpandableText.razor");
+        var styles = WebSource("Components/Feedback/StoreExpandableText.razor.css");
+        var script = WebSource("Components/Feedback/StoreExpandableText.razor.js");
+
+        Assert.Contains("<StoreExpandableText Text=\"@product.Description\" />", detail, StringComparison.Ordinal);
+        Assert.Contains("อ่านเพิ่มเติม", component, StringComparison.Ordinal);
+        Assert.Contains("ย่อรายละเอียด", component, StringComparison.Ordinal);
+        Assert.Contains("aria-expanded", component, StringComparison.Ordinal);
+        Assert.Contains("-webkit-line-clamp: 3", styles, StringComparison.Ordinal);
+        Assert.Contains("var(--color-surface) 50%", styles, StringComparison.Ordinal);
+        Assert.Contains("ResizeObserver", script, StringComparison.Ordinal);
+        Assert.Contains("scrollHeight > content.clientHeight", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProductCardOnlyCallsCartForTypedInStockProducts()
     {
         var source = WebSource("Components/Storefront/ProductCard.razor");

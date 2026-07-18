@@ -118,6 +118,7 @@ StoreShell
 ```
 
 - Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
+- Product Detail ใช้ shared expandable text กับคำอธิบายยาว: collapsed 3 บรรทัดแล้ว fade จากโปร่งใสไป 50% ก่อนปุ่ม `อ่านเพิ่มเติม`; expanded แสดงข้อความทั้งหมดโดยไม่มี fade และย่อกลับได้ด้วย keyboard-accessible button
 
 Production routes อย่างน้อย:
 

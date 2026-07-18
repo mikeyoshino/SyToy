@@ -23,6 +23,7 @@ public sealed class CartDrawerSourceContractTests
         Assert.Contains("role=\"alert\"", source, StringComparison.Ordinal);
         Assert.Contains("ตะกร้ายังว่างอยู่", source, StringComparison.Ordinal);
         Assert.Contains("ตรวจสอบราคาและสต็อกอีกครั้ง", source, StringComparison.Ordinal);
+        Assert.Contains("InitialFocusSelector=\".store-dialog__close\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
     }
 
@@ -54,8 +55,23 @@ public sealed class CartDrawerSourceContractTests
         Assert.Contains("min-height: 2.75rem", source, StringComparison.Ordinal);
         Assert.Contains("position: fixed", feedback, StringComparison.Ordinal);
         Assert.Contains("inset-inline: auto 0", feedback, StringComparison.Ordinal);
-        Assert.Contains("width: 100vw", feedback, StringComparison.Ordinal);
+        Assert.Contains("width: 100%", feedback, StringComparison.Ordinal);
         Assert.Contains(".store-cart:focus { outline: none; }", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SharedDrawerAnimationCannotRemainFrozenOffCanvasOnMobileWebKit()
+    {
+        var script = Read("src", "ToyStore.Web", "Components", "Feedback", "StoreDialog.razor.js");
+        var feedback = Read("src", "ToyStore.Web", "wwwroot", "css", "feedback.css");
+
+        Assert.Contains("Promise.race([animation.finished, timeout])", script, StringComparison.Ordinal);
+        Assert.Contains("fill: \"none\"", script, StringComparison.Ordinal);
+        Assert.Contains("surface.style.removeProperty(\"transform\")", script, StringComparison.Ordinal);
+        Assert.Contains("usesFullscreenDrawer(dialog)", script, StringComparison.Ordinal);
+        Assert.Contains("transform: none !important", feedback, StringComparison.Ordinal);
+        Assert.Contains("min-width: 100%", feedback, StringComparison.Ordinal);
+        Assert.DoesNotContain("transition: transform", feedback, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] path) =>
