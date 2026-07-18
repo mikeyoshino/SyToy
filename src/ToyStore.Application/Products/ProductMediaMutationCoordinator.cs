@@ -90,6 +90,8 @@ internal sealed record TrustedProductMediaSnapshot(
     Guid Id,
     TrustedMediaStorageKey StorageKey,
     string PublicRelativeUrl,
+    TrustedMediaStorageKey? ThumbnailStorageKey,
+    string? ThumbnailPublicRelativeUrl,
     string AltText,
     int SortOrder,
     bool IsPrimary)
@@ -99,6 +101,10 @@ internal sealed record TrustedProductMediaSnapshot(
             image.Id,
             TrustedMediaStorageKey.From(image),
             image.PublicRelativeUrl,
+            image.ThumbnailStorageKey is null
+                ? null
+                : TrustedMediaStorageKey.FromThumbnail(image),
+            image.ThumbnailPublicRelativeUrl,
             image.AltText,
             image.SortOrder,
             image.IsPrimary);
@@ -153,7 +159,10 @@ public sealed partial class ProductMediaMutationCoordinator(
         ValidatePlan(slotSnapshot);
         var uploadSnapshot = slotSnapshot
             .OfType<UploadProductMediaSlot>()
-            .Select(slot => slot.Upload)
+            .Select(slot => new MediaUpload(
+                slot.Upload.Content,
+                slot.Upload.ContentType,
+                generateProductThumbnail: true))
             .ToArray();
 
         StagedMediaBatch? batch = null;
@@ -601,6 +610,10 @@ public sealed partial class ProductMediaMutationCoordinator(
                         && state.After.Media[afterIndex].PublicRelativeUrl == staged.PublicRelativeUrl)
                     {
                         usedNew.Add(staged.StorageKey);
+                        if (staged.ThumbnailStorageKey is not null)
+                        {
+                            usedNew.Add(staged.ThumbnailStorageKey);
+                        }
                         afterIndex++;
                     }
 
@@ -616,16 +629,17 @@ public sealed partial class ProductMediaMutationCoordinator(
 
         var newKeys = resolved
             .OfType<ResolvedUploadProductMediaSlot>()
-            .Select(slot => TrustedMediaStorageKey.From(slot.Media))
+            .SelectMany(slot => StagedKeys(slot.Media))
             .ToArray();
         var afterKeys = state.After.Media
-            .Select(image => image.StorageKey.Value)
+            .SelectMany(SnapshotKeys)
+            .Select(key => key.Value)
             .ToHashSet(StringComparer.Ordinal);
         return new MediaStateAnalysis(
             newKeys.Where(key => !usedNew.Contains(key.Value)).ToArray(),
             state.Before.Media
-                .Where(image => !afterKeys.Contains(image.StorageKey.Value))
-                .Select(image => image.StorageKey)
+                .SelectMany(SnapshotKeys)
+                .Where(key => !afterKeys.Contains(key.Value))
                 .ToArray());
     }
 
@@ -633,10 +647,12 @@ public sealed partial class ProductMediaMutationCoordinator(
         IReadOnlyList<TrustedProductMediaSnapshot> media,
         string stateName)
     {
+        var allKeys = media.SelectMany(SnapshotKeys).Select(key => key.Value).ToArray();
         if (media.Count > Product.MaximumImageCount
             || media.Select(image => image.Id).Distinct().Count() != media.Count
-            || media.Select(image => image.StorageKey.Value)
-                .Distinct(StringComparer.Ordinal).Count() != media.Count)
+            || allKeys.Distinct(StringComparer.Ordinal).Count() != allKeys.Length
+            || media.Any(image => (image.ThumbnailStorageKey is null)
+                != (image.ThumbnailPublicRelativeUrl is null)))
         {
             throw new InvalidOperationException(
                 $"The locked Product {stateName} media snapshot is invalid.");
@@ -660,6 +676,8 @@ public sealed partial class ProductMediaMutationCoordinator(
         before.Id == after.Id
         && before.StorageKey == after.StorageKey
         && before.PublicRelativeUrl == after.PublicRelativeUrl
+        && before.ThumbnailStorageKey == after.ThumbnailStorageKey
+        && before.ThumbnailPublicRelativeUrl == after.ThumbnailPublicRelativeUrl
         && before.AltText == after.AltText;
 
     private static bool TryValidateBatch(
@@ -667,7 +685,7 @@ public sealed partial class ProductMediaMutationCoordinator(
         int expectedCount,
         out IReadOnlyList<TrustedMediaStorageKey> keys)
     {
-        var result = new List<TrustedMediaStorageKey>(batch.Media.Count);
+        var result = new List<TrustedMediaStorageKey>(batch.Media.Count * 2);
         var uniqueKeys = new HashSet<string>(StringComparer.Ordinal);
         if (!BatchTokenPattern().IsMatch(batch.BatchToken)
             || batch.Media.Count != expectedCount
@@ -707,17 +725,51 @@ public sealed partial class ProductMediaMutationCoordinator(
                     expectedContentType,
                     StringComparison.Ordinal)
                 || media.Length <= 0
-                || !uniqueKeys.Add(media.StorageKey))
+                || !uniqueKeys.Add(media.StorageKey)
+                || !TryValidateThumbnail(media, batch.BatchToken, uniqueKeys))
             {
                 keys = [];
                 return false;
             }
 
             result.Add(TrustedMediaStorageKey.From(media));
+            result.Add(TrustedMediaStorageKey.FromThumbnail(media));
         }
 
         keys = result;
         return true;
+    }
+
+    private static bool TryValidateThumbnail(
+        StagedMedia media,
+        string batchToken,
+        HashSet<string> uniqueKeys)
+    {
+        var match = StorageKeyPattern().Match(media.ThumbnailStorageKey ?? string.Empty);
+        return match.Success
+            && match.Groups["extension"].Value == "webp"
+            && match.Groups["batch"].Value == batchToken
+            && media.ThumbnailPublicRelativeUrl == $"/media/{media.ThumbnailStorageKey}"
+            && media.ThumbnailLength is > 0
+            && uniqueKeys.Add(media.ThumbnailStorageKey!);
+    }
+
+    private static IEnumerable<TrustedMediaStorageKey> StagedKeys(StagedMedia media)
+    {
+        yield return TrustedMediaStorageKey.From(media);
+        if (media.ThumbnailStorageKey is not null)
+        {
+            yield return TrustedMediaStorageKey.FromThumbnail(media);
+        }
+    }
+
+    private static IEnumerable<TrustedMediaStorageKey> SnapshotKeys(TrustedProductMediaSnapshot image)
+    {
+        yield return image.StorageKey;
+        if (image.ThumbnailStorageKey is not null)
+        {
+            yield return image.ThumbnailStorageKey;
+        }
     }
 
     [GeneratedRegex("\\A[a-f0-9]{32}\\z", RegexOptions.CultureInvariant)]

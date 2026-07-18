@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using SkiaSharp;
 using ToyStore.Application.Common.Files;
 using ToyStore.Infrastructure.Storage;
 
@@ -15,8 +16,8 @@ public sealed class LocalFileStorageStageTests : IDisposable
         await storage.InitializeAsync(CancellationToken.None);
         var uploads = new[]
         {
-            new MediaUpload(new MemoryStream(Jpeg()), "image/jpeg"),
-            new MediaUpload(new MemoryStream(Png()), "image/png"),
+            new MediaUpload(new MemoryStream(Jpeg()), "image/jpeg", true),
+            new MediaUpload(new MemoryStream(Png()), "image/png", true),
         };
 
         var result = await storage.StageAsync(uploads, CancellationToken.None);
@@ -27,6 +28,13 @@ public sealed class LocalFileStorageStageTests : IDisposable
         Assert.EndsWith(".jpg", result.Value.Media[0].StorageKey, StringComparison.Ordinal);
         Assert.EndsWith(".png", result.Value.Media[1].StorageKey, StringComparison.Ordinal);
         Assert.All(result.Value.Media, media => Assert.StartsWith("/media/", media.PublicRelativeUrl, StringComparison.Ordinal));
+        Assert.All(result.Value.Media, media =>
+        {
+            Assert.EndsWith(".webp", media.ThumbnailStorageKey, StringComparison.Ordinal);
+            Assert.StartsWith("/media/", media.ThumbnailPublicRelativeUrl, StringComparison.Ordinal);
+            Assert.True(media.ThumbnailLength > 0);
+            Assert.NotEqual(media.StorageKey, media.ThumbnailStorageKey);
+        });
     }
 
     [Fact]
@@ -256,8 +264,17 @@ public sealed class LocalFileStorageStageTests : IDisposable
         Options.Create(new LocalFileStorageOptions { RootPath = root }),
         TimeProvider.System);
 
-    internal static byte[] Jpeg() => [0xff, 0xd8, 0xff, 1, 2, 3];
-    internal static byte[] Png() => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1];
+    internal static byte[] Jpeg() => Image(SKEncodedImageFormat.Jpeg);
+    internal static byte[] Png() => Image(SKEncodedImageFormat.Png);
+
+    private static byte[] Image(SKEncodedImageFormat format)
+    {
+        using var bitmap = new SKBitmap(2, 2);
+        bitmap.Erase(SKColors.Lime);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(format, 90);
+        return data.ToArray();
+    }
 
     private sealed class CancelAfterFirstReadStream(
         byte[] bytes,

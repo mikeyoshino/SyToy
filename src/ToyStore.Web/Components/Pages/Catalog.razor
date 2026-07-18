@@ -25,9 +25,26 @@
 
     <div class="catalog-page__body">
         <aside class="catalog-page__sidebar" aria-label="ตัวกรองสินค้า">
-            <StorefrontCatalogFilterBar State="@queryState" BasePath="@BasePath" LockBrand="@IsBrandRoute"
-                                        Categories="@categories" Brands="@brands" Characters="@characters" Universes="@universes"
-                                        IsSidebar="true" />
+            <button class="catalog-page__filter-toggle" type="button"
+                    aria-expanded="@filtersExpanded" aria-controls="catalog-filter-panel"
+                    aria-label="@(filtersExpanded ? "ซ่อนตัวกรองสินค้า" : "แสดงตัวกรองสินค้า")"
+                    @onclick="ToggleFilters">
+                <span>
+                    ตัวกรองสินค้า
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <span class="catalog-page__filter-count">@ActiveFilterCount</span>
+                    }
+                </span>
+                <span class="catalog-page__filter-chevron" aria-hidden="true"></span>
+            </button>
+
+            <div id="catalog-filter-panel"
+                 class="catalog-page__filter-panel @(filtersExpanded ? "catalog-page__filter-panel--expanded" : null)">
+                <StorefrontCatalogFilterBar State="@queryState" BasePath="@BasePath" LockBrand="@IsBrandRoute"
+                                            Categories="@categories" Brands="@brands" Characters="@characters" Universes="@universes"
+                                            IsSidebar="true" />
+            </div>
 
             @if (validationMessages.Count != 0)
             {
@@ -69,6 +86,7 @@
     private int currentPage = 1;
     private int totalPages = 1;
     private int totalCount;
+    private bool filtersExpanded;
 
     [Parameter] public string? BrandSlug { get; set; }
     [SupplyParameterFromQuery(Name = "q")] public string? Search { get; set; }
@@ -82,6 +100,15 @@
     [SupplyParameterFromQuery(Name = "page")] public string? Page { get; set; }
 
     private bool IsBrandRoute => !string.IsNullOrWhiteSpace(BrandSlug);
+    private int ActiveFilterCount =>
+        (string.IsNullOrWhiteSpace(queryState.Search) ? 0 : 1)
+        + (queryState.SaleType == "all" ? 0 : 1)
+        + (queryState.CategoryId.HasValue ? 1 : 0)
+        + (queryState.BrandId.HasValue ? 1 : 0)
+        + (queryState.CharacterId.HasValue ? 1 : 0)
+        + (queryState.UniverseId.HasValue ? 1 : 0)
+        + (queryState.MinimumPrice.HasValue ? 1 : 0)
+        + (queryState.MaximumPrice.HasValue ? 1 : 0);
     private bool IsSearchRoute => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).StartsWith("search", StringComparison.OrdinalIgnoreCase);
     private string BasePath => IsBrandRoute ? $"/brands/{BrandSlug}" : IsSearchRoute ? "/search" : "/products";
     private string Heading => IsBrandRoute ? brandDisplayName ?? "สินค้าตามแบรนด์" : IsSearchRoute ? "ค้นหาสินค้า" : "สินค้าทั้งหมด";
@@ -108,6 +135,7 @@
     }
 
     private Task ReloadAsync() => LoadAsync(queryState);
+    private void ToggleFilters() => filtersExpanded = !filtersExpanded;
     private async Task LoadAsync(StorefrontCatalogQueryState requested)
     {
         var generation = Interlocked.Increment(ref loadGeneration);
@@ -127,6 +155,7 @@
             {
                 validationMessages = result.ValidationFailures.Select(failure => failure.ErrorMessage)
                     .DefaultIfEmpty(result.Error.Message).ToArray();
+                filtersExpanded = true;
                 contentState = StorefrontContentState.Error;
                 return;
             }

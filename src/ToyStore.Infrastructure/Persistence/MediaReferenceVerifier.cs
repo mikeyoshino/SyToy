@@ -33,7 +33,8 @@ internal sealed class MediaReferenceVerifier(
                 || await dbContext.ProductImages
                     .AsNoTracking()
                     .AnyAsync(
-                        image => image.StorageKey == storageKey.Value,
+                        image => image.StorageKey == storageKey.Value
+                            || image.ThumbnailStorageKey == storageKey.Value,
                         cancellationToken))
             {
                 return MediaReferenceVerification.Referenced;

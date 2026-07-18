@@ -692,7 +692,10 @@ public sealed class InStockProductHandlerTests
             {
                 var suffix = (++nextMedia).ToString("x32", System.Globalization.CultureInfo.InvariantCulture);
                 var key = $"{Batch}/{suffix}.webp";
-                return new StagedMedia(Batch, key, $"/media/{key}", "image/webp", 10);
+                var thumbnailSuffix = (++nextMedia).ToString("x32", System.Globalization.CultureInfo.InvariantCulture);
+                var thumbnailKey = $"{Batch}/{thumbnailSuffix}.webp";
+                return new StagedMedia(Batch, key, $"/media/{key}", "image/webp", 10,
+                    thumbnailKey, $"/media/{thumbnailKey}", 5);
             }).ToArray();
             return Task.FromResult(Result<StagedMediaBatch>.Success(
                 new StagedMediaBatch(Batch, media)));

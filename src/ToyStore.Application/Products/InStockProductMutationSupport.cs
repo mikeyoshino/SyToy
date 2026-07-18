@@ -82,7 +82,9 @@ internal static class InStockProductMutationSupport
                         current.Id,
                         current.StorageKey,
                         current.PublicRelativeUrl,
-                        current.AltText));
+                        current.AltText,
+                        current.ThumbnailStorageKey,
+                        current.ThumbnailPublicRelativeUrl));
                     break;
                 case ResolvedUploadProductMediaSlot upload:
                     definitions.Add(NewImage(upload.Media, displayName, index));
@@ -157,5 +159,7 @@ internal static class InStockProductMutationSupport
             Guid.NewGuid(),
             media.StorageKey,
             media.PublicRelativeUrl,
-            $"รูปสินค้า {displayName.Trim()} {index + 1}");
+            $"รูปสินค้า {displayName.Trim()} {index + 1}",
+            media.ThumbnailStorageKey,
+            media.ThumbnailPublicRelativeUrl);
 }

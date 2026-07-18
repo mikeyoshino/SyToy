@@ -44,4 +44,18 @@ public sealed record TrustedMediaStorageKey
         ArgumentNullException.ThrowIfNull(media);
         return new TrustedMediaStorageKey(media.StorageKey);
     }
+
+    internal static TrustedMediaStorageKey FromThumbnail(StagedMedia media)
+    {
+        ArgumentNullException.ThrowIfNull(media);
+        return new TrustedMediaStorageKey(media.ThumbnailStorageKey
+            ?? throw new ArgumentException("Staged media has no thumbnail key.", nameof(media)));
+    }
+
+    internal static TrustedMediaStorageKey FromThumbnail(ProductImage media)
+    {
+        ArgumentNullException.ThrowIfNull(media);
+        return new TrustedMediaStorageKey(media.ThumbnailStorageKey
+            ?? throw new ArgumentException("Product image has no thumbnail key.", nameof(media)));
+    }
 }

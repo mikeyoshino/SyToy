@@ -563,7 +563,9 @@ public sealed class Product
             || image.Id == Guid.Empty
             || string.IsNullOrWhiteSpace(image.StorageKey)
             || string.IsNullOrWhiteSpace(image.PublicRelativeUrl)
-            || string.IsNullOrWhiteSpace(image.AltText)))
+            || string.IsNullOrWhiteSpace(image.AltText)
+            || (string.IsNullOrWhiteSpace(image.ThumbnailStorageKey)
+                != string.IsNullOrWhiteSpace(image.ThumbnailPublicRelativeUrl))))
         {
             throw new ProductRuleException(ProductRule.ProductImageMetadataRequired);
         }
@@ -575,6 +577,16 @@ public sealed class Product
 
         if (imageSnapshot.Select(image => image.StorageKey)
             .Distinct(StringComparer.Ordinal).Count() != imageSnapshot.Count)
+        {
+            throw new ProductRuleException(ProductRule.ProductImageDuplicateStorageKey);
+        }
+
+        var allStorageKeys = imageSnapshot
+            .SelectMany(image => image.ThumbnailStorageKey is null
+                ? [image.StorageKey]
+                : new[] { image.StorageKey, image.ThumbnailStorageKey })
+            .ToArray();
+        if (allStorageKeys.Distinct(StringComparer.Ordinal).Count() != allStorageKeys.Length)
         {
             throw new ProductRuleException(ProductRule.ProductImageDuplicateStorageKey);
         }
@@ -611,6 +623,8 @@ public sealed class Product
 
             if (retainedImage.StorageKey != definition.StorageKey
                 || retainedImage.PublicRelativeUrl != definition.PublicRelativeUrl
+                || retainedImage.ThumbnailStorageKey != definition.ThumbnailStorageKey
+                || retainedImage.ThumbnailPublicRelativeUrl != definition.ThumbnailPublicRelativeUrl
                 || retainedImage.AltText != definition.AltText)
             {
                 throw new ProductRuleException(
@@ -634,7 +648,9 @@ public sealed class Product
             definition.StorageKey,
             definition.PublicRelativeUrl,
             definition.AltText,
-            sortOrder);
+            sortOrder,
+            definition.ThumbnailStorageKey,
+            definition.ThumbnailPublicRelativeUrl);
 
     private static void EnsureUtc(DateTimeOffset instant)
     {
@@ -754,6 +770,8 @@ public sealed class Product
             if (current.Id != definition.Id
                 || current.StorageKey != definition.StorageKey
                 || current.PublicRelativeUrl != definition.PublicRelativeUrl
+                || current.ThumbnailStorageKey != definition.ThumbnailStorageKey
+                || current.ThumbnailPublicRelativeUrl != definition.ThumbnailPublicRelativeUrl
                 || current.AltText != definition.AltText
                 || current.SortOrder != index
                 || current.IsPrimary != (index == 0))

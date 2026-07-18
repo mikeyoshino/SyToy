@@ -183,7 +183,7 @@ public sealed class ProductMediaMutationCoordinatorTests
             static () => [],
             TestContext.Current.CancellationToken));
 
-        Assert.Equal([MediaKey(1), MediaKey(2)], storage.DeletedKeys);
+        Assert.Equal([MediaKey(1), ThumbnailKey(1), MediaKey(2), ThumbnailKey(2)], storage.DeletedKeys);
     }
 
     [Theory]
@@ -213,7 +213,7 @@ public sealed class ProductMediaMutationCoordinatorTests
             static () => [],
             TestContext.Current.CancellationToken));
 
-        Assert.Equal([MediaKey(1), MediaKey(2)], storage.DeletedKeys);
+        Assert.Equal([MediaKey(1), ThumbnailKey(1), MediaKey(2), ThumbnailKey(2)], storage.DeletedKeys);
         Assert.All(storage.DeleteTokens, token => Assert.False(token.CanBeCanceled));
         Assert.Equal(failAfterCommit ? 0 : 1, storage.DiscardTokens.Count);
     }
@@ -325,7 +325,7 @@ public sealed class ProductMediaMutationCoordinatorTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(PersistenceErrors.CommitOutcomeUnknown, result.Error);
-        Assert.Equal([MediaKey(1), MediaKey(2)], storage.DeletedKeys);
+        Assert.Equal([MediaKey(1), ThumbnailKey(1), MediaKey(2), ThumbnailKey(2)], storage.DeletedKeys);
         Assert.DoesNotContain("products/old.webp", storage.DeletedKeys);
     }
 
@@ -352,7 +352,7 @@ public sealed class ProductMediaMutationCoordinatorTests
         Assert.Equal(PersistenceErrors.CommitOutcomeUnknown, result.Error);
         Assert.Empty(storage.DeletedKeys);
         Assert.Equal(
-            [MediaKey(1), MediaKey(2)],
+            [MediaKey(1), ThumbnailKey(1), MediaKey(2), ThumbnailKey(2)],
             registry.Registrations.Select(item => item.StorageKey.Value));
         Assert.All(registry.Registrations, item =>
             Assert.Equal(MediaCleanupReason.CommitOutcomeUnknown, item.Reason));
@@ -511,7 +511,7 @@ public sealed class ProductMediaMutationCoordinatorTests
             TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal([MediaKey(2)], storage.DeletedKeys);
+        Assert.Equal([MediaKey(2), ThumbnailKey(2)], storage.DeletedKeys);
     }
 
     [Theory]
@@ -692,6 +692,8 @@ public sealed class ProductMediaMutationCoordinatorTests
     private static string MediaKey(int index) =>
         $"{BatchToken}/{index:x32}.webp";
 
+    private static string ThumbnailKey(int index) => MediaKey(100 + index);
+
     private static ProductMediaMutationState State(
         IReadOnlyCollection<string> beforeKeys,
         IReadOnlyCollection<StagedMedia> afterMedia)
@@ -860,13 +862,20 @@ public sealed class ProductMediaMutationCoordinatorTests
 
             var count = ReturnedMediaCount ?? uploads.Count;
             var media = Enumerable.Range(1, count)
-                .Select(index => new StagedMedia(
-                    WrongBatchToken && index == count ? new string('b', 32) : BatchToken,
-                    InvalidStorageKey ? "../invalid.webp" : MediaKey(DuplicateKey ? 1 : index),
+                .Select(index =>
+                {
+                    var descriptorBatch = WrongBatchToken && index == count ? new string('b', 32) : BatchToken;
+                    var key = InvalidStorageKey ? "../invalid.webp" : MediaKey(DuplicateKey ? 1 : index);
+                    var thumbnailKey = MediaKey(100 + index);
+                    return new StagedMedia(
+                    descriptorBatch,
+                    key,
                     InvalidStorageKey
                         ? "/media/../invalid.webp"
-                        : $"/media/{MediaKey(DuplicateKey ? 1 : index)}",
-                    "image/webp", 3))
+                        : $"/media/{key}",
+                    "image/webp", 3,
+                    thumbnailKey, $"/media/{thumbnailKey}", 2);
+                })
                 .Cast<StagedMedia?>()
                 .ToArray();
             if (NullMedia && media.Length > 0)

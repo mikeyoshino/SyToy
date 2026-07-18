@@ -84,7 +84,7 @@ internal sealed class StorefrontCatalogReader(
                 FullSellingPrice(product),
                 product.PreOrderOffer?.DepositAmount.Amount,
                 availability.Quantity,
-                primary.PublicRelativeUrl,
+                primary.CardImageUrl,
                 primary.AltText);
         }).ToArray();
         await transaction.CommitAsync(cancellationToken);

@@ -52,7 +52,7 @@ public sealed class MediaStorageContractTests
     {
         var propertyNames = typeof(MediaUpload).GetProperties().Select(property => property.Name).ToArray();
 
-        Assert.Equal(["Content", "ContentType"], propertyNames.Order());
+        Assert.Equal(["Content", "ContentType", "GenerateProductThumbnail"], propertyNames.Order());
         Assert.DoesNotContain(propertyNames, name => name.Contains("FileName", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(propertyNames, name => name.Contains("Path", StringComparison.OrdinalIgnoreCase));
     }

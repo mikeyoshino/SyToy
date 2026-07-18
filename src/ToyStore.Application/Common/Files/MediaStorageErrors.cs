@@ -34,4 +34,9 @@ public static class MediaStorageErrors
         "Media.TooLarge",
         "รูปภาพแต่ละไฟล์ต้องมีขนาดไม่เกิน 5 MiB",
         ErrorType.Validation);
+
+    public static readonly Error InvalidImageDimensions = new(
+        "Media.InvalidImageDimensions",
+        "รูปภาพมีขนาดพิกเซลใหญ่เกินไปหรือไม่สามารถประมวลผลได้",
+        ErrorType.Validation);
 }

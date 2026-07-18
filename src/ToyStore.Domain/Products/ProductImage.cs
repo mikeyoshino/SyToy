@@ -14,11 +14,15 @@ public sealed class ProductImage
         string storageKey,
         string publicRelativeUrl,
         string altText,
-        int sortOrder)
+        int sortOrder,
+        string? thumbnailStorageKey,
+        string? thumbnailPublicRelativeUrl)
     {
         Id = id;
         StorageKey = storageKey;
         PublicRelativeUrl = publicRelativeUrl;
+        ThumbnailStorageKey = thumbnailStorageKey;
+        ThumbnailPublicRelativeUrl = thumbnailPublicRelativeUrl;
         AltText = altText;
         SortOrder = sortOrder;
         IsPrimary = sortOrder == 0;
@@ -29,6 +33,12 @@ public sealed class ProductImage
     public string StorageKey { get; private set; }
 
     public string PublicRelativeUrl { get; private set; }
+
+    public string? ThumbnailStorageKey { get; private set; }
+
+    public string? ThumbnailPublicRelativeUrl { get; private set; }
+
+    public string CardImageUrl => ThumbnailPublicRelativeUrl ?? PublicRelativeUrl;
 
     public string AltText { get; private set; }
 

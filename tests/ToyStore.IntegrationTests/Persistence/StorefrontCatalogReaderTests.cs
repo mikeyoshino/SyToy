@@ -48,7 +48,7 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         var card = Assert.Single(combined.Value.Items);
         Assert.Equal(seeded.PublishedId, card.Id);
         Assert.True(card.IsAvailable);
-        Assert.Equal(seeded.PrimaryImageUrl, card.PrimaryImageUrl);
+        Assert.Equal(seeded.ThumbnailImageUrl, card.PrimaryImageUrl);
         Assert.Equal("ภาพหลักสำหรับหน้าร้าน", card.PrimaryImageAltText);
         Assert.Equal("แบรนด์หน้าร้าน", brandRoute.Value.BrandDisplayName);
         Assert.Equal(2, brandRoute.Value.TotalCount);
@@ -186,10 +186,12 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         var secondPublishedId = Guid.Parse("a3000000-0000-0000-0000-000000000004");
         const string primaryUrl = "/media/public/primary.webp";
         const string secondaryUrl = "/media/public/secondary.webp";
+        const string thumbnailUrl = "/media/public/thumbnail.webp";
         Product Create(Guid id, string name, string slug, decimal price, Guid category, Guid universe, DateTimeOffset created) =>
             Product.CreateInStock(id, name, slug.Replace('-', ' '), "รายละเอียดสินค้าสำหรับหน้าร้าน", slug,
                 category, brandId, universe, InStockOffer.Create(Money.Create(price)),
-                [new ProductImageDefinition(Guid.NewGuid(), $"{slug}/primary.webp", primaryUrl, "ภาพหลักสำหรับหน้าร้าน"),
+                [new ProductImageDefinition(Guid.NewGuid(), $"{slug}/primary.webp", primaryUrl, "ภาพหลักสำหรับหน้าร้าน",
+                    $"{slug}/thumbnail.webp", thumbnailUrl),
                  new ProductImageDefinition(Guid.NewGuid(), $"{slug}/secondary.webp", secondaryUrl, "ภาพด้านข้างสินค้า")],
                 slug == "published-product" ? [characterId] : [], created, "test");
         var published = Create(publishedId, "สินค้าเผยแพร่", "published-product", 1000,
@@ -215,7 +217,8 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         db.StockReservations.AddRange(expired, live);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        return new Seeded(brandId, characterId, publishedId, draftId, archivedId, primaryUrl, secondaryUrl);
+        return new Seeded(brandId, characterId, publishedId, draftId, archivedId,
+            primaryUrl, secondaryUrl, thumbnailUrl);
     }
 
     private static InventoryItem AddInventory(ApplicationDbContext db, Guid productId, int stock)
@@ -284,7 +287,7 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
     }
 
     private sealed record Seeded(Guid BrandId, Guid CharacterId, Guid PublishedId, Guid DraftId,
-        Guid ArchivedId, string PrimaryImageUrl, string SecondaryImageUrl);
+        Guid ArchivedId, string PrimaryImageUrl, string SecondaryImageUrl, string ThumbnailImageUrl);
     private sealed record SeededPreOrder(Guid ProductId, string Slug, DateTimeOffset CloseAtUtc);
     private sealed record PreOrderCounts(int Capacities, int Reservations, int Movements);
     private sealed class FixedTimeProvider(DateTimeOffset value) : TimeProvider

@@ -172,12 +172,39 @@ public sealed class LocalFileStorage : IFileStorage, IFileStorageInitializer, ID
                 File.Move(writingPath, readyPath);
                 SetFileMode(readyPath);
                 var key = $"{batchId}/{fileName}";
+
+                string? thumbnailKey = null;
+                long? thumbnailLength = null;
+                if (upload.GenerateProductThumbnail)
+                {
+                    var thumbnailId = idGenerator.CreateId();
+                    if (!StorageKey.IsBatchId(thumbnailId))
+                    {
+                        throw new InvalidOperationException("The media identity generator returned an invalid identifier.");
+                    }
+
+                    var thumbnailFileName = thumbnailId + ".webp";
+                    var thumbnailPath = ContainedPath(batchPath, thumbnailFileName);
+                    var thumbnailResult = ProductThumbnailGenerator.Create(readyPath, thumbnailPath);
+                    if (thumbnailResult.IsFailure)
+                    {
+                        await CleanupFailedBatchAsync(batchPath, null);
+                        return Result<StagedMediaBatch>.Failure(thumbnailResult.Error);
+                    }
+
+                    SetFileMode(thumbnailPath);
+                    thumbnailKey = $"{batchId}/{thumbnailFileName}";
+                    thumbnailLength = thumbnailResult.Value;
+                }
                 media.Add(new StagedMedia(
                     batchId,
                     key,
                     $"/media/{key}",
                     writeResult.Value.MediaType.ContentType,
-                    writeResult.Value.Length));
+                    writeResult.Value.Length,
+                    thumbnailKey,
+                    thumbnailKey is null ? null : $"/media/{thumbnailKey}",
+                    thumbnailLength));
             }
 
             return Result<StagedMediaBatch>.Success(new StagedMediaBatch(batchId, media));
@@ -551,7 +578,8 @@ public sealed class LocalFileStorage : IFileStorage, IFileStorageInitializer, ID
                 !string.Equals(media.PublicRelativeUrl, $"/media/{media.StorageKey}", StringComparison.Ordinal) ||
                 !string.Equals(media.ContentType, ContentTypeForExtension(key.Extension), StringComparison.Ordinal) ||
                 media.Length is <= 0 or > BoundedImageWriter.MaximumBytes ||
-                !keys.Add(media.StorageKey))
+                !keys.Add(media.StorageKey)
+                || !TryValidateOptionalThumbnailDescriptor(media, batch.BatchToken, keys))
             {
                 throw new InvalidOperationException("The staged media batch descriptor is invalid.");
             }
@@ -561,11 +589,19 @@ public sealed class LocalFileStorage : IFileStorage, IFileStorageInitializer, ID
     private static void VerifyBatchDirectory(string directory, StagedMediaBatch batch)
     {
         EnsureNotReparsePoint(directory);
-        var expected = batch.Media.ToDictionary(
-            media => StorageKey.TryParse(media.StorageKey, out var key)
-                ? key.FileName
-                : throw new InvalidOperationException("The staged media key is invalid."),
-            StringComparer.Ordinal);
+        var expected = batch.Media
+            .SelectMany(media => media.ThumbnailStorageKey is null
+                ? [new StagedFileDescriptor(media.StorageKey, media.Length, media.ContentType)]
+                : new[]
+                {
+                    new StagedFileDescriptor(media.StorageKey, media.Length, media.ContentType),
+                    new StagedFileDescriptor(media.ThumbnailStorageKey, media.ThumbnailLength!.Value, "image/webp"),
+                })
+            .ToDictionary(
+                media => StorageKey.TryParse(media.StorageKey, out var key)
+                    ? key.FileName
+                    : throw new InvalidOperationException("The staged media key is invalid."),
+                StringComparer.Ordinal);
         var entries = Directory.EnumerateFileSystemEntries(directory).ToArray();
         if (entries.Length != expected.Count + 1)
         {
@@ -610,6 +646,33 @@ public sealed class LocalFileStorage : IFileStorage, IFileStorageInitializer, ID
             }
         }
     }
+
+    private static bool TryValidateOptionalThumbnailDescriptor(
+        StagedMedia media,
+        string batchToken,
+        HashSet<string> keys)
+    {
+        if (media.ThumbnailStorageKey is null
+            && media.ThumbnailPublicRelativeUrl is null
+            && media.ThumbnailLength is null)
+        {
+            return true;
+        }
+
+        if (!StorageKey.TryParse(media.ThumbnailStorageKey, out var thumbnail)
+            || thumbnail.Extension != "webp"
+            || thumbnail.BatchId != batchToken
+            || media.ThumbnailPublicRelativeUrl != $"/media/{media.ThumbnailStorageKey}"
+            || media.ThumbnailLength is null or <= 0
+            || !keys.Add(media.ThumbnailStorageKey!))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private sealed record StagedFileDescriptor(string StorageKey, long Length, string ContentType);
 
     private static string ContentTypeForExtension(string extension) => extension switch
     {

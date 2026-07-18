@@ -5,4 +5,7 @@ public sealed record StagedMedia(
     string StorageKey,
     string PublicRelativeUrl,
     string ContentType,
-    long Length);
+    long Length,
+    string? ThumbnailStorageKey = null,
+    string? ThumbnailPublicRelativeUrl = null,
+    long? ThumbnailLength = null);

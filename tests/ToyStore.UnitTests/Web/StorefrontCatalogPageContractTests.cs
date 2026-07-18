@@ -20,6 +20,9 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("CancellationTokenSource? loadTokenSource", source, StringComparison.Ordinal);
         Assert.Contains("<meta name=\"description\"", source, StringComparison.Ordinal);
         Assert.Contains("rel=\"canonical\"", source, StringComparison.Ordinal);
+        Assert.Contains("aria-expanded=\"@filtersExpanded\"", source, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=\"catalog-filter-panel\"", source, StringComparison.Ordinal);
+        Assert.Contains("ActiveFilterCount", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ToyStore.Infrastructure", source, StringComparison.Ordinal);
     }
 

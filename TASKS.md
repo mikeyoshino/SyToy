@@ -13,6 +13,8 @@
 
 ## Current focus
 
+- 2026-07-18: ทำ Catalog filter แบบ collapsible ใต้ 64rem เพื่อลดความยาวหน้า mobile/tablet โดย default ย่อ, แสดงจำนวน filter ที่ใช้อยู่, รองรับ keyboard/ARIA และคง desktop sticky sidebar เปิดเต็มตลอด
+- 2026-07-18: เพิ่ม Product image derivative สำหรับ storefront: ทุกภาพที่อัปโหลดใหม่สร้าง WebP thumbnail สูงสุด 960px quality 84 ใน staging/commit/compensation เดียวกับต้นฉบับ, persist key/url แยก, list/search/home/cart ใช้ thumbnail พร้อม fallback รูปเดิมสำหรับ legacy product และ lazy decode ใน shared ProductCard
 - 2026-07-18: เปลี่ยน M10-04 เป็น full production Docker Compose: manual GitHub Actions รับ branch (default `main`) → Release build/migration review → build/push non-root Web image ไป GHCR → pinned SSH ส่ง immutable image digest → root-owned backup/Compose activation/readiness/image rollback; นำ test suite ออกจาก deployment workflow ตาม operational choice โดย local validation ล่าสุดยังผ่าน 1,296/1,296 เหลือ clean Ubuntu VPS deploy/restore verification ก่อนปิด task
 - 2026-07-18: ออกแบบโลโก้ SY TOYS ใหม่เป็น wordmark แนวนอนสีดำ/เขียว lime ตัดพื้นที่ว่างบนล่าง ทำ shared `BrandLogo` สำหรับ Storefront/Admin และอัปเดต favicon ให้ใช้ภาษาภาพเดียวกัน
 - 2026-07-18: แก้ Account Order search ทำให้ Blazor circuit ล้ม เพราะ shared `StoreTextField` render `ValidationMessage` นอก `EditForm`; ให้ standalone GET/search field ไม่สร้าง validation component เมื่อไม่มี cascading `EditContext` พร้อม rendering regression test
@@ -404,7 +406,9 @@ Exit criteria: catalog schema/reference/media/Admin foundation is ready; Categor
   - Acceptance: create/update/publish/archive rollback, duplicate, stock/media and unauthorized PostgreSQL tests pass
   - Acceptance: tests prove database failure compensation and post-commit delete failure does not invite a duplicate client retry
   - Implemented: versioned Draft -> Published -> Archived In-stock lifecycle, atomic Product + InitialStock creation, complete draft replacement, authoritative Publish readiness, terminal Archive, typed Thai FluentValidation/results, staged batch media coordination and explicit system-invariant propagation
+  - Implemented: Product uploads create a 960px WebP thumbnail derivative; original/thumbnail references participate together in commit, rollback, verification and cleanup, while legacy rows fall back to the original image
   - Migration: `20260717095755_AddProductVersion`; additive Version default/check constraints reviewed and applied idempotently
+  - Migration: `20260718152759_AddProductImageThumbnails`; additive nullable derivative references, paired-value check and filtered unique storage-key index reviewed
   - Verified: focused lifecycle Unit 103/103 and Product PostgreSQL 27/27; full Unit 935/935; full Integration 227/227; format clean; CI/Release build 0 warnings/errors; vulnerability scan clean; Compose valid; EF has no pending model changes; independent lifecycle, persistence/media, plan and authorization/code-quality reviews APPROVED
 
 - [x] **M5-04** Build In-stock Product management UI

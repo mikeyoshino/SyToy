@@ -20,7 +20,8 @@ else
             <div class="product-card__media">
                 @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
                 {
-                    <img src="@Model.ImageUrl" alt="@($"{Model.Name} โดย {Model.Brand}")" />
+                    <img src="@Model.ImageUrl" alt="@($"{Model.Name} โดย {Model.Brand}")"
+                         loading="lazy" decoding="async" />
                 }
                 else
                 {

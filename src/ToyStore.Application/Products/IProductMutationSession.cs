@@ -75,6 +75,8 @@ public sealed record ProductImageEvidence(
     Guid Id,
     string StorageKey,
     string PublicRelativeUrl,
+    string? ThumbnailStorageKey,
+    string? ThumbnailPublicRelativeUrl,
     string AltText,
     int SortOrder,
     bool IsPrimary);
@@ -148,6 +150,8 @@ public sealed class ProductMutationEvidence
                 image.Id,
                 image.StorageKey,
                 image.PublicRelativeUrl,
+                image.ThumbnailStorageKey,
+                image.ThumbnailPublicRelativeUrl,
                 image.AltText,
                 image.SortOrder,
                 image.IsPrimary))

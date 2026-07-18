@@ -106,7 +106,7 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
         await Assert.ThrowsAsync<InjectedSaveException>(() => harness.CreatePreOrderAsync(command));
 
         Assert.Equal(1, storage.CommitCount);
-        Assert.Single(storage.DeletedKeys);
+        Assert.Equal(2, storage.DeletedKeys.Count);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.False(await db.Products.AnyAsync(
@@ -237,7 +237,7 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
             .Where(link => link.ProductId == created.Value.Id)
             .Select(link => link.CharacterId)
             .SingleAsync(TestContext.Current.CancellationToken));
-        Assert.Single(harness.Storage.DeletedKeys);
+        Assert.Equal(2, harness.Storage.DeletedKeys.Count);
     }
 
     [Fact]
@@ -558,7 +558,7 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
         await Assert.ThrowsAsync<InjectedSaveException>(() => harness.CreateAsync(command));
 
         Assert.Equal(1, storage.CommitCount);
-        Assert.Single(storage.DeletedKeys);
+        Assert.Equal(2, storage.DeletedKeys.Count);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.False(await db.Products.AnyAsync(
@@ -1252,11 +1252,14 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
             IReadOnlyCollection<MediaUpload> uploads,
             CancellationToken cancellationToken)
         {
-            var media = uploads.Select(_ =>
+            var media = uploads.Select(upload =>
             {
                 var suffix = (++next).ToString("x32", System.Globalization.CultureInfo.InvariantCulture);
                 var key = $"{Batch}/{suffix}.webp";
-                return new StagedMedia(Batch, key, $"/media/{key}", "image/webp", 10);
+                var thumbnailSuffix = (++next).ToString("x32", System.Globalization.CultureInfo.InvariantCulture);
+                var thumbnailKey = $"{Batch}/{thumbnailSuffix}.webp";
+                return new StagedMedia(Batch, key, $"/media/{key}", "image/webp", 10,
+                    thumbnailKey, $"/media/{thumbnailKey}", 5);
             }).ToArray();
             return Task.FromResult(Result<StagedMediaBatch>.Success(
                 new StagedMediaBatch(Batch, media)));

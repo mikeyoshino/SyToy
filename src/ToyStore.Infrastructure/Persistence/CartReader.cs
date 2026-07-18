@@ -48,7 +48,7 @@ internal sealed class CartReader(IDbContextFactory<ApplicationDbContext> context
                     string.Empty, 0, item.Quantity, false);
             var available = product.Status == ProductStatus.Published && product.SaleType == SaleType.InStock;
             var price = available ? product.InStockOffer!.Price.Amount : 0;
-            var image = product.Images.OrderBy(value => value.SortOrder).FirstOrDefault()?.PublicRelativeUrl ?? string.Empty;
+            var image = product.Images.OrderBy(value => value.SortOrder).FirstOrDefault()?.CardImageUrl ?? string.Empty;
             return new CustomerCartItemView(product.Id, product.DisplayName, product.Slug,
                 image, price, item.Quantity, available);
         }).ToArray();
