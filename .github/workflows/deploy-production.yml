@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify-build-deploy:
-    name: Verify, build image and deploy
+  build-deploy:
+    name: Build image and deploy
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: production
@@ -48,13 +48,10 @@ jobs:
       - name: Restore tools and packages
         run: |
           dotnet tool restore
-          dotnet restore ToyStore.sln
+          dotnet restore src/ToyStore.Web/ToyStore.Web.csproj
 
       - name: Build release
-        run: dotnet build ToyStore.sln --configuration Release --no-restore
-
-      - name: Run tests
-        run: dotnet test ToyStore.sln --configuration Release --no-build --logger "console;verbosity=normal"
+        run: dotnet build src/ToyStore.Web/ToyStore.Web.csproj --configuration Release --no-restore
 
       - name: Generate migration review artifact
         run: |

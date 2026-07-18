@@ -6,7 +6,7 @@ Production รันบน Ubuntu VPS เครื่องเดียวด้
 
 ```text
 GitHub Actions
-├── restore / build / full tests
+├── restore / Release build
 ├── generate idempotent migration SQL
 ├── build linux/amd64 Web image
 ├── push ghcr.io/<owner>/<repo>@sha256:<digest>
@@ -125,7 +125,7 @@ unset GHCR_READ_TOKEN
 
 workflow [`.github/workflows/deploy-production.yml`](../.github/workflows/deploy-production.yml) ใช้ `workflow_dispatch` และรับช่อง `branch` ซึ่ง default เป็น `main` ลำดับงานคือ:
 
-1. Checkout exact branch และรัน Release build/full test suite
+1. Checkout exact branch, restore และรัน Release build ของ Web application โดย deployment workflow ไม่รัน test suite
 2. สร้าง idempotent EF migration SQL เป็น artifact อายุ 14 วัน
 3. Build Docker image สำหรับ `linux/amd64` และ push ไป GHCR ด้วย commit SHA tag
 4. ใช้ digest ที่ registry คืนมาเป็น immutable deployment reference

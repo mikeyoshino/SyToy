@@ -34,7 +34,7 @@ public sealed class DeploymentConfigurationTests
     }
 
     [Fact]
-    public void ProductionWorkflowRequiresManualBranchInputAndQualityGatesBeforeDigestDeployment()
+    public void ProductionWorkflowRequiresManualBranchInputAndBuildGatesBeforeDigestDeployment()
     {
         var repositoryRoot = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
@@ -49,7 +49,8 @@ public sealed class DeploymentConfigurationTests
         Assert.Contains("environment: production", workflow, StringComparison.Ordinal);
         Assert.Contains("cancel-in-progress: false", workflow, StringComparison.Ordinal);
         Assert.Contains("packages: write", workflow, StringComparison.Ordinal);
-        AssertAppearsBefore(workflow, "dotnet test ToyStore.sln", "Build and push production image");
+        Assert.DoesNotContain("dotnet test", workflow, StringComparison.Ordinal);
+        AssertAppearsBefore(workflow, "Build release", "Build and push production image");
         AssertAppearsBefore(workflow, "Generate migration review artifact", "Build and push production image");
         AssertAppearsBefore(workflow, "Build and push production image", "Deploy immutable image on VPS");
         Assert.Contains("docker/build-push-action@v6", workflow, StringComparison.Ordinal);

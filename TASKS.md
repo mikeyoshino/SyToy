@@ -13,7 +13,7 @@
 
 ## Current focus
 
-- 2026-07-18: เปลี่ยน M10-04 เป็น full production Docker Compose: manual GitHub Actions รับ branch (default `main`) → full quality gate → build/push non-root Web image ไป GHCR → pinned SSH ส่ง immutable image digest → root-owned backup/Compose activation/readiness/image rollback; Release build 0 warnings, full test 1,296/1,296 และ local Docker image build ผ่านแล้ว เหลือ clean Ubuntu VPS deploy/restore verification ก่อนปิด task
+- 2026-07-18: เปลี่ยน M10-04 เป็น full production Docker Compose: manual GitHub Actions รับ branch (default `main`) → Release build/migration review → build/push non-root Web image ไป GHCR → pinned SSH ส่ง immutable image digest → root-owned backup/Compose activation/readiness/image rollback; นำ test suite ออกจาก deployment workflow ตาม operational choice โดย local validation ล่าสุดยังผ่าน 1,296/1,296 เหลือ clean Ubuntu VPS deploy/restore verification ก่อนปิด task
 - 2026-07-18: ออกแบบโลโก้ SY TOYS ใหม่เป็น wordmark แนวนอนสีดำ/เขียว lime ตัดพื้นที่ว่างบนล่าง ทำ shared `BrandLogo` สำหรับ Storefront/Admin และอัปเดต favicon ให้ใช้ภาษาภาพเดียวกัน
 - 2026-07-18: แก้ Account Order search ทำให้ Blazor circuit ล้ม เพราะ shared `StoreTextField` render `ValidationMessage` นอก `EditForm`; ให้ standalone GET/search field ไม่สร้าง validation component เมื่อไม่มี cascading `EditContext` พร้อม rendering regression test
 - 2026-07-18: เพิ่ม Order history search จากเลขคำสั่งซื้อ/ชื่อสินค้าใน URL `q`, PostgreSQL ownership-scoped ILIKE พร้อม escape wildcard, reset/clamp page, pagination แบบเลขหน้า 5 ปุ่มพร้อม first/last และ Thai empty/count states
@@ -721,7 +721,7 @@ Exit criteria: Admin can act on accurate operational queues and understand verif
 - [-] **M10-04** Create deployment and rollback runbook
   - Depends on: M10-01
   - Publish, review idempotent migration SQL, backup, copy, restart with startup migration, verify and forward-fix/rollback decision
-  - Implemented: manual branch-input `workflow_dispatch`, production environment/concurrency, full test/migration review gate, GHCR SHA-tag build, immutable digest deployment, pinned SSH, root-owned Compose command, quiesced PostgreSQL/media/key backup, readiness wait and previous-image rollback; actual clean Ubuntu VPS run remains pending
+  - Implemented: manual branch-input `workflow_dispatch`, production environment/concurrency, Release build/migration review gate (deployment workflow intentionallyไม่รัน tests), GHCR SHA-tag build, immutable digest deployment, pinned SSH, root-owned Compose command, quiesced PostgreSQL/media/key backup, readiness wait and previous-image rollback; actual clean Ubuntu VPS run remains pending
   - Verified locally: Release build 0 warnings/errors, unit 1,028/1,028, PostgreSQL integration 268/268, Dockerfile image build/non-root metadata, Compose/YAML/shell syntax and idempotent migration SQL generation pass
   - Acceptance: clean server deploy succeeds from documented commands
 
