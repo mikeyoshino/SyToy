@@ -132,7 +132,7 @@ public sealed class SharedFormRenderingTests
     }
 
     [Fact]
-    public async Task SelectFieldRendersGenericIntegerOptionsWithSelectedSemanticsAndCustomWrapper()
+    public async Task SelectFieldRendersGenericIntegerSelectionWithCustomListboxTrigger()
     {
         var model = new FormModel();
         Expression<Func<int>> expression = () => model.Size;
@@ -152,16 +152,16 @@ public sealed class SharedFormRenderingTests
             },
         });
 
-        Assert.Contains("class=\"store-select\"", html, StringComparison.Ordinal);
-        Assert.Contains("<select", html, StringComparison.Ordinal);
-        Assert.Contains("<option value=\"1\">เล็ก</option>", html, StringComparison.Ordinal);
-        Assert.Matches("<option(?=[^>]*value=\"2\")(?=[^>]*selected)[^>]*>กลาง</option>", html);
-        Assert.Matches("<option value=\"3\"[^>]*disabled[^>]*>ใหญ่</option>", html);
+        Assert.Matches("""class="store-select(?:\s|")""", html);
+        Assert.Contains("aria-haspopup=\"listbox\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("role=\"listbox\"", html, StringComparison.Ordinal);
+        Assert.Contains(">กลาง</span>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<select", html, StringComparison.OrdinalIgnoreCase);
 
         var css = File.ReadAllText(Path.Combine(GetWebRoot(), "wwwroot", "css", "forms.css"));
         Assert.Contains(".store-select::after", css, StringComparison.Ordinal);
         Assert.Contains("pointer-events: none", css, StringComparison.Ordinal);
-        Assert.Contains("appearance: none", css, StringComparison.Ordinal);
+        Assert.Contains(".store-select__listbox", css, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -30,7 +30,7 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
             "อีเมล",
             "จำนวน",
             "ขนาด",
-            "เลือกขนาด",
+            "ขนาดกลาง",
             "FluentValidation ในชั้น Application เป็นกฎหลัก",
             "ข้อมูลทั่วไป",
             "บันทึกสำเร็จ",
@@ -45,13 +45,11 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
             Assert.Contains(thaiExample, html, StringComparison.Ordinal);
         }
 
-        Assert.Contains("class=\"store-select\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"store-select", html, StringComparison.Ordinal);
         Assert.Contains("name=\"example.Email\"", html, StringComparison.Ordinal);
         Assert.Contains("name=\"example.Quantity\"", html, StringComparison.Ordinal);
-        Assert.Contains("name=\"example.Size\"", html, StringComparison.Ordinal);
-        Assert.Matches(
-            "<option(?=[^>]*value=\"2\")(?=[^>]*selected)[^>]*>ขนาดกลาง</option>",
-            html);
+        Assert.Contains("aria-haspopup=\"listbox\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<select", html, StringComparison.OrdinalIgnoreCase);
         Assert.Matches(
             "<input(?=[^>]*name=\"example.DisabledNote\")(?=[^>]*disabled)[^>]*>",
             html);
@@ -124,9 +122,9 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("<title>SY TOY | อาร์ตทอยดีไซน์เด่นสำหรับทุกคอลเลกชัน</title>", html, StringComparison.Ordinal);
-        Assert.Contains("// ความคิดสร้างสรรค์ไร้ขีดจำกัด", html, StringComparison.Ordinal);
-        Assert.Contains("ของเล่นดีไซน์จัด", html, StringComparison.Ordinal);
-        Assert.Contains("อาร์ตทอยที่เติมคาแรกเตอร์ให้ทุกพื้นที่", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("// ความคิดสร้างสรรค์ไร้ขีดจำกัด", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("ของเล่นดีไซน์จัด", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("อาร์ตทอยที่เติมคาแรกเตอร์ให้ทุกพื้นที่", html, StringComparison.Ordinal);
         Assert.Contains("สินค้าแนะนำ", html, StringComparison.Ordinal);
         Assert.Contains("คอลเลกชันที่น่าสำรวจ", html, StringComparison.Ordinal);
         Assert.Matches(

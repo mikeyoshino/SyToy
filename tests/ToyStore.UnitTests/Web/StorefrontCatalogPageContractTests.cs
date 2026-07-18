@@ -39,7 +39,7 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("CancellationTokenSource? loadTokenSource", detail, StringComparison.Ordinal);
         Assert.Contains("NavigationManager.ToAbsoluteUri", detail, StringComparison.Ordinal);
         Assert.Contains("NavigationManager.NotFound()", detail, StringComparison.Ordinal);
-        Assert.Contains("@onclick=\"LoadAsync\"", detail, StringComparison.Ordinal);
+        Assert.Contains("<StoreButton OnClick=\"LoadAsync\"", detail, StringComparison.Ordinal);
         Assert.DoesNotContain("<main", detail, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("aria-label=\"รูปภาพสินค้า\"", gallery, StringComparison.Ordinal);
         Assert.Contains("scroll-snap-type: x mandatory", galleryCss, StringComparison.Ordinal);
@@ -49,7 +49,7 @@ public sealed class StorefrontCatalogPageContractTests
     }
 
     [Fact]
-    public void PreOrderDetailUsesCustomerEligibilityDialogWithoutCartReservationOrCheckoutNavigation()
+    public void PreOrderDetailChecksEligibilityThenNavigatesToDurableCheckoutWithoutDirectReservation()
     {
         var detail = WebSource("Components/Pages/ProductDetail.razor");
         Assert.Contains("AuthenticationStateProvider", detail, StringComparison.Ordinal);
@@ -69,7 +69,7 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("ประมาณเดือน", detail, StringComparison.Ordinal);
         Assert.Contains("else if (!canSubmitPreOrder)", detail, StringComparison.Ordinal);
         Assert.DoesNotContain("ReservePreOrderCapacityCommand", detail, StringComparison.Ordinal);
-        Assert.DoesNotContain("/checkout", detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("NavigateTo($\"/checkout/preorder/{eligibility.ProductId}?quantity={eligibility.RequestedQuantity}\")", detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -96,8 +96,8 @@ public sealed class StorefrontCatalogPageContractTests
 
         Assert.Equal(StorefrontSaleType.PreOrder, mapped.SaleType);
         Assert.Equal(StorefrontOfferState.PreOrderOpen, mapped.OfferState);
-        Assert.Contains("ราคาเต็ม", mapped.PriceLabel, StringComparison.Ordinal);
         Assert.Contains("มัดจำ", mapped.PriceLabel, StringComparison.Ordinal);
+        Assert.DoesNotContain("ราคาเต็ม", mapped.PriceLabel, StringComparison.Ordinal);
         Assert.Equal("พรีออเดอร์", mapped.TypeLabel);
         Assert.Equal("/products/test-product", mapped.ProductUrl);
     }
@@ -111,7 +111,7 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("result.Value.Brands", source, StringComparison.Ordinal);
         Assert.Contains("/brands/{brand.Slug}", source, StringComparison.Ordinal);
         Assert.Contains("<meta name=\"description\"", source, StringComparison.Ordinal);
-        Assert.Contains("@onclick=\"LoadAsync\"", source, StringComparison.Ordinal);
+        Assert.Contains("<StoreButton OnClick=\"LoadAsync\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<main", source, StringComparison.OrdinalIgnoreCase);
     }
 

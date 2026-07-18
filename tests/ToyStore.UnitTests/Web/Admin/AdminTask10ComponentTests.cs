@@ -40,7 +40,9 @@ public sealed class AdminTask10ComponentTests
         Assert.Contains("method=\"get\"", html, StringComparison.Ordinal);
         Assert.Contains("ค้นหา", html, StringComparison.Ordinal);
         Assert.Contains("สถานะ", html, StringComparison.Ordinal);
-        Assert.Contains("class=\"store-select\"", html, StringComparison.Ordinal);
+        Assert.Matches("""class="store-select(?:\s|")""", html);
+        Assert.Contains("aria-haspopup=\"listbox\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<select", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<form", html[(html.IndexOf("<form", StringComparison.Ordinal) + 5)..], StringComparison.Ordinal);
         Assert.Equal(
             "/admin/brands?q=%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%94%E0%B8%B1%E0%B9%89%E0%B8%A1%20%E0%B9%80%E0%B8%AD%E0%B9%87%E0%B8%81%E0%B9%80%E0%B8%8B%E0%B8%B5%E0%B8%A2",

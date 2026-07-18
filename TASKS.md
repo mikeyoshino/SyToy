@@ -13,6 +13,7 @@
 
 ## Current focus
 
+- 2026-07-18: เปลี่ยน M10-04 เป็น full production Docker Compose: manual GitHub Actions รับ branch (default `main`) → full quality gate → build/push non-root Web image ไป GHCR → pinned SSH ส่ง immutable image digest → root-owned backup/Compose activation/readiness/image rollback; Release build 0 warnings, full test 1,296/1,296 และ local Docker image build ผ่านแล้ว เหลือ clean Ubuntu VPS deploy/restore verification ก่อนปิด task
 - 2026-07-18: ออกแบบโลโก้ SY TOYS ใหม่เป็น wordmark แนวนอนสีดำ/เขียว lime ตัดพื้นที่ว่างบนล่าง ทำ shared `BrandLogo` สำหรับ Storefront/Admin และอัปเดต favicon ให้ใช้ภาษาภาพเดียวกัน
 - 2026-07-18: แก้ Account Order search ทำให้ Blazor circuit ล้ม เพราะ shared `StoreTextField` render `ValidationMessage` นอก `EditForm`; ให้ standalone GET/search field ไม่สร้าง validation component เมื่อไม่มี cascading `EditContext` พร้อม rendering regression test
 - 2026-07-18: เพิ่ม Order history search จากเลขคำสั่งซื้อ/ชื่อสินค้าใน URL `q`, PostgreSQL ownership-scoped ILIKE พร้อม escape wildcard, reset/clamp page, pagination แบบเลขหน้า 5 ปุ่มพร้อม first/last และ Thai empty/count states
@@ -183,7 +184,7 @@ Exit criteria: documentation links and Skill validation pass; PostgreSQL Compose
   - Serilog structured console/file logging
   - Correlation ID
   - Acceptance: application starts and unexpected errors do not expose stack traces
-  - Verified: safe RFC 7807 and correlation tests pass; loopback-only Caddy forwarding is covered; CI build has 0 warnings
+  - Verified: safe RFC 7807 and correlation tests pass; explicit trusted Caddy proxy forwarding is covered; CI build has 0 warnings
 
 - [x] **M1-06** Add health endpoints
   - Depends on: M1-05, M2-01
@@ -707,19 +708,21 @@ Exit criteria: Admin can act on accurate operational queues and understand verif
   - Loopback bindings, environment/secrets, Stripe CSP/webhook, local uploads, Data Protection keys and provider launch warnings
   - Acceptance: no production secret is committed and missing required provider config blocks launch readiness
 
-- [ ] **M10-02** Validate systemd service
+- [ ] **M10-02** Validate production Docker services
   - Depends on: M10-01
-  - Use `deploy/toystore.service.example`; verify startup migration, graceful shutdown, restart and filesystem permissions
-  - Acceptance: migration failure stops startup and reboot restores a valid service without manual intervention
+  - Use `deploy/compose.production.yaml`; verify non-root Web, startup migration, graceful shutdown, restart policies, persistent volumes and filesystem permissions
+  - Acceptance: migration failure stops Web startup and Docker/VPS reboot restores a valid stack without manual intervention
 
 - [ ] **M10-03** Validate Caddy configuration
   - Depends on: M10-02
   - HTTPS, Stripe-compatible CSP/security headers, request/upload limits and SignalR/WebSocket proxying
   - Acceptance: Interactive Server reconnect and embedded Stripe flows work through HTTPS
 
-- [ ] **M10-04** Create deployment and rollback runbook
+- [-] **M10-04** Create deployment and rollback runbook
   - Depends on: M10-01
   - Publish, review idempotent migration SQL, backup, copy, restart with startup migration, verify and forward-fix/rollback decision
+  - Implemented: manual branch-input `workflow_dispatch`, production environment/concurrency, full test/migration review gate, GHCR SHA-tag build, immutable digest deployment, pinned SSH, root-owned Compose command, quiesced PostgreSQL/media/key backup, readiness wait and previous-image rollback; actual clean Ubuntu VPS run remains pending
+  - Verified locally: Release build 0 warnings/errors, unit 1,028/1,028, PostgreSQL integration 268/268, Dockerfile image build/non-root metadata, Compose/YAML/shell syntax and idempotent migration SQL generation pass
   - Acceptance: clean server deploy succeeds from documented commands
 
 - [ ] **M10-05** Create and test backup/restore runbook

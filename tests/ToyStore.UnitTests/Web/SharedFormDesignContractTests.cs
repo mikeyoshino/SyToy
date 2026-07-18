@@ -49,13 +49,18 @@ public sealed class SharedFormDesignContractTests
     public void SelectUsesOneCrossBrowserCustomAppearanceContract()
     {
         var css = File.ReadAllText(Path.Combine(GetWebRoot(), "wwwroot", "css", "forms.css"));
+        var source = File.ReadAllText(Path.Combine(GetWebRoot(), "Components", "Forms", "StoreSelectField.razor"));
 
-        Assert.Matches(@"(?s)\.store-select\s+select\s*\{[^}]*appearance:\s*none[^}]*-webkit-appearance:\s*none[^}]*background(?:-color)?:\s*var\(--color-surface\)[^}]*padding-inline-end:", css);
+        Assert.Contains("aria-haspopup=\"listbox\"", source, StringComparison.Ordinal);
+        Assert.Contains("role=\"listbox\"", source, StringComparison.Ordinal);
+        Assert.Contains("role=\"option\"", source, StringComparison.Ordinal);
+        Assert.DoesNotMatch("(?i)<select(?:\\s|>)", source);
+        Assert.Matches(@"(?s)\.store-select__trigger\s*\{[^}]*padding-inline-end:", css);
         Assert.Matches(@"(?s)\.store-select::after\s*\{[^}]*pointer-events:\s*none", css);
         Assert.Matches(@"(?s)\.store-field__control:focus-visible\s*\{[^}]*var\(--color-focus\)", css);
         Assert.Matches(@"(?s)\.store-field__control(?:\.invalid|\[aria-invalid=[""']true[""']\])", css);
         Assert.Matches(@"(?s)\.store-field__control:disabled", css);
-        Assert.DoesNotMatch(@"(?i)(?:appearance|-webkit-appearance)\s*:\s*(?:auto|menulist|revert|initial|unset)", css);
+        Assert.DoesNotContain("appearance:", css, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

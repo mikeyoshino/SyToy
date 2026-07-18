@@ -43,6 +43,18 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Add(IPAddress.Loopback);
     options.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+    var configuredProxy = builder.Configuration["ReverseProxy:KnownProxy"];
+    if (!string.IsNullOrWhiteSpace(configuredProxy))
+    {
+        if (!IPAddress.TryParse(configuredProxy, out var knownProxy))
+        {
+            throw new InvalidOperationException(
+                "ReverseProxy:KnownProxy must be a valid IP address.");
+        }
+
+        options.KnownProxies.Add(knownProxy);
+    }
 });
 builder.Services.AddHealthChecks()
     .AddCheck(

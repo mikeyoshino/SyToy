@@ -1,189 +1,224 @@
-# Single-Server Deployment
+# Single-Server Docker Deployment
 
 ## Deployment contract
 
-ระบบ production ทั้งหมดที่ Toy Store เป็นเจ้าของต้องรันบน Linux server เครื่องเดียว:
+Production รันบน Ubuntu VPS เครื่องเดียวด้วย Docker Compose ส่วน local development ยังคงรันเฉพาะ PostgreSQL ใน Docker และรัน Web ด้วย `dotnet run`:
 
 ```text
-Linux Server
-├── Caddy                         :80 / :443
-├── ToyStore.Web via systemd      127.0.0.1:5000
-├── PostgreSQL in Docker          127.0.0.1:5432
-├── /var/lib/toystore/uploads     product media
-├── /var/lib/toystore/keys        ASP.NET Core Data Protection keys
-├── /var/lib/toystore/logs        application logs
-└── /var/backups/toystore         database and media backups
+GitHub Actions
+├── restore / build / full tests
+├── generate idempotent migration SQL
+├── build linux/amd64 Web image
+├── push ghcr.io/<owner>/<repo>@sha256:<digest>
+└── SSH ให้ root-owned deploy command activate image digest
+
+Ubuntu VPS
+└── Docker Compose
+    ├── Caddy       public :80/:443
+    ├── Web         private network + host loopback :5000
+    └── PostgreSQL  internal network only
 ```
 
-ไม่ใช้ Redis, Cloudflare R2, distributed cache, application worker process หรือ job scheduler ระบบต้องเข้าถึงได้โดยตรงผ่าน Caddy แม้ไม่ได้ใช้ Cloudflare; หากใช้ Cloudflare ให้เป็นเพียง optional DNS/proxy layer
-
-Caddy terminate TLS แล้ว proxy เข้า Kestrel ผ่าน loopback เท่านั้น Web เชื่อ `X-Forwarded-For` และ `X-Forwarded-Proto` เฉพาะ connection จาก IPv4/IPv6 loopback และรับ forwarded hop เดียว ห้ามเปลี่ยนเป็น trust-all proxy หรือ network; หากย้าย reverse proxy ไปเครื่องอื่นต้องเพิ่ม IP ที่เจาะจงและ review security boundary ก่อน deploy
+ไม่ใช้ `latest` ใน production และไม่ build source บน VPS ทุก deployment อ้าง image ด้วย registry digest ที่เปลี่ยนไม่ได้ PostgreSQL ใช้ named volume ส่วน media, Data Protection keys และ logs ใช้ persistent host directories ซึ่งไม่ถูกแทนที่พร้อม container
 
 ## Minimum server
 
-- Linux x64/ARM64 ที่ .NET 10 รองรับ
-- 2 vCPU
-- RAM 4 GB
-- SSD 40–80 GB
+- Ubuntu x64, 2 vCPU, RAM 4 GB และ SSD 40–80 GB
 - Docker Engine พร้อม Compose plugin
-- .NET 10 ASP.NET Core Runtime
-- Caddy
+- `curl`, `flock`, `tar` และ OpenSSH server
+- DNS ของ domain ชี้เข้า VPS
+- firewall เปิดเฉพาะ SSH, TCP 80, TCP/UDP 443
 
-เปิด firewall เฉพาะ SSH, HTTP และ HTTPS PostgreSQL และ Kestrel ต้อง bind กับ loopback เท่านั้น
+VPS ไม่ต้องติดตั้ง .NET SDK/runtime หรือ Caddy บน host และห้ามเปิด PostgreSQL port 5432 สู่ host/public interface
 
-## Filesystem
+## One-time filesystem setup
 
-```bash
-sudo useradd --system --home /var/lib/toystore --shell /usr/sbin/nologin toystore
-sudo mkdir -p /opt/toystore/current
-sudo mkdir -p /etc/toystore
-sudo mkdir -p /var/lib/toystore/uploads
-sudo mkdir -p /var/lib/toystore/keys
-sudo mkdir -p /var/lib/toystore/logs
-sudo mkdir -p /var/backups/toystore
-sudo chown -R toystore:toystore /opt/toystore /var/lib/toystore /var/backups/toystore
-sudo chmod 750 /etc/toystore /var/lib/toystore /var/lib/toystore/uploads /var/backups/toystore
-```
-
-อย่าเก็บ uploads, Data Protection keys หรือ application logs ภายใน `/opt/toystore/current` เพราะ directory นี้ถูกแทนที่ตอน deploy ตัวอย่าง systemd unit ใช้ `StateDirectory=toystore/logs toystore/keys` เพื่อสร้างและกำหนด ownership ของ `/var/lib/toystore/logs` และ `/var/lib/toystore/keys` ให้ service user พร้อมจำกัด `ReadWritePaths` เฉพาะ uploads, keys และ logs
-
-`LocalFileStorage` สร้าง `/var/lib/toystore/uploads/.staging` และ `/var/lib/toystore/uploads/files` ด้วย mode `0750` ตั้งแต่ create syscall ภายใต้ `UMask=0027` root และ children ต้องไม่เป็น symlink/reparse point บน Unix root และ fixed children ที่มีอยู่แล้วต้องมี permission ไม่กว้างกว่า `0750`: ห้าม group-write และห้าม other read/write/execute ระบบจะ validate root ที่ operator ดูแลโดยไม่ `chmod` หรือแก้ ancestor directory ค่า `Storage__RootPath` ต้องอยู่นอก release root หลัง resolve stable ancestor aliases และ startup จะใช้ non-overwriting staging→files directory rename probe; process fail ก่อนรับ request เมื่อ configuration, permission, rename/delete probe หรือ stale-staging cleanup ไม่ปลอดภัย
-
-## PostgreSQL
-
-ใช้ `compose.yaml` เดียวกับ local โดยสร้าง `.env` บน server และใช้ password แบบสุ่มที่แข็งแรง:
+ติดตั้ง Docker จาก official repository แล้วสร้าง operational users/directories:
 
 ```bash
-docker compose up -d postgres
-docker compose ps
-docker compose exec postgres pg_isready -U toystore -d toystore
+sudo groupadd --system toystore
+sudo useradd --system --gid toystore --home /var/lib/toystore --shell /usr/sbin/nologin toystore
+sudo useradd --create-home --shell /bin/bash toystore-deploy
+
+sudo install -d -o root -g toystore -m 0750 /opt/toystore /etc/toystore
+sudo install -d -o 1654 -g 1654 -m 0750 \
+  /var/lib/toystore/uploads \
+  /var/lib/toystore/keys \
+  /var/lib/toystore/logs
+sudo install -d -o toystore -g toystore -m 0750 /var/backups/toystore
 ```
 
-Compose bind port ที่ `127.0.0.1` เท่านั้น ห้ามเปิด 5432 ที่ public interface
+UID/GID `1654` คือ non-root `app` user ของ official .NET runtime image และต้องเป็นเจ้าของ bind-mounted runtime directories ห้ามวาง uploads, keys หรือ logs ไว้ใน container writable layer
 
-## Application configuration
+ติดตั้ง production files จาก repository:
 
-เก็บ production environment variables ใน `/etc/toystore/toystore.env` และจำกัด permission:
+```bash
+sudo install -o root -g root -m 0644 \
+  deploy/compose.production.yaml /opt/toystore/compose.production.yaml
+sudo install -o root -g root -m 0644 \
+  deploy/Caddyfile /opt/toystore/Caddyfile
+sudo install -o root -g root -m 0755 \
+  deploy/toystore-deploy /usr/local/sbin/toystore-deploy
+```
+
+## Production configuration
+
+สร้าง `/etc/toystore/postgres.env`:
+
+```text
+POSTGRES_DB=toystore
+POSTGRES_USER=toystore
+POSTGRES_PASSWORD=CHANGE_TO_A_LONG_RANDOM_VALUE
+```
+
+สร้าง `/etc/toystore/toystore.env` โดยใช้ database password เดียวกัน:
+
+```text
+ConnectionStrings__Database=Host=postgres;Port=5432;Database=toystore;Username=toystore;Password=CHANGE_TO_A_LONG_RANDOM_VALUE
+Stripe__SecretKey=sk_live_REPLACE_ME
+Stripe__PublishableKey=pk_live_REPLACE_ME
+Stripe__WebhookSecret=whsec_REPLACE_ME
+Stripe__ReturnUrlBase=https://toys.example.com
+```
+
+สร้าง `/etc/toystore/compose.env`; ก่อน deployment แรกยังไม่ต้องมี `TOYSTORE_IMAGE`:
+
+```text
+TOYSTORE_DOMAIN=toys.example.com
+```
+
+ตั้ง permission:
+
+```bash
+sudo chown root:root /etc/toystore/postgres.env /etc/toystore/toystore.env
+sudo chmod 600 /etc/toystore/postgres.env /etc/toystore/toystore.env
+sudo chown root:toystore /etc/toystore/compose.env
+sudo chmod 640 /etc/toystore/compose.env
+```
+
+Application secrets อยู่บน VPS เท่านั้นและห้าม commit หรือส่งผ่าน GitHub Actions Production Environment Compose กำหนดค่า runtime ที่ไม่เป็น secret ให้แล้ว ได้แก่:
 
 ```text
 ASPNETCORE_ENVIRONMENT=Production
-ASPNETCORE_URLS=http://127.0.0.1:5000
-ConnectionStrings__Database=Host=127.0.0.1;Port=5432;Database=toystore;Username=toystore;Password=CHANGE_ME
-Storage__RootPath=/var/lib/toystore/uploads
 DataProtection__KeysPath=/var/lib/toystore/keys
+Storage__RootPath=/var/lib/toystore/uploads
 Serilog__WriteTo__1__Args__path=/var/lib/toystore/logs/toystore-.log
+ReverseProxy__KnownProxy=172.30.0.2
 ```
 
-ไฟล์ systemd ตัวอย่างกำหนดค่า Serilog path นี้โดยตรงด้วย เพื่อให้ production ไม่พยายามเขียน log ภายใต้ release directory ที่เป็น read-only ค่าใน environment file ด้านบนแสดง production contract เดียวกันและสามารถใช้กับ service manager อื่นได้
+Caddy ใช้ fixed address `172.30.0.2` ใน private Compose network และ Web เชื่อ forwarded headers จาก address นี้เท่านั้น หากแก้ subnet/address ต้องแก้ `ReverseProxy__KnownProxy` พร้อมกัน ไม่ตั้ง trust-all proxy
+
+## GHCR access on VPS
+
+ถ้า GHCR package เป็น public ไม่ต้อง login ถ้าเป็น private ให้สร้าง token ของ machine account ที่มีเฉพาะ `read:packages` แล้ว login สำหรับ root ซึ่งเป็นผู้รัน deploy command:
 
 ```bash
-sudo chown root:toystore /etc/toystore/toystore.env
-sudo chmod 640 /etc/toystore/toystore.env
+printf '%s' "$GHCR_READ_TOKEN" | sudo docker login ghcr.io \
+  --username GITHUB_MACHINE_USER \
+  --password-stdin
+unset GHCR_READ_TOKEN
 ```
 
-ห้าม commit production secrets ลง repository
+อย่าใส่ token ใน command history, Compose file หรือ repository
+
+## Manual GitHub Actions deployment
+
+workflow [`.github/workflows/deploy-production.yml`](../.github/workflows/deploy-production.yml) ใช้ `workflow_dispatch` และรับช่อง `branch` ซึ่ง default เป็น `main` ลำดับงานคือ:
+
+1. Checkout exact branch และรัน Release build/full test suite
+2. สร้าง idempotent EF migration SQL เป็น artifact อายุ 14 วัน
+3. Build Docker image สำหรับ `linux/amd64` และ push ไป GHCR ด้วย commit SHA tag
+4. ใช้ digest ที่ registry คืนมาเป็น immutable deployment reference
+5. SSH เข้า VPS ผ่าน pinned host key และรัน root-owned deploy command
+6. ตรวจ local และ public `/health/ready`
+
+สร้าง deploy key แยกจาก personal/root key:
+
+```bash
+ssh-keygen -t ed25519 -f ./toystore-deploy-key -C toystore-github-actions
+sudo install -d -o toystore-deploy -g toystore-deploy -m 0700 /home/toystore-deploy/.ssh
+sudo install -o toystore-deploy -g toystore-deploy -m 0600 \
+  ./toystore-deploy-key.pub /home/toystore-deploy/.ssh/authorized_keys
+```
+
+เพิ่ม sudo rule ด้วย `sudo visudo -f /etc/sudoers.d/toystore-deploy`:
+
+```text
+toystore-deploy ALL=(root) NOPASSWD: /usr/local/sbin/toystore-deploy *
+```
+
+script รับ argument เดียวและ validate ว่าต้องเป็น `ghcr.io/...@sha256:<64 lowercase hex>` เท่านั้น deploy user จึงไม่ได้สิทธิ์รัน shell, Docker หรือคำสั่ง root อื่นโดยตรง
+
+สร้าง GitHub Environment ชื่อ `production`:
+
+| Type | Name | Value |
+|---|---|---|
+| Variable | `VPS_HOST` | domain หรือ IP ของ VPS |
+| Variable | `VPS_PORT` | SSH port; ถ้าว่าง workflow ใช้ `22` |
+| Variable | `VPS_USER` | `toystore-deploy` |
+| Variable | `PRODUCTION_URL` | เช่น `https://toys.example.com` |
+| Secret | `VPS_SSH_PRIVATE_KEY` | private deploy key |
+| Secret | `VPS_SSH_KNOWN_HOSTS` | verified host-key line ของ VPS |
+
+อ่าน host public key บน VPS ผ่านช่องทางที่เชื่อถือได้และตรวจ fingerprint ก่อนบันทึก ห้ามใช้ `StrictHostKeyChecking=no`
+
+จากนั้นเปิด GitHub → Actions → **Deploy production** → **Run workflow**, ใส่ `main` และกด deploy
+
+## Deploy, backup and rollback behavior
+
+`/usr/local/sbin/toystore-deploy` ทำงานภายใต้ `flock` เพื่อห้าม deploy ซ้อนกัน:
+
+1. ตรวจ immutable GHCR digest และ production files
+2. Start/ตรวจ PostgreSQL และ pull image ก่อนเกิด downtime
+3. หยุด Web ชั่วคราวเพื่อหยุด writes
+4. สร้าง PostgreSQL custom dump และ archive ของ uploads/keys เป็น restore set เดียวกัน
+5. เปลี่ยน `TOYSTORE_IMAGE` ใน `compose.env` แบบ atomic
+6. `docker compose up -d --remove-orphans`
+7. Web apply `Database.MigrateAsync()` ก่อนรับ request และ deploy รอ `/health/ready` สูงสุด 120 วินาที
+8. หากไม่ ready ให้คืน image digest เดิมและ start container เดิม
+
+Application rollback ไม่ย้อน database migration อัตโนมัติ Migration production จึงต้อง backward-compatible เมื่อทำได้ หาก schema ไม่เข้ากับ image เดิม ให้หยุดระบบและใช้ forward fix หรือ restore database/media/key set ที่ script รายงาน ห้าม restore database อย่างเดียวเพราะ media reference และ `MediaCleanupEntries` ต้องตรงกับ committed files
+
+backup ทุกชุดอยู่ที่ `/var/backups/toystore/<UTC timestamp>-<digest prefix>/` และประกอบด้วย:
+
+- `database.dump`
+- `files-and-keys.tar.gz` ซึ่งมีเฉพาะ committed `uploads/files` และ Data Protection `keys`; ไม่รวม `.staging`
+
+ต้องเข้ารหัส/สำรอง `/etc/toystore/*.env` แยกใน secret storage และคัดลอก backup ออกนอก VPS เป็นระยะ เพราะ backup บน disk เดียวไม่ป้องกัน server/disk loss ก่อน launch ต้องทำ clean restore drill ตาม M10-05
 
 ## First Admin bootstrap
 
-Admin คนแรกต้องสร้างผ่าน explicit bootstrap command หลัง deploy และก่อนเริ่ม service ปกติเท่านั้น ตั้ง `BootstrapAdmin__Email` และ `BootstrapAdmin__TemporaryPassword` เป็น secret ชั่วคราวใน environment ของคำสั่ง แล้วรัน:
+หลัง deployment แรก export temporary secrets โดยไม่ใส่ password ใน command argument แล้วรัน one-off Web container:
 
 ```bash
-sudo -u toystore --preserve-env=BootstrapAdmin__Email,BootstrapAdmin__TemporaryPassword \
-  /usr/bin/dotnet /opt/toystore/current/ToyStore.Web.dll --bootstrap-admin
+export BootstrapAdmin__Email='admin@example.com'
+export BootstrapAdmin__TemporaryPassword='CHANGE_TO_A_TEMPORARY_PASSWORD'
+sudo --preserve-env=BootstrapAdmin__Email,BootstrapAdmin__TemporaryPassword \
+  docker compose \
+    --env-file /etc/toystore/compose.env \
+    -f /opt/toystore/compose.production.yaml \
+    run --rm \
+    -e BootstrapAdmin__Email \
+    -e BootstrapAdmin__TemporaryPassword \
+    web --bootstrap-admin
+unset BootstrapAdmin__Email BootstrapAdmin__TemporaryPassword
 ```
 
-คำสั่งนี้ apply migration, seed roles, สร้าง Admin ได้ไม่เกินหนึ่งคน และจบโดยไม่ listen จากนั้นลบ temporary secret ออกจาก environment/secret store ก่อน start systemd service ห้ามใส่ password เป็น command-line argument และ Admin ต้องเปลี่ยน temporary password ตอน login ครั้งแรก
+คำสั่งนี้สร้าง Admin คนแรกได้ไม่เกินหนึ่งคนและ Admin ต้องเปลี่ยน temporary password ตอน login ครั้งแรก
 
-## Publish and install
-
-สร้าง artifact บน CI หรือเครื่องพัฒนา:
+## Verification and operations
 
 ```bash
-dotnet restore ToyStore.sln
-dotnet test ToyStore.sln --configuration Release
-dotnet publish src/ToyStore.Web --configuration Release --output artifacts/publish
-```
+sudo docker compose \
+  --env-file /etc/toystore/compose.env \
+  -f /opt/toystore/compose.production.yaml ps
 
-คัดลอก artifact ไป `/opt/toystore/current` แล้วติดตั้ง templates:
+sudo docker compose \
+  --env-file /etc/toystore/compose.env \
+  -f /opt/toystore/compose.production.yaml logs --tail 200 web caddy postgres
 
-```bash
-sudo cp deploy/toystore.service.example /etc/systemd/system/toystore.service
-sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
-sudo systemctl daemon-reload
-sudo systemctl enable toystore
-sudo systemctl reload caddy
-```
-
-แทน `toys.example.com` ใน Caddyfile ด้วย domain จริงก่อน reload ขั้นตอนนี้ยังไม่ start release ใหม่ ให้ตรวจ migration และ backup ตามหัวข้อถัดไปก่อน
-
-## Database migration
-
-ระบบใช้ EF Core Code First และ Web application เป็นผู้ apply pending migration ตอน startup ก่อน Kestrel เปิดรับ request สร้าง idempotent script เป็น review artifact ก่อน deploy ทุกครั้ง:
-
-```bash
-dotnet ef migrations script --idempotent \
-  --project src/ToyStore.Infrastructure \
-  --startup-project src/ToyStore.Web \
-  --output artifacts/migrate.sql
-```
-
-ตรวจ `artifacts/migrate.sql` และ generated migration files ก่อน publish หาก migration ลบหรือแปลงข้อมูล, เปลี่ยน constraint หรือ lock ตารางสำคัญ ต้องสำรอง database และกำหนด rollback/forward-fix plan ก่อน restart
-
-หลังคัดลอก release ให้ restart service เพื่อเริ่ม migration:
-
-```bash
-sudo systemctl restart toystore
-sudo systemctl status toystore
-sudo journalctl -u toystore -n 200 --no-pager
-```
-
-Startup ต้องสร้าง service scope และเรียก `Database.MigrateAsync()` ก่อนเริ่มรับ request หาก database ใช้งานไม่ได้หรือ migration ล้มเหลว process ต้อง exit non-zero เพื่อให้ deployment ล้มเหลวอย่างชัดเจน ห้ามใช้ `EnsureCreated` และห้าม trigger migration จาก HTTP request
-
-Topology นี้มี Web process เดียว จึงไม่ต้องประสาน migration ระหว่างหลาย instance บัญชี PostgreSQL ของ application ต้องมีสิทธิ์ apply migration กับ schema ที่ระบบเป็นเจ้าของ การ rollback application binary ไม่ rollback database schema อัตโนมัติ จึงต้องออกแบบ migration ให้ backward-compatible เมื่อทำได้ และใช้ migration ที่ตรวจ review แล้วหรือ forward fix เมื่อต้องย้อนการเปลี่ยนแปลง
-
-Catalog cleanup migration เพิ่ม Brand/Universe concurrency `Version` และ `MediaCleanupEntries` ซึ่งเก็บ trusted storage keys สำหรับ unresolved commit/reference/delete cleanup state ตารางนี้ต้อง migrate และ restore พร้อม catalog rows; ไม่มี application worker/scheduler ที่ลบไฟล์จาก ledger อัตโนมัติ
-
-## Backup and restore
-
-backup หนึ่ง restore set อย่างน้อยต้องมี:
-
-- PostgreSQL dump
-- `/var/lib/toystore/uploads/files`
-- `/var/lib/toystore/keys`
-- production configuration ที่เข้ารหัสหรือเก็บในที่ปลอดภัย
-
-staging (`uploads/.staging`) ไม่ต้อง backup แต่ committed media (`uploads/files`) ต้องอยู่ใน restore set เดียวกับ database และ Data Protection keys เพื่อไม่ให้ snapshot เหลื่อมกัน ให้หยุด service ชั่วคราวก่อนเริ่ม และ restart เฉพาะเมื่อทั้ง dump และ archive สำเร็จ:
-
-```bash
-backup_id="$(date -u +%Y%m%dT%H%M%S%NZ)"
-dump_path="/var/backups/toystore/toystore-${backup_id}.dump"
-archive_path="/var/backups/toystore/toystore-${backup_id}-files.tar.gz"
-
-sudo systemctl stop toystore
-set -o pipefail
-docker compose exec -T postgres pg_dump -U toystore -d toystore -Fc \
-  | sudo -u toystore sh -c 'set -C; cat > "$1"' sh "$dump_path" && \
-sudo -u toystore tar -C /var/lib/toystore -czf - uploads/files keys \
-  | sudo -u toystore sh -c 'set -C; cat > "$1"' sh "$archive_path" && \
-sudo systemctl start toystore
-```
-
-`backup_id` ระบุเวลา UTC ระดับ nanosecond เพื่อให้แต่ละ restore set มีชื่อใหม่ โดย shell ที่เขียน dump และ archive ใช้ `set -C` เพื่อหยุดแทนการเขียนทับไฟล์เดิม ทั้งสองไฟล์เขียนด้วยบัญชี `toystore` ซึ่งเป็นเจ้าของ `/var/backups/toystore`; ห้ามเปลี่ยนกลับเป็น shell redirection ของ operator หรือ `root` เพราะจะทำให้สิทธิ์ไฟล์ใน backup directory ไม่สม่ำเสมอ
-
-`tar --keep-old-files` เป็นตัวป้องกันการเขียนทับเฉพาะตอน extract ไม่ใช่ตอนสร้าง archive จึงต้องใช้ no-clobber writer ด้านบนสำหรับ backup และต้องใช้ `--keep-old-files` เมื่อทำ restore drill ลง directory ที่เตรียมไว้ เพื่อให้ restore หยุดทันทีหากมีไฟล์เดิมชนกัน
-
-หากคำสั่งใดล้มเหลว ห้าม restart จนกว่าจะบันทึก incident และได้ database dump กับ committed-media/key archive ที่สำเร็จเป็น restore set เดียวกัน PostgreSQL dump รวม `MediaCleanupEntries` โดยอัตโนมัติและต้องอยู่คู่กับ committed files เพราะ reference/cleanup state ต้องตรงกับ filesystem หลัง restore ห้ามลบไฟล์จาก unresolved ledger entry โดยตรง ต้องเปิด fresh context และตรวจทุก persisted media reference ใหม่ก่อนเสมอ
-
-เก็บ production configuration แบบเข้ารหัสร่วมกับ set และเก็บสำเนาอีกชุดนอก server หาก server และ backup อยู่บน disk เดียวกัน ความเสียหายของเครื่องจะทำให้สูญเสียทั้งสองชุด ระบบไม่เพิ่ม scheduler/backup provider ใน application; การกำหนดรอบ backup เป็นงาน operational ของผู้ดูแล server M10-05/M11-08 ยังต้องทำ clean-environment restore drill และ reboot-recovery จริงก่อน launch
-
-## Verification
-
-```bash
-systemctl status toystore
-journalctl -u toystore -n 200 --no-pager
 curl --fail https://toys.example.com/health/live
 curl --fail https://toys.example.com/health/ready
-docker compose ps
 ```
 
-ทดสอบ login, product media, cart และ checkout smoke test หลัง deploy ทุกครั้ง รวมถึงทดสอบ restore backup เป็นระยะ
+Docker restart policies ทำให้ Caddy, Web และ PostgreSQL กลับมาหลัง Docker daemon/VPS reboot ต้องทดสอบ reboot recovery, login, media, cart, checkout, Stripe webhook และ Order smoke test บน production/test domain ก่อนเปิดใช้งานจริง

@@ -1,0 +1,81 @@
+name: toystore-production
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - /etc/toystore/postgres.env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 30s
+
+  web:
+    image: ${TOYSTORE_IMAGE:?Set TOYSTORE_IMAGE to an immutable GHCR digest}
+    restart: unless-stopped
+    env_file:
+      - /etc/toystore/toystore.env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      DataProtection__KeysPath: /var/lib/toystore/keys
+      Storage__RootPath: /var/lib/toystore/uploads
+      Serilog__WriteTo__1__Args__path: /var/lib/toystore/logs/toystore-.log
+      ReverseProxy__KnownProxy: 172.30.0.2
+    volumes:
+      - /var/lib/toystore/uploads:/var/lib/toystore/uploads
+      - /var/lib/toystore/keys:/var/lib/toystore/keys
+      - /var/lib/toystore/logs:/var/lib/toystore/logs
+    ports:
+      - "127.0.0.1:5000:8080"
+    networks:
+      frontend:
+        ipv4_address: 172.30.0.3
+      backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      TOYSTORE_DOMAIN: ${TOYSTORE_DOMAIN:?Set TOYSTORE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - /opt/toystore/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      frontend:
+        ipv4_address: 172.30.0.2
+    depends_on:
+      - web
+
+networks:
+  frontend:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  backend:
+    internal: true
+
+volumes:
+  postgres-data:
+    name: toystore-production-postgres-data
+  caddy-data:
+    name: toystore-production-caddy-data
+  caddy-config:
+    name: toystore-production-caddy-config

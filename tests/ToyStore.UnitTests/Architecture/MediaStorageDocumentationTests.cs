@@ -20,27 +20,23 @@ public sealed class MediaStorageDocumentationTests
     }
 
     [Fact]
-    public void DeploymentQuiescesOneRestoreSetAndSystemdRestrictsWrites()
+    public void DeploymentQuiescesOneRestoreSetAndDockerRestrictsPersistentWrites()
     {
         var deployment = Read("docs", "DEPLOYMENT.md");
-        var service = Read("deploy", "toystore.service.example");
+        var deployCommand = Read("deploy", "toystore-deploy");
+        var compose = Read("deploy", "compose.production.yaml");
 
-        Assert.Contains("sudo systemctl stop toystore", deployment, StringComparison.Ordinal);
+        Assert.Contains("compose stop web", deployCommand, StringComparison.Ordinal);
         Assert.Contains("uploads/files", deployment, StringComparison.Ordinal);
         Assert.Contains("restore set เดียวกัน", deployment, StringComparison.Ordinal);
-        Assert.Contains("นอก server", deployment, StringComparison.Ordinal);
-        Assert.Contains("backup_id=\"$(date -u +%Y%m%dT%H%M%S%NZ)\"", deployment, StringComparison.Ordinal);
-        Assert.Contains("sudo -u toystore sh -c 'set -C; cat > \"$1\"'", deployment, StringComparison.Ordinal);
-        Assert.Equal(
-            2,
-            deployment.Split(
-                "sudo -u toystore sh -c 'set -C; cat > \"$1\"'",
-                StringSplitOptions.None).Length - 1);
-        Assert.Contains("tar -C /var/lib/toystore -czf - uploads/files keys", deployment, StringComparison.Ordinal);
-        Assert.Contains("--keep-old-files", deployment, StringComparison.Ordinal);
+        Assert.Contains("ออกนอก VPS", deployment, StringComparison.Ordinal);
+        Assert.Contains("backup_id=\"$(date -u +%Y%m%dT%H%M%SZ)", deployCommand, StringComparison.Ordinal);
+        Assert.Contains("set -C", deployCommand, StringComparison.Ordinal);
+        Assert.Contains("uploads/files keys", deployCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("toystore-20260718", deployment, StringComparison.Ordinal);
-        Assert.Contains("UMask=0027", service, StringComparison.Ordinal);
-        Assert.Contains("ReadWritePaths=/var/lib/toystore/uploads", service, StringComparison.Ordinal);
+        Assert.Contains("USER app", Read("Dockerfile"), StringComparison.Ordinal);
+        Assert.Contains("/var/lib/toystore/uploads:/var/lib/toystore/uploads", compose, StringComparison.Ordinal);
+        Assert.Contains("Storage__RootPath: /var/lib/toystore/uploads", compose, StringComparison.Ordinal);
         Assert.DoesNotContain("Storage__BackupPath", deployment, StringComparison.Ordinal);
     }
 

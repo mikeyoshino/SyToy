@@ -44,7 +44,9 @@ public sealed class StartupMigrationTests
                 $"Expected catalog table '{catalogTable}'.");
         }
 
-        Assert.Equal(10, await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
+        Assert.Equal(
+            ExpectedMigrationCount(postgreSql.ConnectionString),
+            await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
         Assert.Equal(2, await CountAsync(connection, "SELECT COUNT(*) FROM \"ProductCategories\";"));
         Assert.Equal(3, await CountAsync(connection, "SELECT COUNT(*) FROM \"Universes\";"));
         Assert.True(await ColumnExistsAsync(connection, "Brands", "Version"));
@@ -79,7 +81,9 @@ public sealed class StartupMigrationTests
 
         await using var connection = new NpgsqlConnection(postgreSql.ConnectionString);
         await connection.OpenAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(10, await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
+        Assert.Equal(
+            ExpectedMigrationCount(postgreSql.ConnectionString),
+            await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
         Assert.Equal(2, await CountAsync(connection, "SELECT COUNT(*) FROM \"AspNetRoles\";"));
     }
 
@@ -108,7 +112,9 @@ public sealed class StartupMigrationTests
         await using var connection = new NpgsqlConnection(postgreSql.ConnectionString);
         await connection.OpenAsync(TestContext.Current.CancellationToken);
         Assert.True(await TableExistsAsync(connection, "Products"));
-        Assert.Equal(10, await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
+        Assert.Equal(
+            ExpectedMigrationCount(postgreSql.ConnectionString),
+            await CountAsync(connection, "SELECT COUNT(*) FROM \"__EFMigrationsHistory\";"));
     }
 
     [Fact]
@@ -213,6 +219,16 @@ public sealed class StartupMigrationTests
                 .Select(File.ReadAllText));
 
         Assert.DoesNotContain("EnsureCreated", source, StringComparison.Ordinal);
+    }
+
+    private static long ExpectedMigrationCount(string connectionString)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        using var db = new ApplicationDbContext(options);
+
+        return db.Database.GetMigrations().LongCount();
     }
 
     private static async Task<bool> TableExistsAsync(

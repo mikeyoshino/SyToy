@@ -90,12 +90,14 @@ public sealed class AdminBrandPageContractTests
     public void PageComposesThaiListStatesSamePageDialogsToastAndFocusFallback()
     {
         var source = Source("Components/Admin/Pages/Brands.razor");
+        var layout = Source("Components/Admin/Layout/AdminLayout.razor");
 
         Assert.Contains("<AdminContentStateView", source, StringComparison.Ordinal);
         Assert.Contains("<AdminCatalogReferenceList", source, StringComparison.Ordinal);
         Assert.Contains("<AdminCatalogReferenceEditor", source, StringComparison.Ordinal);
         Assert.Contains("<AdminCatalogReferenceArchive", source, StringComparison.Ordinal);
-        Assert.Contains("<StoreToast", source, StringComparison.Ordinal);
+        Assert.Contains("<StoreToastHost", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("<StoreToast", source, StringComparison.Ordinal);
         Assert.Contains("เพิ่มแบรนด์", source, StringComparison.Ordinal);
         Assert.Contains("แก้ไขแบรนด์", source, StringComparison.Ordinal);
         Assert.Contains("เก็บแบรนด์", source, StringComparison.Ordinal);

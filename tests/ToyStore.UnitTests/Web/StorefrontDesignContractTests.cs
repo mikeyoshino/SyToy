@@ -325,7 +325,8 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("string TypeLabel", productModel, StringComparison.Ordinal);
         Assert.Contains("string? ImageUrl", productModel, StringComparison.Ordinal);
         Assert.Contains("string ProductUrl", productModel, StringComparison.Ordinal);
-        Assert.Contains("bool IsAvailable", productModel, StringComparison.Ordinal);
+        Assert.Contains("StorefrontSaleType SaleType", productModel, StringComparison.Ordinal);
+        Assert.Contains("StorefrontOfferState OfferState", productModel, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -382,7 +383,7 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("aria-hidden=\"true\"", productCard, StringComparison.Ordinal);
         Assert.Contains("disabled", productCard, StringComparison.Ordinal);
         Assert.Contains("สินค้าหมดชั่วคราว", productCard, StringComparison.Ordinal);
-        Assert.Contains("@onclick=\"RetryAsync\"", gallery, StringComparison.Ordinal);
+        Assert.Contains("<StoreButton OnClick=\"RetryAsync\"", gallery, StringComparison.Ordinal);
         Assert.Contains("ดูรายละเอียด @Model.Name โดย", productCard, StringComparison.Ordinal);
         Assert.Contains("เพิ่ม @Model.Name ลงตะกร้า", productCard, StringComparison.Ordinal);
     }
@@ -420,8 +421,10 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
         Assert.Contains("@media (min-width: 35rem)", galleryCss, StringComparison.Ordinal);
         Assert.Contains("repeat(3, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
-        Assert.Contains("@media (min-width: 65.625rem)", galleryCss, StringComparison.Ordinal);
-        Assert.Contains("repeat(6, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 56.25rem)", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 80rem)", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("repeat(4, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
+        Assert.Contains(".product-gallery--large", galleryCss, StringComparison.Ordinal);
         Assert.Contains("min-height: 2.75rem", productCss, StringComparison.Ordinal);
         Assert.Contains("var(--duration-normal)", productCss, StringComparison.Ordinal);
         Assert.Contains("var(--ease-standard)", productCss, StringComparison.Ordinal);
@@ -446,14 +449,15 @@ public sealed class StorefrontDesignContractTests
     public void StorefrontCardAndHeroTypographyRemainReadableForThaiText()
     {
         var storefrontRoot = Path.Combine(GetWebRoot(), "Components", "Storefront");
+        var hero = File.ReadAllText(Path.Combine(storefrontRoot, "HeroShowcase.razor"));
         var heroCss = File.ReadAllText(Path.Combine(storefrontRoot, "HeroShowcase.razor.css"));
         var productCss = File.ReadAllText(Path.Combine(storefrontRoot, "ProductCard.razor.css"));
         var journalCss = File.ReadAllText(Path.Combine(storefrontRoot, "JournalFeature.razor.css"));
 
+        Assert.Contains("<h1 id=\"hero-showcase-title\" class=\"visually-hidden\">", hero, StringComparison.Ordinal);
         Assert.Matches(
-            @"(?s)h1\s*\{[^}]*letter-spacing:\s*(?:normal|0)[^}]*line-height:\s*var\(--line-height-tight\)",
+            @"(?s)\.hero-showcase__product-copy strong\s*\{[^}]*font-size:\s*\.875rem[^}]*line-height:\s*1\.35",
             heroCss);
-        Assert.DoesNotMatch(@"(?s)h1\s*\{[^}]*letter-spacing:\s*-", heroCss);
         Assert.Matches(
             @"(?s)\.product-card__body h3\s*\{[^}]*font-size:\s*var\(--font-size-h3-mobile\)",
             productCss);

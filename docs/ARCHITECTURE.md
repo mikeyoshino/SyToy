@@ -263,10 +263,10 @@ Thai address catalog ใช้ version-pinned local JSON จาก `kongvut/thai
 
 ```text
 Internet
-   -> Caddy :80/:443
-      -> ToyStore.Web / Kestrel :5000
-         -> PostgreSQL Docker :5432 (รับ connection จาก localhost เท่านั้น)
-         -> /var/lib/toystore/uploads
+   -> Caddy container :80/:443
+      -> ToyStore.Web container :8080 (host loopback diagnostics :5000)
+         -> PostgreSQL container :5432 (internal Docker network เท่านั้น)
+         -> /var/lib/toystore/uploads bind mount
 
 /var/backups/toystore
    <- PostgreSQL dump
@@ -274,7 +274,7 @@ Internet
    <- data-protection keys
 ```
 
-Caddy, application process, PostgreSQL container, media และ backup อยู่บนเครื่องเดียว Caddy ต้องรองรับ WebSocket/SignalR สำหรับ Interactive Server Cloudflare ใช้เป็น optional DNS/proxy ได้ แต่ระบบต้องทำงานได้โดยไม่พึ่ง Cloudflare service เครื่องเริ่มต้น 2 vCPU, RAM 4 GB และ SSD 40–80 GB เพียงพอเมื่อ query และ media ถูกจัดการเหมาะสม
+Caddy, application และ PostgreSQL รันด้วย production Docker Compose บนเครื่องเดียว Web image ถูก build/test บน GitHub Actions, push ไป GHCR และ deploy ด้วย immutable registry digest โดย local development ยังรัน Web ด้วย `dotnet run` Caddy ต้องรองรับ WebSocket/SignalR สำหรับ Interactive Server Cloudflare ใช้เป็น optional DNS/proxy ได้ แต่ระบบต้องทำงานได้โดยไม่พึ่ง Cloudflare service เครื่องเริ่มต้น 2 vCPU, RAM 4 GB และ SSD 40–80 GB เพียงพอเมื่อ query และ media ถูกจัดการเหมาะสม
 
 อ่านขั้นตอน production ที่ [DEPLOYMENT.md](DEPLOYMENT.md) ต้อง backup PostgreSQL, uploads และ ASP.NET Core Data Protection keys ทุกวัน และทดสอบ restore เป็นระยะ
 

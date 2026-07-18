@@ -53,15 +53,16 @@ public sealed class AdminResponsiveAccessibilityContractTests
         Assert.Contains("closeWithoutFocusReturn", script, StringComparison.Ordinal);
         Assert.Contains("returnFocusElement.focus()", script, StringComparison.Ordinal);
         Assert.Matches(
-            @"(?s)export function close\(dialog\)\s*\{.*?if \(dialog\.open\)\s*\{\s*if \(state\).*?restoreFocusOnClose = true;.*?dialog\.close\(\);",
+            @"(?s)export async function close\(dialog\)\s*\{.*?if \(dialog\.open\)\s*\{\s*if \(state\).*?restoreFocusOnClose = true;.*?await closeDrawer\(dialog\);",
             script);
         Assert.Matches(
             @"(?s)export function dispose\(dialog\).*?state\.restoreFocusOnClose\s*&&\s*state\.returnFocusElement",
             script);
         Assert.Contains("prefers-reduced-motion: reduce", adminCss, StringComparison.Ordinal);
         Assert.Contains("transition-duration: .01ms !important", adminCss, StringComparison.Ordinal);
-        Assert.Contains("appearance: none", forms, StringComparison.Ordinal);
-        Assert.Contains("-webkit-appearance: none", forms, StringComparison.Ordinal);
+        Assert.Contains(".store-select__trigger", forms, StringComparison.Ordinal);
+        Assert.Contains(".store-select__listbox", forms, StringComparison.Ordinal);
+        Assert.DoesNotContain("appearance:", forms, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

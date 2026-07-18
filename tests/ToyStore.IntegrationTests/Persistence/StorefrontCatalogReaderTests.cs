@@ -152,7 +152,7 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         Assert.Contains("ยอดคงเหลือ", html, StringComparison.Ordinal);
         Assert.Contains("ปิดรับพรีออเดอร์", html, StringComparison.Ordinal);
         Assert.Contains("สินค้าคาดว่าจะมา", html, StringComparison.Ordinal);
-        Assert.Contains("สูงสุดต่อคน", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("สูงสุดต่อคน", html, StringComparison.Ordinal);
         Assert.Contains("มัดจำไม่คืน", html, StringComparison.Ordinal);
         Assert.DoesNotContain("เพิ่มลงตะกร้า", html, StringComparison.Ordinal);
     }
