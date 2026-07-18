@@ -1,0 +1,34 @@
+.admin-data-table__scroller {
+  max-width: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-data-table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+  color: var(--admin-ink);
+}
+
+.admin-data-table caption {
+  padding: var(--space-4);
+  font-weight: var(--font-weight-extrabold);
+  text-align: start;
+}
+
+.admin-data-table ::deep :is(th, td) {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+}
+
+.admin-data-table ::deep th {
+  background: var(--admin-accent-soft);
+}
+
+.admin-data-table ::deep tbody tr + tr td {
+  box-shadow: inset 0 1px #e4ecef;
+}

@@ -1,0 +1,33 @@
+@using ToyStore.Domain.Orders
+
+<div class="customer-order-status" aria-label="สถานะคำสั่งซื้อ">
+    <span class="customer-order-status__payment">@PaymentLabel</span>
+    <span class="customer-order-status__fulfillment">@FulfillmentLabel</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public PaymentStatus PaymentStatus { get; set; }
+
+    [Parameter, EditorRequired]
+    public FulfillmentStatus FulfillmentStatus { get; set; }
+
+    private string PaymentLabel => PaymentStatus switch
+    {
+        PaymentStatus.DepositPaid => "ชำระมัดจำแล้ว",
+        PaymentStatus.Paid => "ชำระเงินแล้ว",
+        PaymentStatus.PartiallyRefunded => "คืนเงินบางส่วนแล้ว",
+        PaymentStatus.Refunded => "คืนเงินแล้ว",
+        _ => "กำลังตรวจสอบการชำระเงิน",
+    };
+
+    private string FulfillmentLabel => FulfillmentStatus switch
+    {
+        FulfillmentStatus.AwaitingPreOrderArrival => "รอสินค้าพรีออเดอร์เข้า",
+        FulfillmentStatus.AwaitingBalancePayment => "รอชำระยอดคงเหลือ",
+        FulfillmentStatus.ReadyToShip => "เตรียมจัดส่ง",
+        FulfillmentStatus.Shipped => "จัดส่งแล้ว",
+        FulfillmentStatus.Cancelled => "ยกเลิกแล้ว",
+        _ => "กำลังดำเนินการ",
+    };
+}

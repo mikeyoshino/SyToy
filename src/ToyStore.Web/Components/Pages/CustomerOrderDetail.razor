@@ -1,0 +1,151 @@
+@page "/account/orders/{OrderNumber}"
+@layout CustomerAccountLayout
+@attribute [Authorize(Policy = PolicyNames.CanViewCustomerOrders)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Common.Authorization
+@using ToyStore.Application.Orders
+@using ToyStore.Application.Orders.GetCustomerOrder
+@using ToyStore.Domain.Products
+@inject ISender Sender
+
+<PageTitle>รายละเอียดคำสั่งซื้อ | SY TOY</PageTitle>
+
+<section class="customer-order-detail">
+    <a class="customer-order-detail__back" href="/account/orders">← กลับไปคำสั่งซื้อของฉัน</a>
+
+    @if (isLoading)
+            {
+                <section class="customer-order-detail__state" role="status" aria-live="polite">
+                    <h2>กำลังโหลดรายละเอียดคำสั่งซื้อ</h2>
+                    <p>กรุณารอสักครู่</p>
+                </section>
+            }
+            else if (order is null)
+            {
+                <section class="customer-order-detail__state" role="alert">
+                    <h2>ไม่พบคำสั่งซื้อ</h2>
+                    <p>@errorMessage</p>
+                    <a class="store-action store-action--primary" href="/account/orders">ดูคำสั่งซื้อของฉัน</a>
+                </section>
+            }
+            else
+            {
+                <header class="customer-order-detail__header">
+                    <div>
+                        <p>เลขคำสั่งซื้อ</p>
+                        <h2>@order.Number</h2>
+                        <time datetime="@order.CreatedAtUtc.ToString("O")">สั่งซื้อเมื่อ @FormatBangkok(order.CreatedAtUtc)</time>
+                    </div>
+                    <CustomerOrderStatus PaymentStatus="order.PaymentStatus"
+                                         FulfillmentStatus="order.FulfillmentStatus" />
+                </header>
+
+                <div class="customer-order-detail__layout">
+            <section class="customer-order-detail__panel" aria-labelledby="order-items-title">
+                <h2 id="order-items-title">รายการสินค้า</h2>
+                <ul class="customer-order-detail__items">
+                    @foreach (var item in order.Items)
+                    {
+                        <li>
+                            <a class="customer-order-detail__image" href="/products/@item.ProductSlug" aria-label="ดูสินค้า @item.DisplayName">
+                                <img src="@item.PrimaryImageUrl" alt="รูปสินค้า @item.DisplayName" />
+                            </a>
+                            <div class="customer-order-detail__item-copy">
+                                <a href="/products/@item.ProductSlug">@item.DisplayName</a>
+                                <span>@item.BrandName · @item.CategoryName · @item.UniverseName</span>
+                                <span>จำนวน @item.Quantity.ToString("N0", ThaiCulture) ชิ้น</span>
+                                @if (item.SaleType == SaleType.PreOrder)
+                                {
+                                    <dl>
+                                        <div><dt>ราคาเต็มต่อชิ้น</dt><dd>฿@item.FullPrice.ToString("N2", ThaiCulture)</dd></div>
+                                        <div><dt>มัดจำต่อชิ้น</dt><dd>฿@item.DepositAmount.ToString("N2", ThaiCulture)</dd></div>
+                                        <div><dt>ยอดคงเหลือต่อชิ้น</dt><dd>฿@item.BalanceAmount.ToString("N2", ThaiCulture)</dd></div>
+                                        @if (item.EstimatedArrivalMonth is not null && item.EstimatedArrivalYear is not null)
+                                        {
+                                            <div><dt>คาดว่าสินค้าจะมา</dt><dd>@FormatEstimatedArrival(item.EstimatedArrivalMonth.Value, item.EstimatedArrivalYear.Value)</dd></div>
+                                        }
+                                    </dl>
+                                    @if (!string.IsNullOrWhiteSpace(item.DepositPolicy))
+                                    {
+                                        <p class="customer-order-detail__policy">นโยบายมัดจำ: @item.DepositPolicy</p>
+                                    }
+                                }
+                                else
+                                {
+                                    <strong>฿@item.FullPrice.ToString("N2", ThaiCulture) ต่อชิ้น</strong>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </section>
+
+            <aside class="customer-order-detail__side">
+                <section class="customer-order-detail__panel" aria-labelledby="order-summary-title">
+                    <h2 id="order-summary-title">สรุปการชำระเงิน</h2>
+                    <dl class="customer-order-detail__summary">
+                        <div><dt>ประเภท</dt><dd>@(order.SaleType == SaleType.PreOrder ? "พรีออเดอร์" : "สินค้าพร้อมส่ง")</dd></div>
+                        <div><dt>ค่าจัดส่ง</dt><dd>@(order.ShippingAmount == 0 ? "ฟรี" : $"฿{order.ShippingAmount.ToString("N2", ThaiCulture)}")</dd></div>
+                        <div class="customer-order-detail__total"><dt>@(order.SaleType == SaleType.PreOrder ? "ชำระมัดจำแล้ว" : "ชำระแล้ว")</dt><dd>฿@order.TotalPaid.ToString("N2", ThaiCulture)</dd></div>
+                    </dl>
+                </section>
+
+                <section class="customer-order-detail__panel" aria-labelledby="shipping-address-title">
+                    <h2 id="shipping-address-title">ที่อยู่จัดส่ง</h2>
+                    <address>
+                        <strong>@order.Address.RecipientName</strong>
+                        <span>@order.Address.PhoneNumber</span>
+                        <span>@order.Address.AddressLine</span>
+                        <span>แขวง/ตำบล @order.Address.SubDistrict เขต/อำเภอ @order.Address.District</span>
+                        <span>@order.Address.Province @order.Address.PostalCode</span>
+                    </address>
+                </section>
+            </aside>
+                </div>
+            }
+</section>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private CustomerOrderDetailView? order;
+    private bool isLoading = true;
+    private string errorMessage = "ไม่พบคำสั่งซื้อนี้ในบัญชีของคุณ";
+
+    [Parameter]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        order = null;
+        try
+        {
+            var result = await Sender.Send(new GetCustomerOrderQuery(OrderNumber));
+            if (result.IsFailure)
+            {
+                errorMessage = result.Error.Message;
+                return;
+            }
+
+            order = result.Value;
+        }
+        catch
+        {
+            errorMessage = "เกิดข้อผิดพลาดระหว่างอ่านคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string FormatBangkok(DateTimeOffset value) =>
+        TimeZoneInfo.ConvertTime(value, BangkokTimeZone)
+            .ToString("d MMMM yyyy เวลา HH:mm น.", ThaiCulture);
+
+    private static string FormatEstimatedArrival(int month, int year) =>
+        $"ประมาณเดือน{ThaiCulture.DateTimeFormat.GetMonthName(month)} {year.ToString(ThaiCulture)}";
+}

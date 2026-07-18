@@ -1,0 +1,63 @@
+<aside class="admin-rail @(IsPinned ? "admin-rail--pinned" : null)">
+    <div class="admin-rail__brand">
+        <a href="/admin" aria-label="SY TOYS ภาพรวมร้าน"><BrandLogo Compact="true" /></a>
+        <span>ระบบผู้ดูแล</span>
+        <button type="button"
+                class="admin-rail__pin icon-button"
+                aria-label="@(IsPinned ? "ยกเลิกการตรึงเมนู" : "ตรึงเมนู")"
+                aria-pressed="@IsPinned.ToString().ToLowerInvariant()"
+                @onclick="TogglePinned">
+            <AdminIcon Name="AdminIconName.Pin" />
+        </button>
+    </div>
+    <nav aria-label="เมนูผู้ดูแลระบบ">
+        <ul>
+            @foreach (var item in Items)
+            {
+                var active = AdminRouteMatcher.IsGroupActive(item.RouteGroup, CurrentUrl);
+                var currentKind = active
+                    ? AdminRouteMatcher.IsExactPath(item.Href, CurrentUrl) ? "page" : "location"
+                    : null;
+                <li>
+                    <a href="@item.Href"
+                       class="@(active ? "admin-rail__link admin-rail__link--active" : "admin-rail__link")"
+                       aria-current="@currentKind"
+                       aria-label="@item.Label"
+                       title="@item.Label"
+                       data-tooltip="@item.Label">
+                        <AdminIcon Name="item.Icon" />
+                        <span class="admin-rail__label">@item.Label</span>
+                        @if (item.ActionableCount is > 0)
+                        {
+                            <span class="admin-rail__badge" aria-label="ต้องดำเนินการ @item.ActionableCount รายการ">
+                                @item.ActionableCount
+                            </span>
+                        }
+                    </a>
+                </li>
+            }
+        </ul>
+        <form class="admin-rail__logout" action="/Account/Logout" method="post">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="/" />
+            <button type="submit" aria-label="ออกจากระบบ" title="ออกจากระบบ" data-tooltip="ออกจากระบบ">
+                <AdminIcon Name="AdminIconName.Logout" />
+                <span class="admin-rail__label">ออกจากระบบ</span>
+            </button>
+        </form>
+    </nav>
+</aside>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string CurrentUrl { get; set; }
+
+    [Parameter]
+    public bool IsPinned { get; set; }
+
+    [Parameter]
+    public EventCallback TogglePinned { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<AdminNavigationItem> Items { get; set; } = AdminNavigation.Items;
+}

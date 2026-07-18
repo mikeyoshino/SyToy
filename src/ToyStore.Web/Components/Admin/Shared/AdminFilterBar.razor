@@ -1,0 +1,155 @@
+@if (HistoryState is not null)
+{
+    <EditForm EditContext="@queryEditContext"
+              method="get"
+              FormName="@FormName"
+              class="admin-filter-bar"
+              role="search"
+              aria-label="@Label"
+              OnSubmit="SubmitQueryAsync">
+        <div class="admin-filter-bar__fields">
+            <StoreTextField @bind-Value="editState.Model.Search"
+                            Label="ค้นหา"
+                            Placeholder="ค้นหาชื่อหรือส่วน URL" />
+            <StoreSelectField TValue="string"
+                              @bind-Value="editState.Model.Status"
+                              Label="สถานะ"
+                              Options="@StatusOptions" />
+        </div>
+        <div class="admin-filter-bar__actions">
+            @if (SubmitContent is not null)
+            {
+                @SubmitContent
+            }
+            else
+            {
+                <StoreButton ButtonType="submit">ใช้ตัวกรอง</StoreButton>
+            }
+            <a href="@BasePath">ล้างตัวกรอง</a>
+        </div>
+    </EditForm>
+}
+else
+{
+    <form class="admin-filter-bar" method="get" role="search" aria-label="@Label">
+        <div class="admin-filter-bar__fields">@ChildContent</div>
+        <div class="admin-filter-bar__actions">
+            @if (SubmitContent is not null)
+            {
+                @SubmitContent
+            }
+            else
+            {
+                <StoreButton ButtonType="submit">ใช้ตัวกรอง</StoreButton>
+            }
+            @if (!string.IsNullOrWhiteSpace(ClearHref))
+            {
+                <a href="@ClearHref">ล้างตัวกรอง</a>
+            }
+        </div>
+    </form>
+}
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<string>> DefaultStatusOptions =
+    [
+        new("active", "ใช้งาน"),
+        new("archived", "เก็บแล้ว"),
+        new("all", "ทั้งหมด"),
+    ];
+
+    private readonly AdminFilterEditState editState = new();
+    private EditContext? queryEditContext;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    [Parameter]
+    public string Label { get; set; } = "ตัวกรองข้อมูล";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? SubmitContent { get; set; }
+
+    [Parameter]
+    public string? ClearHref { get; set; }
+
+    [Parameter]
+    // The route page owns URL parsing and supplies a new value when browser history changes.
+    public AdminFilterQueryState? HistoryState { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public string BasePath { get; set; } = string.Empty;
+
+    [Parameter]
+    public string FormName { get; set; } = "admin-query-filter";
+
+    [Parameter]
+    public IReadOnlyList<SelectOption<string>> StatusOptions { get; set; } = DefaultStatusOptions;
+
+    protected override void OnParametersSet()
+    {
+        if (HistoryState is not null && editState.Restore(HistoryState))
+        {
+            queryEditContext = new EditContext(editState.Model);
+        }
+    }
+
+    private Task SubmitQueryAsync(EditContext _)
+    {
+        if (HistoryState is not null)
+        {
+            NavigationManager.NavigateTo(BuildSubmitUrl(BasePath, editState.Model.ToHistoryState()));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    internal static string BuildCanonicalUrl(string basePath, AdminFilterQueryState query)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
+        ArgumentNullException.ThrowIfNull(query);
+
+        var values = new List<string>();
+        var search = NormalizeSearch(query.Search);
+        if (search.Length != 0)
+        {
+            values.Add($"q={Uri.EscapeDataString(search)}");
+        }
+
+        var status = NormalizeStatus(query.Status);
+        if (status != "active")
+        {
+            values.Add($"status={Uri.EscapeDataString(status)}");
+        }
+
+        if (query.Page > 1)
+        {
+            values.Add($"page={query.Page.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        }
+
+        return values.Count == 0 ? basePath : $"{basePath}?{string.Join('&', values)}";
+    }
+
+    internal static string BuildSubmitUrl(string basePath, AdminFilterQueryState query) =>
+        BuildCanonicalUrl(
+            basePath,
+            query with { Page = 1 });
+
+    private static string NormalizeSearch(string? value) => string.IsNullOrWhiteSpace(value)
+        ? string.Empty
+        : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static string NormalizeStatus(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "active" => "active",
+        "archived" => "archived",
+        "all" => "all",
+        "draft" => "draft",
+        "published" => "published",
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown Admin filter status."),
+    };
+}

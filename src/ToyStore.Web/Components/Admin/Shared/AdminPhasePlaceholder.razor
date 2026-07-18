@@ -1,0 +1,12 @@
+<section class="admin-phase-placeholder" aria-label="ข้อมูลระยะถัดไป">
+    <span class="admin-phase-placeholder__icon" aria-hidden="true">→</span>
+    <div>
+        <strong>พร้อมสำหรับขั้นตอนถัดไป</strong>
+        <p>@Message</p>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Message { get; set; }
+}

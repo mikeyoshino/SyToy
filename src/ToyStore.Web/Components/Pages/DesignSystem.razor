@@ -1,0 +1,240 @@
+@page "/design-system"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using ToyStore.Application.Characters
+@using ToyStore.Web.Components.Forms
+
+<PageTitle>ตัวอย่างระบบออกแบบ</PageTitle>
+
+<div class="store-container design-system">
+    <header class="design-system__header">
+        <p class="design-system__eyebrow">ระบบหน้าร้าน</p>
+        <h1>ตัวอย่างระบบออกแบบ</h1>
+        <p>หน้านี้แสดงองค์ประกอบแบบฟอร์มและข้อความตอบกลับโดยไม่เรียกข้อมูลจากฐานข้อมูล</p>
+    </header>
+
+    <section class="design-system__section" aria-labelledby="form-examples-heading">
+        <h2 id="form-examples-heading">แบบฟอร์ม</h2>
+        <StoreAlert Tone="StoreAlertTone.Info"
+                    Message="FluentValidation ในชั้น Application เป็นกฎหลัก ส่วน DataAnnotations ในหน้านี้ใช้เป็นตัวอย่างการแสดงผลเท่านั้น" />
+        <EditForm Model="example" OnValidSubmit="ShowSuccess" class="store-form" FormName="design-system-example">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="store-validation-summary" role="alert" />
+
+            <StoreTextField @bind-Value="example.Email"
+                            Label="อีเมล"
+                            HelpText="ใช้สำหรับส่งข้อมูลคำสั่งซื้อ"
+                            Required="true"
+                            Autocomplete="email"
+                            Placeholder="name@example.com" />
+            <StoreTextField @bind-Value="example.DisabledNote"
+                            Label="ช่องตัวอย่างที่ปิดใช้งาน"
+                            HelpText="แสดงสถานะที่ยังแก้ไขไม่ได้"
+                            Disabled="true" />
+            <StoreNumberField TValue="int"
+                              @bind-Value="example.Quantity"
+                              Label="จำนวน"
+                              HelpText="เลือกได้ตั้งแต่ 1 ถึง 5 ชิ้น"
+                              Required="true"
+                              Min="1"
+                              Max="5"
+                              Step="1"
+                              InputMode="numeric" />
+            <StoreSelectField TValue="int"
+                              @bind-Value="example.Size"
+                              Label="ขนาด"
+                              HelpText="ขนาดใหญ่ยังไม่พร้อมจำหน่าย"
+                              Required="true"
+                              Placeholder="เลือกขนาด"
+                              Options="@sizeOptions" />
+
+            <StoreButton ButtonType="submit">ตรวจสอบตัวอย่าง</StoreButton>
+        </EditForm>
+
+        <EditForm EditContext="invalidEditContext" class="store-form" FormName="design-system-invalid">
+            <StoreTextField @bind-Value="invalidExample.Email"
+                            Label="อีเมลตัวอย่างที่มีข้อผิดพลาด"
+                            Required="true" />
+        </EditForm>
+    </section>
+
+    <section class="design-system__section" aria-labelledby="feedback-examples-heading">
+        <h2 id="feedback-examples-heading">ข้อความตอบกลับ</h2>
+        <div class="design-system__stack">
+            <StoreAlert Tone="StoreAlertTone.Info" Title="ข้อมูลทั่วไป" Message="รายการนี้ยังแก้ไขได้" />
+            <StoreAlert Tone="StoreAlertTone.Success" Title="บันทึกสำเร็จ" Message="ระบบบันทึกข้อมูลเรียบร้อยแล้ว" />
+            <StoreAlert Tone="StoreAlertTone.Warning" Title="โปรดตรวจสอบ" Message="สินค้าบางรายการเหลือน้อย" />
+            <StoreAlert Tone="StoreAlertTone.Error" Title="เกิดข้อผิดพลาด" Message="กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง" />
+            @if (showSuccess)
+            {
+                <StoreToast Tone="StoreAlertTone.Success"
+                            Message="เพิ่มสินค้าลงตะกร้าแล้ว"
+                            Dismissed="HideSuccess" />
+            }
+            else
+            {
+                <StoreToast Tone="StoreAlertTone.Success"
+                            Message="เพิ่มสินค้าลงตะกร้าแล้ว"
+                            ShowDismiss="false" />
+            }
+        </div>
+    </section>
+
+    <section class="design-system__section" aria-labelledby="character-autocomplete-heading">
+        <h2 id="character-autocomplete-heading">ค้นหาและเพิ่มตัวละคร</h2>
+        <p>ตัวอย่างนี้ใช้ข้อมูลจำลองในหน้านี้เท่านั้น ไม่อ่านหรือบันทึกฐานข้อมูล</p>
+        <EditForm Model="characterSpecimen"
+                  class="design-system__autocomplete-specimen"
+                  FormName="design-system-character-autocomplete"
+                  data-character-autocomplete-specimen
+                  data-create-count="@fakeCreateCount">
+            <AdminCharacterAutocomplete Id="design-character-autocomplete"
+                                        UniverseId="FakeUniverseId"
+                                        Values="characterSpecimen.Characters"
+                                        ValuesChanged="SetFakeCharacters"
+                                        ValuesExpression="@(() => characterSpecimen.Characters)"
+                                        SearchOverride="SearchFakeCharactersAsync"
+                                        InlineCreateOverride="CreateFakeCharacterAsync"
+                                        HelpText="ลองค้นหา เลือกหลายรายการ หรือเพิ่มชื่อตัวละครใหม่" />
+            <StoreButton Tone="StoreButtonTone.Secondary"
+                    CssClass="design-system__after-autocomplete"
+                    data-character-after>
+                ปุ่มถัดจากช่องตัวละคร
+            </StoreButton>
+            <output class="design-system__selection"
+                    data-character-selection-count="@characterSpecimen.Characters.Count">
+                เลือกแล้ว @characterSpecimen.Characters.Count รายการ
+            </output>
+        </EditForm>
+    </section>
+
+    <section class="design-system__section" aria-labelledby="overlay-examples-heading">
+        <h2 id="overlay-examples-heading">หน้าต่างและแผงด้านข้าง</h2>
+        <div class="design-system__actions">
+            <StoreButton OnClick="OpenDialog">เปิดหน้าต่างยืนยัน</StoreButton>
+            <StoreButton Tone="StoreButtonTone.Secondary" OnClick="OpenDrawer">เปิดตัวกรองสินค้า</StoreButton>
+        </div>
+
+        <StoreDialog @bind-IsOpen="dialogOpen" Title="ยืนยันการทำรายการ">
+            <ChildContent>
+                <p>ตรวจสอบจำนวนและตัวเลือกสินค้าให้เรียบร้อยก่อนยืนยัน</p>
+            </ChildContent>
+            <Actions>
+                <StoreButton OnClick="CloseDialog">ยืนยัน</StoreButton>
+            </Actions>
+        </StoreDialog>
+
+        <StoreDrawer @bind-IsOpen="drawerOpen" Title="ตัวกรองสินค้า" Placement="DrawerPlacement.End">
+            <p>เลือกหมวดหมู่ ราคา และสถานะสินค้าได้จากแผงนี้</p>
+        </StoreDrawer>
+    </section>
+
+    <section class="design-system__section" aria-labelledby="loading-example-heading">
+        <h2 id="loading-example-heading">สถานะกำลังโหลด</h2>
+        <StoreSkeleton CssClass="design-system__skeleton" StatusText="กำลังโหลดตัวอย่าง" />
+    </section>
+</div>
+
+@code {
+    private readonly ExampleFormModel example = new();
+    private readonly IReadOnlyList<SelectOption<int>> sizeOptions = new[]
+    {
+        new SelectOption<int>(1, "ขนาดเล็ก"),
+        new SelectOption<int>(2, "ขนาดกลาง"),
+        new SelectOption<int>(3, "ขนาดใหญ่", Disabled: true),
+    };
+    private readonly InvalidExampleModel invalidExample = new();
+    private readonly CharacterSpecimenModel characterSpecimen = new();
+    private readonly List<CharacterOption> fakeCharacterOptions =
+    [
+        new(Guid.Parse("97000000-0000-0000-0000-000000000001"), FakeUniverseId, "Iron Man"),
+        new(Guid.Parse("97000000-0000-0000-0000-000000000002"), FakeUniverseId, "Spider-Man"),
+        new(Guid.Parse("97000000-0000-0000-0000-000000000003"), FakeUniverseId, "Batman"),
+    ];
+    private static readonly Guid FakeUniverseId =
+        Guid.Parse("97000000-0000-0000-0000-000000000010");
+    private EditContext invalidEditContext = default!;
+    private ValidationMessageStore invalidMessages = default!;
+    private bool showSuccess;
+    private bool dialogOpen;
+    private bool drawerOpen;
+    private int fakeCreateCount;
+
+    protected override void OnInitialized()
+    {
+        invalidEditContext = new EditContext(invalidExample);
+        invalidMessages = new ValidationMessageStore(invalidEditContext);
+        invalidMessages.Add(
+            invalidEditContext.Field(nameof(InvalidExampleModel.Email)),
+            "อีเมลตัวอย่างนี้ไม่ถูกต้อง");
+    }
+
+    private void ShowSuccess() => showSuccess = true;
+
+    private void HideSuccess() => showSuccess = false;
+
+    private void OpenDialog() => dialogOpen = true;
+
+    private void CloseDialog() => dialogOpen = false;
+
+    private void OpenDrawer() => drawerOpen = true;
+
+    private async Task<AutocompleteSearchResult<CharacterOption>> SearchFakeCharactersAsync(
+        Guid universeId,
+        string term,
+        CancellationToken cancellationToken)
+    {
+        await Task.Delay(80, cancellationToken);
+        var preparedTerm = term.Trim();
+        var items = fakeCharacterOptions
+            .Where(option => preparedTerm.Length == 0
+                || option.Name.Contains(preparedTerm, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var hasExactMatch = fakeCharacterOptions.Any(option =>
+            string.Equals(option.Name, preparedTerm, StringComparison.OrdinalIgnoreCase));
+        return AutocompleteSearchResults.Success(
+            items,
+            offerInlineCreate: preparedTerm.Length > 0 && !hasExactMatch);
+    }
+
+    private async Task<AutocompleteCreateResult<CharacterOption>> CreateFakeCharacterAsync(
+        Guid universeId,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref fakeCreateCount);
+        await Task.Delay(650, cancellationToken);
+        var option = new CharacterOption(Guid.NewGuid(), universeId, name.Trim());
+        fakeCharacterOptions.Add(option);
+        return AutocompleteCreateResults.Success(option);
+    }
+
+    private void SetFakeCharacters(IReadOnlyList<CharacterOption> values) =>
+        characterSpecimen.Characters = values;
+
+    private sealed class ExampleFormModel
+    {
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        public string DisabledNote { get; set; } = "แก้ไขไม่ได้ในสถานะนี้";
+
+        [Range(1, 5, ErrorMessage = "กรุณาเลือกจำนวน 1–5 ชิ้น")]
+        public int Quantity { get; set; } = 1;
+
+        [Range(1, 3, ErrorMessage = "กรุณาเลือกขนาด")]
+        public int Size { get; set; } = 2;
+    }
+
+    private sealed class InvalidExampleModel
+    {
+        public string Email { get; set; } = "invalid";
+    }
+
+    private sealed class CharacterSpecimenModel
+    {
+        public IReadOnlyList<CharacterOption> Characters { get; set; } = [];
+    }
+}

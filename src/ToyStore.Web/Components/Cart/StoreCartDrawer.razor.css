@@ -1,0 +1,116 @@
+.store-cart {
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: var(--space-5);
+}
+
+.store-cart__title-count {
+  margin-inline-start: var(--space-2);
+  color: var(--color-muted);
+  font-size: .875rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.store-cart__loading,
+.store-cart__state {
+  display: grid;
+  min-height: 16rem;
+  place-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.store-cart__merge-result {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 24%, var(--color-surface));
+  font-size: .875rem;
+}
+
+.store-cart__merge-result ul { margin: 0; padding-inline-start: var(--space-5); }
+
+.store-cart__loading > span:last-child,
+.store-cart__state p,
+.store-cart__notice {
+  color: var(--color-muted);
+  font-size: .875rem;
+  line-height: var(--line-height-relaxed);
+}
+
+.store-cart__empty-mark {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  place-items: center;
+  justify-self: center;
+  border-radius: 50%;
+  background: var(--color-accent);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-black);
+}
+
+.store-cart__retry,
+.store-cart__continue,
+.store-cart__checkout {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: var(--font-weight-extrabold);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+
+.store-cart__retry,
+.store-cart__continue { background: var(--color-surface); color: var(--color-ink); }
+.store-cart__checkout { background: var(--color-accent); color: var(--color-ink); }
+.store-cart__retry:active,
+.store-cart__continue:active,
+.store-cart__checkout:active { transform: scale(.98); }
+.store-cart__checkout:disabled,
+.store-cart__continue:disabled { cursor: not-allowed; opacity: .48; }
+
+.store-cart__items { display: grid; gap: var(--space-5); margin: 0; padding: 0; list-style: none; }
+.store-cart__item { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-4); }
+.store-cart__media { aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-md); background: var(--color-bg); }
+.store-cart__media img { width: 100%; height: 100%; object-fit: cover; }
+.store-cart__item-body { display: grid; min-width: 0; align-content: start; gap: var(--space-2); }
+.store-cart__item-body > a {
+  color: var(--color-ink);
+  font-size: .875rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.store-cart__item-body > a:hover { color: var(--color-muted); }
+.store-cart__item-body > strong { font-size: .9375rem; }
+.store-cart__unavailable { color: var(--color-danger); font-size: .875rem; }
+.store-cart__item-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.store-cart__quantity { display: grid; grid-template-columns: 2.25rem 2rem 2.25rem; align-items: center; border-radius: var(--radius-pill); background: var(--color-bg); }
+.store-cart__quantity button,
+.store-cart__remove { min-width: 2.25rem; min-height: 2.25rem; border: 0; background: transparent; color: var(--color-ink); font: inherit; font-size: .8125rem; font-weight: var(--font-weight-bold); }
+.store-cart__quantity output { text-align: center; font-size: .8125rem; font-weight: var(--font-weight-bold); }
+.store-cart__remove { width: auto; padding-inline: var(--space-2); color: var(--color-danger); }
+.store-cart__summary { display: flex; align-items: baseline; justify-content: space-between; padding-block-start: var(--space-4); box-shadow: inset 0 1px var(--color-line); }
+.store-cart__summary strong { font-size: 1.35rem; }
+.store-cart__notice { margin: 0; }
+.store-cart__footer { display: grid; width: 100%; grid-template-columns: 1fr 1.2fr; gap: var(--space-3); }
+
+@media (max-width: 35rem) {
+  .store-cart-host ::deep .store-drawer { width: 100vw; }
+  .store-cart__footer { grid-template-columns: 1fr; }
+  .store-cart__quantity { grid-template-columns: 2.75rem 2.25rem 2.75rem; }
+  .store-cart__quantity button,
+  .store-cart__remove { min-width: 2.75rem; min-height: 2.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-cart__retry,
+  .store-cart__continue,
+  .store-cart__checkout,
+  .store-cart__item-body > a { transition: none; }
+}

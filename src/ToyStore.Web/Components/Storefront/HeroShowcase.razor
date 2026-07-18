@@ -1,0 +1,61 @@
+@using ToyStore.Application.Storefront.Catalog
+
+@if (Products.Count != 0)
+{
+    <section class="hero-showcase" aria-labelledby="hero-showcase-title">
+        <h1 id="hero-showcase-title" class="visually-hidden">สินค้ามาใหม่ล่าสุด</h1>
+        <div class="hero-showcase__products hero-showcase__products--count-@Products.Count"
+             aria-label="สินค้าที่เพิ่มล่าสุด">
+            @for (var index = 0; index < Products.Count; index++)
+            {
+                var product = Products[index];
+                <a @key="product.ProductId"
+                   class="hero-showcase__product @(index == 0 ? "hero-showcase__product--latest" : null)"
+                   href="@product.ProductUrl"
+                   aria-label="ดู @product.Name @ProductTypeLabel(product)">
+                    @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                    {
+                        <img src="@product.ImageUrl"
+                             alt="@($"{product.Name} โดย {product.Brand}")"
+                             loading="@(index == 0 ? "eager" : "lazy")" />
+                    }
+                    else
+                    {
+                        <span class="hero-showcase__product-placeholder" aria-hidden="true"></span>
+                    }
+                    <span class="hero-showcase__product-type @(product.SaleType == StorefrontSaleType.PreOrder ? "hero-showcase__product-type--preorder" : "hero-showcase__product-type--stock")">
+                        @ProductTypeLabel(product)
+                    </span>
+                    <span class="hero-showcase__product-copy">
+                        <strong>@product.Name</strong>
+                        <small>@product.PriceLabel</small>
+                    </span>
+                </a>
+            }
+        </div>
+    </section>
+}
+else if (State == StorefrontContentState.Loading)
+{
+    <section class="hero-showcase" aria-labelledby="hero-showcase-loading-title">
+        <h1 id="hero-showcase-loading-title" class="visually-hidden">สินค้ามาใหม่ล่าสุด</h1>
+        <div class="hero-showcase__products hero-showcase__products--loading" aria-hidden="true">
+            @for (var index = 0; index < 5; index++)
+            {
+                <span class="hero-showcase__product hero-showcase__product--skeleton @(index == 0 ? "hero-showcase__product--latest" : null)"></span>
+            }
+        </div>
+        <p class="visually-hidden" role="status">กำลังโหลดสินค้ามาใหม่</p>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ProductCardModel> Products { get; set; } = [];
+
+    [Parameter]
+    public StorefrontContentState State { get; set; } = StorefrontContentState.Loading;
+
+    private static string ProductTypeLabel(ProductCardModel product) =>
+        product.SaleType == StorefrontSaleType.PreOrder ? "พรีออเดอร์" : "พร้อมส่ง";
+}

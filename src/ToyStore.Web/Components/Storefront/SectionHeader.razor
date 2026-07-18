@@ -1,0 +1,31 @@
+<header class="section-header">
+    @if (HeadingLevel == 3)
+    {
+        <h3 id="@HeadingId">@Title</h3>
+    }
+    else
+    {
+        <h2 id="@HeadingId">@Title</h2>
+    }
+    @if (!string.IsNullOrWhiteSpace(ActionLabel) && !string.IsNullOrWhiteSpace(ActionUrl))
+    {
+        <a href="@ActionUrl">@ActionLabel <span aria-hidden="true">→</span></a>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string HeadingId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ActionLabel { get; set; }
+
+    [Parameter]
+    public string? ActionUrl { get; set; }
+
+    [Parameter]
+    public int HeadingLevel { get; set; } = 2;
+}

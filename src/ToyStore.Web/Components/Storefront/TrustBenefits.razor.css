@@ -1,0 +1,20 @@
+.trust-benefits ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  list-style: none;
+}
+
+li { display: flex; min-width: 0; min-height: 7rem; align-items: center; gap: var(--space-3); padding: var(--space-4); }
+svg { flex: none; width: 1.75rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+span { min-width: 0; display: grid; }
+strong { font-size: .9375rem; }
+small { color: var(--color-muted); font-size: .875rem; line-height: 1.5; }
+
+@media (min-width: 56.25rem) {
+  .trust-benefits ul { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  li + li { border-left: 1px solid var(--color-line); }
+}

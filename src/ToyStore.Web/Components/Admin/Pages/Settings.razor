@@ -1,0 +1,8 @@
+@page "/admin/settings"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+
+<PageTitle>ตั้งค่าร้าน</PageTitle>
+<AdminPageHeader Title="ตั้งค่าร้าน"
+                 Description="กำหนดค่าการทำงานส่วนกลางของร้าน" />
+<AdminPhasePlaceholder Message="การตั้งค่าร้านจะพร้อมใช้งานในระยะถัดไป" />

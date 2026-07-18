@@ -1,0 +1,141 @@
+@using MediatR
+@using ToyStore.Application.Addresses
+@using ToyStore.Application.Addresses.GetThaiAddressOptions
+@inject ISender Sender
+
+<StoreSelectField TValue="int?"
+                  Value="@Model.ProvinceId"
+                  ValueChanged="SelectProvinceAsync"
+                  ValueExpression="@(() => Model.ProvinceId)"
+                  Label="จังหวัด"
+                  Placeholder="เลือกจังหวัด"
+                  Searchable="true"
+                  SearchPlaceholder="ค้นหาจังหวัด"
+                  Options="ProvinceOptions"
+                  Required="true"
+                  Disabled="@(Disabled || isLoading)" />
+<StoreSelectField TValue="int?"
+                  Value="@Model.DistrictId"
+                  ValueChanged="SelectDistrictAsync"
+                  ValueExpression="@(() => Model.DistrictId)"
+                  Label="อำเภอ / เขต"
+                  Placeholder="เลือกอำเภอ / เขต"
+                  Searchable="true"
+                  SearchPlaceholder="ค้นหาอำเภอหรือเขต"
+                  Options="DistrictOptions"
+                  Required="true"
+                  Disabled="@(Disabled || isLoading || Model.ProvinceId is null)" />
+<StoreSelectField TValue="int?"
+                  Value="@Model.SubDistrictId"
+                  ValueChanged="SelectSubDistrictAsync"
+                  ValueExpression="@(() => Model.SubDistrictId)"
+                  Label="ตำบล / แขวง"
+                  Placeholder="เลือกตำบล / แขวง"
+                  Searchable="true"
+                  SearchPlaceholder="ค้นหาตำบลหรือแขวง"
+                  Options="SubDistrictOptions"
+                  Required="true"
+                  Disabled="@(Disabled || isLoading || Model.DistrictId is null)" />
+<StoreTextField Value="@Model.PostalCode"
+                ValueChanged="SetPostalCodeAsync"
+                ValueExpression="@(() => Model.PostalCode)"
+                Label="รหัสไปรษณีย์"
+                HelpText="ระบบเติมจากตำบล / แขวงที่เลือก"
+                Required="true"
+                Disabled="true" />
+
+@code {
+    private IReadOnlyList<ThaiProvince> provinces = [];
+    private IReadOnlyList<ThaiDistrict> districts = [];
+    private IReadOnlyList<ThaiSubDistrict> subDistricts = [];
+    private bool isLoading = true;
+
+    [Parameter, EditorRequired]
+    public required ShippingAddressFormModel Model { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private IReadOnlyList<SelectOption<int?>> ProvinceOptions =>
+        provinces.Select(item => new SelectOption<int?>(item.Id, item.Name)).ToArray();
+
+    private IReadOnlyList<SelectOption<int?>> DistrictOptions =>
+        districts.Select(item => new SelectOption<int?>(item.Id, item.Name)).ToArray();
+
+    private IReadOnlyList<SelectOption<int?>> SubDistrictOptions =>
+        subDistricts.Select(item => new SelectOption<int?>(item.Id,
+            $"{item.Name} · {item.PostalCode}")).ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Sender.Send(new GetThaiAddressOptionsQuery());
+            provinces = result.Provinces;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SelectProvinceAsync(int? provinceId)
+    {
+        Model.ProvinceId = provinceId;
+        Model.Province = provinces.FirstOrDefault(item => item.Id == provinceId)?.Name;
+        Model.DistrictId = null;
+        Model.District = null;
+        Model.SubDistrictId = null;
+        Model.SubDistrict = null;
+        Model.PostalCode = null;
+        districts = [];
+        subDistricts = [];
+
+        if (provinceId is not null)
+        {
+            isLoading = true;
+            try
+            {
+                var result = await Sender.Send(new GetThaiAddressOptionsQuery(ProvinceId: provinceId));
+                districts = result.Districts;
+            }
+            finally { isLoading = false; }
+        }
+    }
+
+    private async Task SelectDistrictAsync(int? districtId)
+    {
+        Model.DistrictId = districtId;
+        Model.District = districts.FirstOrDefault(item => item.Id == districtId)?.Name;
+        Model.SubDistrictId = null;
+        Model.SubDistrict = null;
+        Model.PostalCode = null;
+        subDistricts = [];
+
+        if (districtId is not null)
+        {
+            isLoading = true;
+            try
+            {
+                var result = await Sender.Send(new GetThaiAddressOptionsQuery(DistrictId: districtId));
+                subDistricts = result.SubDistricts;
+            }
+            finally { isLoading = false; }
+        }
+    }
+
+    private Task SelectSubDistrictAsync(int? subDistrictId)
+    {
+        Model.SubDistrictId = subDistrictId;
+        var selected = subDistricts.FirstOrDefault(item => item.Id == subDistrictId);
+        Model.SubDistrict = selected?.Name;
+        Model.PostalCode = selected?.PostalCode;
+        return Task.CompletedTask;
+    }
+
+    private Task SetPostalCodeAsync(string? value)
+    {
+        Model.PostalCode = value;
+        return Task.CompletedTask;
+    }
+}

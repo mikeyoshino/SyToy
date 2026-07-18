@@ -1,0 +1,146 @@
+@implements IDisposable
+
+@using Microsoft.AspNetCore.Diagnostics
+
+@inject NavigationManager NavigationManager
+@inject CartDrawerCoordinator CartDrawer
+
+<header class="store-header">
+    <div class="store-container store-header__bar">
+        <a class="store-header__brand" href="/" aria-label="SY TOYS กลับหน้าหลัก">
+            <BrandLogo />
+        </a>
+
+        <nav class="store-header__desktop-nav" aria-label="เมนูหลัก">
+            <StoreNavLink Href="/" CurrentUrl="@currentUrl">หน้าหลัก</StoreNavLink>
+            <StoreNavLink Href="/products" CurrentUrl="@currentUrl">สินค้า</StoreNavLink>
+            <StoreNavLink Href="/products?type=pre-order" CurrentUrl="@currentUrl">พรีออเดอร์</StoreNavLink>
+            <StoreNavLink Href="/products?type=in-stock" CurrentUrl="@currentUrl">สินค้าพร้อมส่ง</StoreNavLink>
+            <StoreNavLink Href="/brands" CurrentUrl="@currentUrl">แบรนด์</StoreNavLink>
+        </nav>
+
+        <div class="store-header__actions">
+            <a class="store-header__icon-link touch-target" href="/search" aria-label="ค้นหาสินค้า">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-4-4"></path>
+                </svg>
+            </a>
+
+            <AuthorizeView>
+                <Authorized>
+                    <AuthorizeView Policy="@PolicyNames.CanViewCustomerOrders" Context="customerAccountContext">
+                        <Authorized>
+                            <a class="store-header__account" href="/account/orders">บัญชีของฉัน</a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="store-header__account" href="/Account/Manage/ChangePassword">บัญชีของฉัน</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                    <form class="store-header__logout" action="/Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit">ออกจากระบบ</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="store-header__account" href="/Account/Login" data-enhance-nav="false">เข้าสู่ระบบ</a>
+                    <a class="store-header__register" href="/Account/Register">สมัครสมาชิก</a>
+                </NotAuthorized>
+            </AuthorizeView>
+
+            <button class="store-header__cart touch-target" type="button" @onclick="CartDrawer.Open"
+                    aria-label="เปิดตะกร้าสินค้า มีสินค้า @CartDrawer.TotalQuantity ชิ้น"
+                    aria-haspopup="dialog" aria-expanded="@CartDrawer.IsOpen.ToString().ToLowerInvariant()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 4h2l2 12h10l2-9H6"></path>
+                    <circle cx="9" cy="20" r="1"></circle>
+                    <circle cx="17" cy="20" r="1"></circle>
+                </svg>
+                <span aria-hidden="true">@CartDrawer.TotalQuantity</span>
+            </button>
+        </div>
+
+        <details @key="currentUrl" class="store-header__mobile-menu">
+            <summary class="touch-target">
+                <span>เมนู</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h16"></path>
+                </svg>
+            </summary>
+            <nav aria-label="เมนูหลักสำหรับมือถือ">
+                <StoreNavLink Href="/" CurrentUrl="@currentUrl">หน้าหลัก</StoreNavLink>
+                <StoreNavLink Href="/products" CurrentUrl="@currentUrl">สินค้า</StoreNavLink>
+                <StoreNavLink Href="/products?type=pre-order" CurrentUrl="@currentUrl">พรีออเดอร์</StoreNavLink>
+                <StoreNavLink Href="/products?type=in-stock" CurrentUrl="@currentUrl">สินค้าพร้อมส่ง</StoreNavLink>
+                <StoreNavLink Href="/brands" CurrentUrl="@currentUrl">แบรนด์</StoreNavLink>
+                <a href="/search">ค้นหาสินค้า</a>
+                <button type="button" @onclick="CartDrawer.Open" aria-haspopup="dialog">
+                    ตะกร้าสินค้า (@CartDrawer.TotalQuantity)
+                </button>
+                <AuthorizeView>
+                    <Authorized>
+                        <AuthorizeView Policy="@PolicyNames.CanViewCustomerOrders" Context="mobileCustomerAccountContext">
+                            <Authorized><a href="/account/orders">บัญชีของฉัน</a></Authorized>
+                            <NotAuthorized><a href="/Account/Manage/ChangePassword">บัญชีของฉัน</a></NotAuthorized>
+                        </AuthorizeView>
+                        <form action="/Account/Logout" method="post">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit">ออกจากระบบ</button>
+                        </form>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/Account/Login" data-enhance-nav="false">เข้าสู่ระบบ</a>
+                        <a href="/Account/Register">สมัครสมาชิก</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </nav>
+        </details>
+    </div>
+</header>
+
+<StoreCartDrawer />
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string currentUrl = "/";
+
+    protected override void OnInitialized()
+    {
+        CartDrawer.Changed += OnCartChanged;
+        var reExecute = HttpContext?.Features.Get<IStatusCodeReExecuteFeature>();
+        if (reExecute is null)
+        {
+            SetCurrentUrl(NavigationManager.Uri);
+        }
+        else
+        {
+            currentUrl = $"{reExecute.OriginalPathBase}{reExecute.OriginalPath}{reExecute.OriginalQueryString}";
+        }
+
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs eventArgs)
+    {
+        SetCurrentUrl(eventArgs.Location);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void SetCurrentUrl(string location)
+    {
+        var relativeUrl = NavigationManager.ToBaseRelativePath(location);
+        currentUrl = string.IsNullOrEmpty(relativeUrl) ? "/" : $"/{relativeUrl}";
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        CartDrawer.Changed -= OnCartChanged;
+    }
+}

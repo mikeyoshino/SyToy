@@ -1,0 +1,80 @@
+@using System.Globalization
+@using ToyStore.Application.Products.ManageProducts
+
+<AdminDataTable Caption="รายการสินค้า">
+    <Header><tr><th scope="col">สินค้า</th><th scope="col">ราคา</th><th scope="col">สต็อก</th><th scope="col">สถานะ</th><th scope="col" class="admin-product-list__manage">จัดการ</th></tr></Header>
+    <Rows>
+        @foreach (var item in Items)
+        {
+            <tr @key="item.Id" id="@RowId(item.Id)">
+                <td>
+                    <div class="admin-product-list__product">
+                        @if (item.Images.FirstOrDefault() is { } image)
+                        { <img src="@image.PublicRelativeUrl" alt="@image.AltText" /> }
+                        else
+                        { <span class="admin-product-list__placeholder" aria-hidden="true">ภาพ</span> }
+                        <div><strong>@item.DisplayName</strong><span>@item.BrandName · @CategoryName(item.ProductCategoryCode)</span><small dir="ltr">/@item.Slug</small></div>
+                    </div>
+                </td>
+                <td><strong>@item.Price.ToString("N2", ThaiCulture) บาท</strong><span class="admin-product-list__stock">@PriceLabel(item)</span></td>
+                <td>
+                    @if (item.SaleType == ProductManagementSaleType.PreOrder)
+                    {
+                        <strong>@(item.TotalCapacity?.ToString("N0", ThaiCulture) ?? "–")</strong>
+                        <span class="admin-product-list__stock"> รับพรีออเดอร์</span>
+                    }
+                    else
+                    {
+                        <strong>@item.ReservableQuantity.ToString("N0", ThaiCulture)</strong>
+                        <span class="admin-product-list__stock"> จาก @item.OnHandQuantity.ToString("N0", ThaiCulture)</span>
+                    }
+                </td>
+                <td><AdminStatusBadge Text="@StatusLabel(item.Status)" Tone="@StatusTone(item.Status)" AccessiblePrefix="สถานะ" /></td>
+                <td class="admin-product-list__manage">
+                    <div class="admin-product-list__actions">
+                        @if (item.Status == ProductManagementStatus.Draft)
+                        {
+                            <StoreButton Tone="StoreButtonTone.Secondary" Compact="true" OnClick="() => EditRequested.InvokeAsync(item)">แก้ไขฉบับร่าง</StoreButton>
+                            <StoreButton Compact="true" OnClick="() => PublishRequested.InvokeAsync(item)">เผยแพร่หน้าร้าน</StoreButton>
+                        }
+                        else if (item.Status == ProductManagementStatus.Published)
+                        {
+                            @if (item.SaleType == ProductManagementSaleType.PreOrder)
+                            {
+                                <span class="admin-product-list__unavailable">ยังไม่รองรับการเก็บพรีออเดอร์</span>
+                            }
+                            else
+                            {
+                                <StoreButton Tone="StoreButtonTone.Ghost" Compact="true" OnClick="() => ArchiveRequested.InvokeAsync(item)">เก็บสินค้า</StoreButton>
+                            }
+                        }
+                        else
+                        { <span>ไม่มีการดำเนินการ</span> }
+                    </div>
+                </td>
+            </tr>
+        }
+    </Rows>
+</AdminDataTable>
+@if (TotalPages > 1)
+{
+    <AdminPagination CurrentPage="@CurrentPage" TotalPages="@TotalPages" PageUrl="@PageUrl" />
+}
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    [Parameter] public IReadOnlyList<ProductManagementItem> Items { get; set; } = [];
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter, EditorRequired] public required Func<int, string> PageUrl { get; set; }
+    [Parameter] public EventCallback<ProductManagementItem> EditRequested { get; set; }
+    [Parameter] public EventCallback<ProductManagementItem> PublishRequested { get; set; }
+    [Parameter] public EventCallback<ProductManagementItem> ArchiveRequested { get; set; }
+    public static string RowId(Guid id) => $"admin-product-{id:N}";
+    private static string CategoryName(string code) => code switch { "ArtToy" => "อาร์ตทอย", "Gundam" => "กันดั้ม", _ => code };
+    private static string PriceLabel(ProductManagementItem item) => item.SaleType == ProductManagementSaleType.PreOrder
+        ? " มัดจำ"
+        : " พร้อมส่ง";
+    private static string StatusLabel(ProductManagementStatus status) => status switch { ProductManagementStatus.Draft => "ฉบับร่าง", ProductManagementStatus.Published => "เผยแพร่แล้ว", _ => "เก็บแล้ว" };
+    private static AdminStatusTone StatusTone(ProductManagementStatus status) => status switch { ProductManagementStatus.Draft => AdminStatusTone.Warning, ProductManagementStatus.Published => AdminStatusTone.Success, _ => AdminStatusTone.Neutral };
+}

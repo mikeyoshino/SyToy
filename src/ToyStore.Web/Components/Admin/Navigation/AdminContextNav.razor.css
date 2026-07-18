@@ -1,0 +1,37 @@
+.admin-context-nav {
+  max-width: 100%;
+  margin-block-end: var(--space-6);
+  overflow: hidden;
+}
+
+.admin-context-nav__scroller {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.admin-context-nav a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+
+.admin-context-nav a:hover {
+  transform: translateY(-.1rem);
+}
+
+.admin-context-nav a[aria-current="page"] {
+  background: var(--admin-accent);
+}

@@ -1,0 +1,31 @@
+[Unit]
+Description=Toy Store Blazor Web Application
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=toystore
+Group=toystore
+UMask=0027
+WorkingDirectory=/opt/toystore/current
+EnvironmentFile=/etc/toystore/toystore.env
+Environment=Serilog__WriteTo__1__Args__path=/var/lib/toystore/logs/toystore-.log
+ExecStart=/usr/bin/dotnet /opt/toystore/current/ToyStore.Web.dll
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+SyslogIdentifier=toystore
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+StateDirectory=toystore/logs toystore/keys
+StateDirectoryMode=0750
+ReadWritePaths=/var/lib/toystore/uploads /var/lib/toystore/keys /var/lib/toystore/logs
+
+[Install]
+WantedBy=multi-user.target

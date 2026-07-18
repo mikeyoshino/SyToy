@@ -1,0 +1,140 @@
+<div class="admin-catalog-reference-list">
+    <AdminDataTable Caption="@Caption">
+        <Header>
+            <tr>
+                <th scope="col">ภาพ</th>
+                <th scope="col">ชื่อ</th>
+                <th scope="col">ส่วน URL (slug)</th>
+                <th scope="col">สถานะการใช้งาน</th>
+                <th scope="col">ความพร้อม</th>
+                <th scope="col">สินค้า</th>
+                @if (ShowCharacterCount)
+                {
+                    <th scope="col">ตัวละคร</th>
+                }
+                <th scope="col">อัปเดตล่าสุด</th>
+                <th scope="col">จัดการ</th>
+            </tr>
+        </Header>
+        <Rows>
+            @if (Items.Count == 0)
+            {
+                <tr>
+                    <td colspan="@ColumnCount">@EmptyMessage</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    <tr @key="item.Id">
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <span class="admin-catalog-reference-list__missing-image">@(item.MissingImageText ?? MissingImageText)</span>
+                            }
+                            else
+                            {
+                                <img class="admin-catalog-reference-list__image"
+                                     src="@item.ImageUrl"
+                                     alt="@item.ImageAlt" />
+                            }
+                        </td>
+                        <td>
+                            <strong>@item.DisplayName</strong>
+                            <span lang="en">@item.EnglishName</span>
+                        </td>
+                        <td><code dir="ltr">@item.Slug</code></td>
+                        <td>
+                            <AdminStatusBadge Text="@item.LifecycleStatusText"
+                                              Tone="@item.LifecycleStatusTone"
+                                              AccessiblePrefix="สถานะวงจรชีวิต" />
+                        </td>
+                        <td>
+                            <AdminStatusBadge Text="@item.ReadinessText"
+                                              Tone="@item.ReadinessTone"
+                                              AccessiblePrefix="ความพร้อม" />
+                        </td>
+                        <td>@FormatCount("สินค้า", item.ProductCount)</td>
+                        @if (ShowCharacterCount)
+                        {
+                            <td>@FormatCount("ตัวละคร", item.CharacterCount ?? 0)</td>
+                        }
+                        <td>@item.UpdatedText</td>
+                        <td>
+                            <div class="admin-catalog-reference-list__actions">
+                                @if (item.CanEdit && EditRequested.HasDelegate)
+                                {
+                                    <StoreButton Tone="StoreButtonTone.Secondary"
+                                                 Compact="true"
+                                                 aria-label="@ActionLabel("แก้ไข", item.DisplayName)"
+                                                 OnClick="() => EditRequested.InvokeAsync(item)">
+                                        แก้ไข
+                                    </StoreButton>
+                                }
+                                @if (item.CanArchive && ArchiveRequested.HasDelegate)
+                                {
+                                    <StoreButton Tone="StoreButtonTone.Ghost"
+                                                 Compact="true"
+                                                 aria-label="@ActionLabel("เก็บ", item.DisplayName)"
+                                                 OnClick="() => ArchiveRequested.InvokeAsync(item)">
+                                        เก็บ
+                                    </StoreButton>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </Rows>
+    </AdminDataTable>
+    @if (TotalPages > 1)
+    {
+        <AdminPagination CurrentPage="@CurrentPage"
+                         TotalPages="@TotalPages"
+                         PageUrl="@PageUrl" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Caption { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<AdminCatalogReferenceListItem> Items { get; set; } =
+        Array.Empty<AdminCatalogReferenceListItem>();
+
+    [Parameter]
+    public bool ShowCharacterCount { get; set; }
+
+    [Parameter]
+    public string EntityLabel { get; set; } = "รายการ";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "ไม่พบข้อมูล";
+
+    [Parameter]
+    public string MissingImageText { get; set; } = "ยังไม่มีภาพ";
+
+    [Parameter]
+    public EventCallback<AdminCatalogReferenceListItem> EditRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<AdminCatalogReferenceListItem> ArchiveRequested { get; set; }
+
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int TotalPages { get; set; }
+
+    [Parameter, EditorRequired]
+    public required Func<int, string> PageUrl { get; set; }
+
+    private int ColumnCount => ShowCharacterCount ? 9 : 8;
+
+    private static string FormatCount(string label, int count) => $"{label} {count} รายการ";
+
+    private string ActionLabel(string action, string displayName) =>
+        $"{action}{EntityLabel} {displayName}";
+}

@@ -1,0 +1,8 @@
+@page "/admin/inventory"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+
+<PageTitle>สินค้าคงคลัง</PageTitle>
+<AdminPageHeader Title="สินค้าคงคลัง"
+                 Description="ติดตามและปรับยอดสินค้าด้วยประวัติที่ตรวจสอบได้" />
+<AdminPhasePlaceholder Message="การจัดการสินค้าคงคลังจะพร้อมใช้งานในระยะถัดไป" />

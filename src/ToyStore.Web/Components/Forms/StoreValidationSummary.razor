@@ -1,0 +1,14 @@
+<div @ref="summaryElement"
+     class="store-validation-summary"
+     role="alert"
+     tabindex="-1"
+     aria-label="สรุปข้อมูลที่ต้องแก้ไข">
+    <strong class="store-validation-summary__title">กรุณาตรวจสอบข้อมูลต่อไปนี้</strong>
+    <ValidationSummary />
+</div>
+
+@code {
+    private ElementReference summaryElement;
+
+    public ValueTask FocusAsync() => summaryElement.FocusAsync();
+}

@@ -1,0 +1,29 @@
+<AdminModal @ref="modal" IsOpen="@IsOpen" IsOpenChanged="@IsOpenChanged" Title="@Title"
+            IsBusy="@IsBusy" InitialFocusSelector="[data-lifecycle-cancel]">
+    <ChildContent>
+        <div class="admin-product-lifecycle">
+            <p>@Description</p>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            { <StoreAlert Tone="StoreAlertTone.Error" Title="ไม่สามารถบันทึกได้" Message="@ErrorMessage" /> }
+        </div>
+    </ChildContent>
+    <Actions>
+        <StoreButtonGroup IsBusy="@IsBusy">
+            <StoreButton Tone="StoreButtonTone.Secondary" data-lifecycle-cancel OnClick="CancelAsync">ยกเลิก</StoreButton>
+            <StoreButton IsBusy="@IsBusy" LoadingText="กำลังบันทึก…" OnClick="ConfirmAsync">@ConfirmLabel</StoreButton>
+        </StoreButtonGroup>
+    </Actions>
+</AdminModal>
+@code {
+    private AdminModal? modal;
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter, EditorRequired] public required string Title { get; set; }
+    [Parameter, EditorRequired] public required string Description { get; set; }
+    [Parameter, EditorRequired] public required string ConfirmLabel { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback Confirmed { get; set; }
+    private Task ConfirmAsync() => IsBusy ? Task.CompletedTask : Confirmed.InvokeAsync();
+    private Task CancelAsync() => IsBusy ? Task.CompletedTask : modal?.RequestCloseAsync() ?? Task.CompletedTask;
+}

@@ -1,0 +1,91 @@
+:root {
+  /* Storefront colors: bright monochrome with a restrained lime accent. */
+  --color-bg: #f8f8f6;
+  --color-surface: #ffffff;
+  --color-ink: #111111;
+  --color-muted: #686864;
+  --color-line: #dededb;
+  --color-accent: #dfff29;
+  --color-danger: #b42318;
+  --color-success: #16794a;
+  --color-focus: #2563eb;
+
+  /* Admin colors: borderless Muted Ocean. */
+  --admin-accent: #3f91b8;
+  --admin-accent-strong: #2f789b;
+  --admin-accent-soft: #eaf6fb;
+  --admin-bg: #f5f8fa;
+  --admin-surface: #ffffff;
+  --admin-ink: #15212a;
+  --admin-muted: #667782;
+
+  /* Typography */
+  --font-family-base: "Noto Sans Thai", system-ui, -apple-system, sans-serif;
+  --font-size-display: 4.5rem;
+  --font-size-display-mobile: 3rem;
+  --font-size-h1: 3rem;
+  --font-size-h1-mobile: 2.375rem;
+  --font-size-h2: 2.25rem;
+  --font-size-h2-mobile: 1.75rem;
+  --font-size-h3: 1.375rem;
+  --font-size-h3-mobile: 1.125rem;
+  --font-size-body-lg: 1.125rem;
+  --font-size-body: 1rem;
+  --font-size-label: .8125rem;
+  --font-size-caption: .75rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+  --line-height-tight: 1.15;
+  --line-height-heading: 1.25;
+  --line-height-body: 1.6;
+
+  /* Four-pixel spacing scale */
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-11: 2.75rem;
+  --space-12: 3rem;
+  --space-13: 3.25rem;
+  --space-14: 3.5rem;
+  --space-15: 3.75rem;
+  --space-16: 4rem;
+  --space-17: 4.25rem;
+  --space-18: 4.5rem;
+
+  /* Shape and elevation */
+  --radius-sm: .25rem;
+  --radius-md: .5rem;
+  --radius-lg: .75rem;
+  --radius-pill: 999rem;
+  --shadow-sm: 0 1px 2px rgb(17 17 17 / 8%);
+  --shadow-md: 0 8px 24px rgb(17 17 17 / 12%);
+  --shadow-lg: 0 18px 45px rgb(17 17 17 / 16%);
+
+  /* Layout */
+  --content-max: 76.25rem;
+  --gutter-mobile: 1rem;
+  --gutter-tablet: 1.5rem;
+  --gutter-desktop: 2rem;
+  --section-space-min: var(--space-11);
+  --section-space-max: var(--space-18);
+  --z-header: 100;
+  --z-dropdown: 200;
+  --z-overlay: 300;
+  --z-toast: 400;
+
+  /* Motion */
+  --duration-fast: 160ms;
+  --duration-normal: 260ms;
+  --duration-slow: 600ms;
+  --ease-standard: cubic-bezier(.2,.8,.2,1);
+}

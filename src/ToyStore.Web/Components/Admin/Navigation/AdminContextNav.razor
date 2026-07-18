@@ -1,0 +1,20 @@
+<nav class="admin-context-nav" aria-label="@Label">
+    <div class="admin-context-nav__scroller">
+        @foreach (var item in Items)
+        {
+            var active = AdminRouteMatcher.IsContextActive(item.Href, CurrentUrl);
+            <a href="@item.Href" aria-current="@(active ? "page" : null)">@item.Label</a>
+        }
+    </div>
+</nav>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Label { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string CurrentUrl { get; set; }
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<AdminContextNavigationItem> Items { get; set; }
+}

@@ -1,0 +1,57 @@
+.admin-mobile-nav__trigger {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-mobile-nav__hint {
+  margin-block-end: var(--space-3);
+  color: var(--admin-muted);
+  font-size: .875rem;
+}
+
+.admin-mobile-nav nav,
+.admin-mobile-nav form {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.admin-mobile-nav nav a,
+.admin-mobile-nav form button {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.admin-mobile-nav nav a[aria-current="page"],
+.admin-mobile-nav nav a:hover,
+.admin-mobile-nav form button:hover {
+  background: var(--admin-accent-soft);
+}
+
+.admin-mobile-nav form {
+  margin-block-start: var(--space-6);
+}
+
+@media (min-width: 56.25rem) {
+  .admin-mobile-nav {
+    display: none;
+  }
+}

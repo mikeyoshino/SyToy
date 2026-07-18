@@ -1,0 +1,179 @@
+@implements IAsyncDisposable
+@using System.Globalization
+
+<fieldset class="admin-product-media" disabled="@Disabled" aria-invalid="@HasError" aria-describedby="@DescribedBy">
+    <legend>รูปภาพสินค้า</legend>
+    <p id="product-media-help">เลือกได้สูงสุด 8 รูป ไฟล์ละไม่เกิน 5 MB ลากเพื่อเรียงลำดับ รูปแรกใช้เป็นภาพหลัก</p>
+    <div @ref="root" data-admin-product-media>
+        <InputFile id="product-media-native"
+                   class="admin-product-media__native"
+                   accept="image/jpeg,image/png,image/webp"
+                   multiple
+                   tabindex="-1"
+                   aria-hidden="true"
+                   OnChange="HandleFilesAsync" />
+        <button type="button"
+                class="admin-product-media__picker"
+                aria-describedby="@DescribedBy"
+                aria-invalid="@HasError"
+                disabled="@(Disabled || State.Items.Count(item => item.BrowserFile is null) >= 8)"
+                @onclick="OpenPickerAsync">
+            <span class="admin-product-media__upload-icon" aria-hidden="true">↑</span>
+            <span class="admin-product-media__upload-copy">
+                <strong>@(State.HasPendingSelection ? "เปลี่ยนชุดรูปภาพ" : "เพิ่มรูปภาพสินค้า")</strong>
+                <span>JPEG, PNG หรือ WebP สูงสุด 8 รูป รูปละไม่เกิน 5 MB</span>
+            </span>
+            <span class="admin-product-media__upload-action">
+                @(State.HasPendingSelection ? "เลือกไฟล์ใหม่" : "เลือกไฟล์")
+            </span>
+        </button>
+    </div>
+    @if (HasError)
+    {
+        <p id="product-media-error" class="admin-product-media__error" role="alert">@EffectiveErrorMessage</p>
+    }
+
+    @if (State.Items.Count == 0)
+    {
+        <div class="admin-product-media__empty">ยังไม่มีรูปภาพ สามารถบันทึกเป็นฉบับร่างก่อนได้</div>
+    }
+    else
+    {
+        <ol class="admin-product-media__grid" aria-label="ลำดับรูปภาพสินค้า">
+            @for (var index = 0; index < State.Items.Count; index++)
+            {
+                var currentIndex = index;
+                var item = State.Items[index];
+                <li @key="item"
+                    class="admin-product-media__item"
+                    draggable="@(!Disabled)"
+                    tabindex="0"
+                    aria-label="รูปที่ @(currentIndex + 1) จาก @State.Items.Count"
+                    @ondragstart="() => dragIndex = currentIndex"
+                    @ondragover:preventDefault
+                    @ondrop="() => DropAsync(currentIndex)"
+                    @onkeydown="args => HandleReorderKeyAsync(args, currentIndex)">
+                    <img src="@item.PreviewUrl" alt="@item.AltText" />
+                    <span class="admin-product-media__position">
+                        @(currentIndex == 0 ? "ภาพหลัก" : $"ลำดับ {(currentIndex + 1).ToString(CultureInfo.InvariantCulture)}")
+                    </span>
+                    <div class="admin-product-media__actions">
+                        <button type="button" disabled="@(Disabled || currentIndex == 0)"
+                                aria-label="เลื่อนรูปไปก่อนหน้า" @onclick="() => MoveAsync(currentIndex, currentIndex - 1)">←</button>
+                        <button type="button" disabled="@(Disabled || currentIndex == State.Items.Count - 1)"
+                                aria-label="เลื่อนรูปไปถัดไป" @onclick="() => MoveAsync(currentIndex, currentIndex + 1)">→</button>
+                        <button type="button" disabled="@Disabled"
+                                aria-label="ลบรูปนี้" @onclick="() => RemoveAsync(currentIndex)">ลบ</button>
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+</fieldset>
+
+@code {
+    private ElementReference root;
+    private const long MaximumFileSize = 5 * 1024 * 1024;
+    private IJSObjectReference? module;
+    private int? dragIndex;
+    private string? localErrorMessage;
+
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+    [Parameter, EditorRequired] public required ProductMediaEditorState State { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+    [Parameter] public EventCallback<bool> ValidityChanged { get; set; }
+    [Parameter] public string? ExternalErrorMessage { get; set; }
+    private string? EffectiveErrorMessage => localErrorMessage ?? ExternalErrorMessage;
+    private bool HasError => !string.IsNullOrWhiteSpace(EffectiveErrorMessage);
+    private string DescribedBy => HasError ? "product-media-help product-media-error" : "product-media-help";
+
+    private async Task OpenPickerAsync()
+    {
+        module ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/Admin/Shared/AdminProductMediaField.razor.js");
+        await module.InvokeVoidAsync("openPicker", root);
+    }
+
+    private async Task HandleFilesAsync(InputFileChangeEventArgs args)
+    {
+        localErrorMessage = null;
+        State.RemovePending();
+        var available = 8 - State.Items.Count;
+        if (args.FileCount > available)
+        {
+            localErrorMessage = $"เลือกได้อีกไม่เกิน {available} รูป กรุณาเลือกไฟล์ใหม่";
+            await ClearNativeSelectionAsync();
+            await ValidityChanged.InvokeAsync(false);
+            await Changed.InvokeAsync();
+            return;
+        }
+
+        var files = args.GetMultipleFiles(8);
+        if (files.Any(file => file.Size > MaximumFileSize))
+        {
+            localErrorMessage = "รูปภาพแต่ละไฟล์ต้องมีขนาดไม่เกิน 5 MB กรุณาเลือกไฟล์ใหม่";
+            await ClearNativeSelectionAsync();
+            await ValidityChanged.InvokeAsync(false);
+            await Changed.InvokeAsync();
+            return;
+        }
+
+        module ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/Admin/Shared/AdminProductMediaField.razor.js");
+        var urls = await module.InvokeAsync<string[]>("createPreviews", root);
+        State.AddFiles(files, urls);
+        await ValidityChanged.InvokeAsync(true);
+        await Changed.InvokeAsync();
+    }
+
+    private async Task MoveAsync(int from, int to)
+    {
+        if (Disabled) return;
+        State.Move(from, to);
+        if (localErrorMessage is null) await ValidityChanged.InvokeAsync(true);
+        await Changed.InvokeAsync();
+    }
+
+    private Task DropAsync(int to)
+    {
+        if (Disabled) { dragIndex = null; return Task.CompletedTask; }
+        if (!dragIndex.HasValue) return Task.CompletedTask;
+        var from = dragIndex.Value;
+        dragIndex = null;
+        return MoveAsync(from, to);
+    }
+
+    private async Task RemoveAsync(int index)
+    {
+        if (Disabled) return;
+        State.Remove(index);
+        localErrorMessage = null;
+        if (!State.HasPendingSelection) await ClearNativeSelectionAsync();
+        await ValidityChanged.InvokeAsync(true);
+        await Changed.InvokeAsync();
+    }
+
+    private Task HandleReorderKeyAsync(KeyboardEventArgs args, int index) => Disabled
+        ? Task.CompletedTask
+        : args.Key switch
+        {
+            "ArrowLeft" or "ArrowUp" when index > 0 => MoveAsync(index, index - 1),
+            "ArrowRight" or "ArrowDown" when index < State.Items.Count - 1 => MoveAsync(index, index + 1),
+            _ => Task.CompletedTask,
+        };
+
+    private async Task ClearNativeSelectionAsync()
+    {
+        module ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/Admin/Shared/AdminProductMediaField.razor.js");
+        await module.InvokeVoidAsync("clear", root);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is null) return;
+        try { await module.InvokeVoidAsync("dispose", root); await module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

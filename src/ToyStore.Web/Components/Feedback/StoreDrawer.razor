@@ -1,0 +1,51 @@
+<StoreDialog @ref="dialog"
+             IsOpen="@IsOpen"
+             IsOpenChanged="@IsOpenChanged"
+             Title="@Title"
+             TitleContent="@TitleContent"
+             Actions="@Actions"
+             Dismissible="@Dismissible"
+             InitialFocusSelector="@InitialFocusSelector"
+             Closed="@Closed"
+             CssClass="@DrawerCssClass">
+    @ChildContent
+</StoreDialog>
+
+@code {
+    private StoreDialog? dialog;
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? TitleContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public bool Dismissible { get; set; } = true;
+
+    [Parameter]
+    public string? InitialFocusSelector { get; set; }
+
+    [Parameter]
+    public DrawerPlacement Placement { get; set; } = DrawerPlacement.End;
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    private string DrawerCssClass => $"store-drawer store-drawer--{Placement.ToString().ToLowerInvariant()}";
+
+    public Task CloseWithoutFocusReturnAsync() =>
+        dialog?.CloseWithoutFocusReturnAsync() ?? Task.CompletedTask;
+}

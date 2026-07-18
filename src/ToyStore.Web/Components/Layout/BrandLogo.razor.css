@@ -1,0 +1,11 @@
+.brand-logo {
+  display: block;
+  width: clamp(7.5rem, 9vw, 9rem);
+  height: auto;
+}
+
+.brand-logo--compact {
+  width: 2.75rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+}

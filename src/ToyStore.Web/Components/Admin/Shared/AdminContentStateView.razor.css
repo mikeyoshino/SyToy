@@ -1,0 +1,35 @@
+.admin-content-state {
+  min-height: 12rem;
+}
+
+.admin-content-state__loading,
+.admin-content-state__message {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-content-state__message {
+  min-height: 12rem;
+  place-content: center;
+  justify-items: start;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-content-state__action,
+.admin-content-state__custom-action ::deep :is(button, a) {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--admin-accent);
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}

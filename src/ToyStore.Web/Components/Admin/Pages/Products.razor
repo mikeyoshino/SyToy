@@ -1,0 +1,439 @@
+@page "/admin/products"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@attribute [Authorize(Policy = PolicyNames.CanManageProducts)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Characters
+@using ToyStore.Application.Common.Files
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.Products
+@using ToyStore.Application.Products.ArchiveProduct
+@using ToyStore.Application.Products.CreateInStockProduct
+@using ToyStore.Application.Products.CreatePreOrderProduct
+@using ToyStore.Application.Products.ManageProducts
+@using ToyStore.Application.Products.PublishProduct
+@using ToyStore.Application.Products.UpdateDraftInStockProduct
+@using ToyStore.Application.Products.UpdateDraftPreOrderProduct
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject AdminRequestExecutor RequestExecutor
+@inject NavigationManager NavigationManager
+@inject IStoreToastService ToastService
+
+<PageTitle>สินค้า</PageTitle>
+<AdminPageHeader Title="สินค้า" Description="ดูแลสินค้าแบบพร้อมส่ง ฉบับร่าง รูปภาพ ราคา และสถานะการขาย">
+    <Actions><StoreButton OnClick="OpenCreateAsync">เพิ่มสินค้า</StoreButton></Actions>
+</AdminPageHeader>
+<AdminContextNav Label="เมนูแคตตาล็อก" CurrentUrl="@NavigationManager.Uri" Items="AdminNavigation.CatalogContextItems" />
+
+<div class="admin-product-page">
+    <AdminProductFilterBar HistoryState="@filterState" BasePath="@BasePath"
+                           Categories="@categories" Brands="@filterBrands" Universes="@filterUniverses" />
+    <AdminContentStateView State="@contentState"
+                           LoadingMessage="กำลังโหลดรายการสินค้า"
+                           EmptyTitle="ยังไม่มีสินค้า"
+                           EmptyMessage="@EmptyMessage"
+                           EmptyActionLabel="@(IsFiltered ? "ล้างตัวกรอง" : "เพิ่มสินค้า")"
+                           EmptyActionClicked="HandleEmptyActionAsync"
+                           ErrorTitle="ไม่สามารถโหลดรายการสินค้าได้"
+                           ErrorMessage="@listErrorMessage" Retry="ReloadAsync">
+        <ReadyContent>
+            <AdminProductList Items="@items" CurrentPage="@currentPage" TotalPages="@totalPages"
+                              PageUrl="BuildPageUrl" EditRequested="OpenEditAsync"
+                              PublishRequested="OpenPublishAsync" ArchiveRequested="OpenArchiveAsync" />
+        </ReadyContent>
+    </AdminContentStateView>
+</div>
+
+<AdminModal @ref="editorModal" IsOpen="@isEditorOpen" IsOpenChanged="SetEditorOpenAsync"
+            Title="@(editingItem is null ? "เพิ่มสินค้า" : "แก้ไขสินค้า")"
+            IsBusy="@isEditorBusy" InitialFocusSelector=".store-field__control">
+    <ChildContent>
+        <AdminProductEditor @ref="editor" @key="editorModel" Model="@editorModel"
+                            IsCreate="@(editingItem is null)" IsBusy="@isEditorBusy"
+                            Categories="@categories" Brands="@editorBrands" Universes="@editorUniverses"
+                            Submitted="SaveEditorAsync" />
+    </ChildContent>
+    <Actions>
+        <StoreButtonGroup IsBusy="@isEditorBusy">
+            <StoreButton Tone="StoreButtonTone.Secondary" OnClick="CloseEditorAsync">ยกเลิก</StoreButton>
+            <StoreButton ButtonType="submit" Form="admin-product-editor-form"
+                         IsBusy="@isEditorBusy" LoadingText="กำลังบันทึก…">
+                บันทึกฉบับร่าง
+            </StoreButton>
+        </StoreButtonGroup>
+    </Actions>
+</AdminModal>
+
+<AdminProductLifecycleDialog IsOpen="@isLifecycleOpen" IsOpenChanged="SetLifecycleOpenAsync"
+                             Title="@(lifecycleAction == LifecycleAction.Publish ? "เผยแพร่สินค้า" : "เก็บสินค้า")"
+                             Description="@LifecycleDescription" ConfirmLabel="@(lifecycleAction == LifecycleAction.Publish ? "เผยแพร่" : "เก็บสินค้า")"
+                             IsBusy="@isLifecycleBusy" ErrorMessage="@lifecycleError" Confirmed="ConfirmLifecycleAsync" />
+
+@code {
+    private const string BasePath = "/admin/products";
+    private const long BrowserUploadReadLimit = 5 * 1024 * 1024 + 1;
+    private static readonly TimeSpan BrowserUploadTimeout = TimeSpan.FromSeconds(45);
+    private static readonly Error BrowserUploadTimedOut = new(
+        "Media.BrowserUploadTimedOut",
+        "ใช้เวลาอ่านรูปภาพนานเกินไป กรุณาเลือกรูปภาพใหม่แล้วลองอีกครั้ง",
+        ErrorType.Validation);
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private CancellationTokenSource? loadTokenSource;
+    private long loadGeneration;
+    private AdminContentState contentState = AdminContentState.Loading;
+    private AdminProductFilterQueryState filterState = new();
+    private IReadOnlyList<ProductManagementItem> items = [];
+    private IReadOnlyList<ProductManagementReferenceOption> categories = [];
+    private IReadOnlyList<ProductManagementReferenceOption> filterBrands = [];
+    private IReadOnlyList<ProductManagementReferenceOption> filterUniverses = [];
+    private IReadOnlyList<ProductManagementReferenceOption> activeEditorBrands = [];
+    private IReadOnlyList<ProductManagementReferenceOption> activeEditorUniverses = [];
+    private IReadOnlyList<ProductManagementReferenceOption> editorBrands = [];
+    private IReadOnlyList<ProductManagementReferenceOption> editorUniverses = [];
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private string listErrorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+    private AdminModal? editorModal;
+    private AdminProductEditor? editor;
+    private AdminProductEditorModel editorModel = new();
+    private ProductManagementItem? editingItem;
+    private bool isEditorOpen;
+    private bool isEditorBusy;
+    private ProductManagementItem? lifecycleItem;
+    private LifecycleAction lifecycleAction;
+    private bool isLifecycleOpen;
+    private bool isLifecycleBusy;
+    private string? lifecycleError;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public string? Category { get; set; }
+    [SupplyParameterFromQuery(Name = "brand")] public string? Brand { get; set; }
+    [SupplyParameterFromQuery(Name = "universe")] public string? Universe { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public string? Page { get; set; }
+    private bool IsFiltered => !string.IsNullOrWhiteSpace(filterState.Search)
+        || filterState.Status != "active"
+        || filterState.ProductCategoryId.HasValue
+        || filterState.BrandId.HasValue
+        || filterState.UniverseId.HasValue;
+    private string EmptyMessage => IsFiltered ? "ไม่พบสินค้าที่ตรงกับตัวกรอง" : "เพิ่มสินค้าแบบพร้อมส่งรายการแรกเพื่อเริ่มสร้างแคตตาล็อก";
+    private string LifecycleDescription => lifecycleItem is null ? "ยืนยันการดำเนินการ" : lifecycleAction == LifecycleAction.Publish
+        ? $"เผยแพร่ {lifecycleItem.DisplayName} ให้ลูกค้ามองเห็นและสั่งซื้อ"
+        : $"เก็บ {lifecycleItem.DisplayName} ออกจากการขาย รายการสั่งซื้อเดิมยังคงอยู่";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var requested = new AdminProductFilterQueryState(
+            Search,
+            NormalizeStatus(Status),
+            ParseOptionalGuid(Category),
+            ParseOptionalGuid(Brand),
+            ParseOptionalGuid(Universe),
+            ParsePage(Page));
+        var canonicalUrl = AdminProductFilterBar.BuildCanonicalUrl(BasePath, requested);
+        if (!CurrentRelativeUrl().Equals(canonicalUrl, StringComparison.Ordinal))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(canonicalUrl, replace: true);
+            return;
+        }
+
+        filterState = requested;
+        await LoadAsync(requested);
+    }
+
+    private Task ReloadAsync() => LoadAsync(filterState);
+    private async Task LoadAsync(AdminProductFilterQueryState requested)
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var nextTokenSource = CancellationTokenSource.CreateLinkedTokenSource(disposalTokenSource.Token);
+        var previousTokenSource = Interlocked.Exchange(ref loadTokenSource, nextTokenSource);
+        if (previousTokenSource is not null)
+        {
+            await previousTokenSource.CancelAsync();
+            previousTokenSource.Dispose();
+        }
+
+        contentState = AdminContentState.Loading;
+        Result<ProductManagementPage> result;
+        try
+        {
+            result = await RequestExecutor.ExecuteAsync(
+                token => Sender.Send(new ManageProductsQuery(
+                    Search: requested.Search,
+                    Status: ParseStatus(requested.Status),
+                    ProductCategoryId: requested.ProductCategoryId,
+                    BrandId: requested.BrandId,
+                    UniverseId: requested.UniverseId,
+                    Page: requested.Page,
+                    PageSize: 20), token),
+                nextTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (nextTokenSource.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (generation != Volatile.Read(ref loadGeneration) || nextTokenSource.IsCancellationRequested) return;
+        if (result.IsFailure)
+        {
+            listErrorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+            contentState = AdminContentState.Error;
+            return;
+        }
+        var page = result.Value;
+        items = page.Items;
+        categories = page.Categories;
+        filterBrands = page.BrandFilterOptions;
+        filterUniverses = page.UniverseFilterOptions;
+        activeEditorBrands = page.BrandEditorOptions;
+        activeEditorUniverses = page.UniverseEditorOptions;
+        currentPage = page.PageNumber;
+        totalPages = Math.Max(1, page.TotalPages);
+        if (currentPage != requested.Page)
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(AdminProductFilterBar.BuildCanonicalUrl(
+                BasePath, requested with { Page = currentPage }), replace: true);
+            return;
+        }
+        contentState = items.Count == 0 ? AdminContentState.Empty : AdminContentState.Ready;
+    }
+
+    private Task HandleEmptyActionAsync()
+    {
+        if (IsFiltered) NavigationManager.NavigateTo(BasePath);
+        return IsFiltered ? Task.CompletedTask : OpenCreateAsync();
+    }
+
+    private Task OpenCreateAsync()
+    {
+        editingItem = null;
+        editorBrands = activeEditorBrands;
+        editorUniverses = activeEditorUniverses;
+        editorModel = new AdminProductEditorModel { InitialStock = 0, BalancePaymentDays = 7 };
+        isEditorOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenEditAsync(ProductManagementItem item)
+    {
+        editingItem = item;
+        editorBrands = IncludeCurrentReference(
+            activeEditorBrands,
+            filterBrands,
+            item.BrandId,
+            item.BrandName);
+        editorUniverses = IncludeCurrentReference(
+            activeEditorUniverses,
+            filterUniverses,
+            item.UniverseId,
+            item.UniverseName);
+        editorModel = new AdminProductEditorModel
+        {
+            DisplayName = item.DisplayName, EnglishName = item.EnglishName, Description = item.Description,
+            ProductCategoryId = item.ProductCategoryId, BrandId = item.BrandId, UniverseId = item.UniverseId,
+            SaleType = item.SaleType,
+            Price = item.SaleType == ProductManagementSaleType.InStock ? item.Price : null,
+            FullPrice = item.FullPrice,
+            DepositAmount = item.DepositAmount,
+            CloseDate = item.CloseAtUtc.HasValue ? BangkokDate(item.CloseAtUtc.Value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null,
+            EstimatedArrivalMonth = item.EstimatedArrivalMonth,
+            EstimatedArrivalYear = item.EstimatedArrivalYear,
+            TotalCapacity = item.TotalCapacity,
+            MaxPerCustomer = item.MaxPerCustomer,
+            BalancePaymentDays = item.BalancePaymentDays,
+            Characters = item.Characters.Select(x => new CharacterOption(x.Id, x.UniverseId, x.Name)).ToArray(),
+        };
+        editorModel.Media.Load(item.Images);
+        isEditorOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveEditorAsync(AdminProductEditorModel model)
+    {
+        if (isEditorBusy) return;
+        isEditorBusy = true;
+        try
+        {
+            var result = await ExecuteSaveAsync(model);
+            if (result.IsFailure)
+            {
+                var failureMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage
+                    ?? result.Error.Message;
+                await editor!.DisplayFailureAsync(result);
+                ToastService.ShowError(failureMessage, "บันทึกล้มเหลว");
+                return;
+            }
+
+            var title = editingItem is null
+                ? "บันทึกสำเร็จ"
+                : "อัปเดตสำเร็จ";
+            var successMessage = editingItem is null
+                ? $"เพิ่มสินค้า {result.Value.DisplayName} เป็นฉบับร่างแล้ว กด “เผยแพร่หน้าร้าน” ในคอลัมน์จัดการเพื่อให้ลูกค้าเห็นสินค้า"
+                : $"บันทึกสินค้า {result.Value.DisplayName} แล้ว";
+            ToastService.ShowSuccess(successMessage, title);
+            isEditorOpen = false;
+            await ReloadAsync();
+        }
+        finally { isEditorBusy = false; }
+    }
+
+    private Task<Result<ProductMutationResult>> ExecuteSaveAsync(AdminProductEditorModel model) =>
+        RequestExecutor.ExecuteAsync(async token =>
+        {
+            var oversized = model.Media.Items.FirstOrDefault(item => item.BrowserFile?.Size > BrowserUploadReadLimit);
+            if (oversized is not null)
+                return Result<ProductMutationResult>.Failure(MediaStorageErrors.TooLarge,
+                    [new FieldValidationFailure("Images", MediaStorageErrors.TooLarge.Message)]);
+            var streams = new List<Stream>();
+            try
+            {
+                var plans = new List<ProductMediaPlanSlot>();
+                using var uploadTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                uploadTimeout.CancelAfter(BrowserUploadTimeout);
+                foreach (var item in model.Media.Items)
+                {
+                    if (item.ProductImageId.HasValue) plans.Add(new RetainedProductMediaSlot(item.ProductImageId.Value));
+                    else if (item.BrowserFile is { } file)
+                    {
+                        try
+                        {
+                            await using var browserStream = file.OpenReadStream(
+                                BrowserUploadReadLimit,
+                                uploadTimeout.Token);
+                            var bufferedStream = new MemoryStream(
+                                file.Size <= int.MaxValue ? (int)file.Size : 0);
+                            try
+                            {
+                                await browserStream.CopyToAsync(
+                                    bufferedStream,
+                                    uploadTimeout.Token);
+                                bufferedStream.Position = 0;
+                                streams.Add(bufferedStream);
+                                plans.Add(new UploadProductMediaSlot(
+                                    new MediaUpload(bufferedStream, file.ContentType)));
+                            }
+                            catch
+                            {
+                                await bufferedStream.DisposeAsync();
+                                throw;
+                            }
+                        }
+                        catch (OperationCanceledException)
+                            when (uploadTimeout.IsCancellationRequested && !token.IsCancellationRequested)
+                        {
+                            return Result<ProductMutationResult>.Failure(
+                                BrowserUploadTimedOut,
+                                [new FieldValidationFailure(
+                                    nameof(CreatePreOrderProductCommand.Images),
+                                    BrowserUploadTimedOut.Message)]);
+                        }
+                    }
+                }
+                if (editingItem is null && model.SaleType == ProductManagementSaleType.PreOrder)
+                {
+                    _ = DateOnly.TryParseExact(model.CloseDate, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var closeDate);
+                    return await Sender.Send(new CreatePreOrderProductCommand(
+                        model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
+                        model.ProductCategoryId, model.BrandId, model.UniverseId,
+                        model.Characters.Select(x => x.Id).ToArray(), model.FullPrice ?? 0,
+                        model.DepositAmount ?? 0, closeDate, model.EstimatedArrivalMonth ?? 0,
+                        model.EstimatedArrivalYear ?? 0, model.TotalCapacity ?? 0,
+                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans), token);
+                }
+                if (editingItem is not null && model.SaleType == ProductManagementSaleType.PreOrder)
+                {
+                    _ = DateOnly.TryParseExact(model.CloseDate, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var closeDate);
+                    return await Sender.Send(new UpdateDraftPreOrderProductCommand(
+                        editingItem.Id, editingItem.Version,
+                        model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
+                        model.ProductCategoryId, model.BrandId, model.UniverseId,
+                        model.Characters.Select(x => x.Id).ToArray(), model.FullPrice ?? 0,
+                        model.DepositAmount ?? 0, closeDate, model.EstimatedArrivalMonth ?? 0,
+                        model.EstimatedArrivalYear ?? 0, model.TotalCapacity ?? 0,
+                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans), token);
+                }
+                return editingItem is null
+                    ? await Sender.Send(new CreateInStockProductCommand(
+                        model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
+                        model.ProductCategoryId, model.BrandId, model.UniverseId,
+                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, model.InitialStock ?? 0, plans), token)
+                    : await Sender.Send(new UpdateDraftInStockProductCommand(
+                        editingItem.Id, editingItem.Version, model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
+                        model.ProductCategoryId, model.BrandId, model.UniverseId,
+                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, plans), token);
+            }
+            finally { foreach (var stream in streams) await stream.DisposeAsync(); }
+        }, disposalTokenSource.Token);
+
+    private Task CloseEditorAsync() => isEditorBusy ? Task.CompletedTask : editorModal?.RequestCloseAsync() ?? Task.CompletedTask;
+    private Task SetEditorOpenAsync(bool value) { isEditorOpen = value; if (!value && !isEditorBusy) editingItem = null; return Task.CompletedTask; }
+    private Task OpenPublishAsync(ProductManagementItem item) => OpenLifecycleAsync(item, LifecycleAction.Publish);
+    private Task OpenArchiveAsync(ProductManagementItem item) => OpenLifecycleAsync(item, LifecycleAction.Archive);
+    private Task OpenLifecycleAsync(ProductManagementItem item, LifecycleAction action)
+    { lifecycleItem = item; lifecycleAction = action; lifecycleError = null; isLifecycleOpen = true; return Task.CompletedTask; }
+    private Task SetLifecycleOpenAsync(bool value) { isLifecycleOpen = value; if (!value && !isLifecycleBusy) lifecycleItem = null; return Task.CompletedTask; }
+    private async Task ConfirmLifecycleAsync()
+    {
+        if (isLifecycleBusy || lifecycleItem is null) return;
+        isLifecycleBusy = true;
+        try
+        {
+            var result = lifecycleAction == LifecycleAction.Publish
+                ? await RequestExecutor.ExecuteAsync(token => Sender.Send(new PublishProductCommand(lifecycleItem.Id, lifecycleItem.Version), token), disposalTokenSource.Token)
+                : await RequestExecutor.ExecuteAsync(token => Sender.Send(new ArchiveProductCommand(lifecycleItem.Id, lifecycleItem.Version), token), disposalTokenSource.Token);
+            if (result.IsFailure)
+            {
+                var failureMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage
+                    ?? result.Error.Message;
+                lifecycleError = failureMessage;
+                ToastService.ShowError(failureMessage, "ไม่สามารถดำเนินการได้");
+                return;
+            }
+
+            var successMessage = lifecycleAction == LifecycleAction.Publish
+                ? $"เผยแพร่ {result.Value.DisplayName} แล้ว"
+                : $"เก็บ {result.Value.DisplayName} แล้ว";
+            ToastService.ShowSuccess(
+                successMessage,
+                lifecycleAction == LifecycleAction.Publish ? "เผยแพร่สำเร็จ" : "เก็บสำเร็จ");
+            isLifecycleOpen = false;
+            await ReloadAsync();
+        }
+        finally { isLifecycleBusy = false; }
+    }
+    private string BuildPageUrl(int page) => AdminProductFilterBar.BuildCanonicalUrl(BasePath, filterState with { Page = page });
+    private static int ParsePage(string? value) => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var page) && page > 0 ? page : 1;
+    private static string NormalizeStatus(string? value) => value?.Trim().ToLowerInvariant() switch { "draft" => "draft", "published" => "published", "archived" => "archived", _ => "active" };
+    private static ProductManagementStatus? ParseStatus(string value) => value switch { "draft" => ProductManagementStatus.Draft, "published" => ProductManagementStatus.Published, "archived" => ProductManagementStatus.Archived, _ => null };
+    private static Guid? ParseOptionalGuid(string? value) => Guid.TryParse(value, out var id) && id != Guid.Empty ? id : null;
+    private static DateOnly BangkokDate(DateTimeOffset value) => DateOnly.FromDateTime(
+        TimeZoneInfo.ConvertTime(value, TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok")).DateTime);
+    private static IReadOnlyList<ProductManagementReferenceOption> IncludeCurrentReference(
+        IReadOnlyList<ProductManagementReferenceOption> activeOptions,
+        IReadOnlyList<ProductManagementReferenceOption> filterOptions,
+        Guid currentId,
+        string currentName)
+    {
+        if (activeOptions.Any(option => option.Id == currentId)) return activeOptions;
+        var historical = filterOptions.FirstOrDefault(option => option.Id == currentId)
+            ?? new ProductManagementReferenceOption(currentId, currentName, IsActive: false);
+        return activeOptions.Append(historical with { IsActive = false })
+            .OrderBy(option => option.Name)
+            .ToArray();
+    }
+    private string CurrentRelativeUrl() { var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri); return relative.Length == 0 ? "/" : $"/{relative}"; }
+    private async Task CancelCurrentLoadAsync()
+    {
+        Interlocked.Increment(ref loadGeneration);
+        var current = Interlocked.Exchange(ref loadTokenSource, null);
+        if (current is not null) { await current.CancelAsync(); current.Dispose(); }
+    }
+    public async ValueTask DisposeAsync() { await CancelCurrentLoadAsync(); await disposalTokenSource.CancelAsync(); disposalTokenSource.Dispose(); }
+    private enum LifecycleAction { Publish, Archive }
+}

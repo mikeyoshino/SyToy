@@ -1,0 +1,41 @@
+<div class="store-field">
+    <label class="store-field__label" id="@(FieldId)-label" for="@FieldId">
+        @Label
+        @if (Required)
+        {
+            <span class="store-field__required" aria-hidden="true">*</span>
+            <span class="visually-hidden">จำเป็น</span>
+        }
+    </label>
+
+    @ChildContent
+
+    @if (!string.IsNullOrWhiteSpace(HelpText))
+    {
+        <div class="store-field__help" id="@(FieldId)-help">@HelpText</div>
+    }
+
+    <div class="store-field__error" id="@(FieldId)-error">
+        @ErrorContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string FieldId { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Label { get; set; }
+
+    [Parameter]
+    public string? HelpText { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter, EditorRequired]
+    public required RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? ErrorContent { get; set; }
+}

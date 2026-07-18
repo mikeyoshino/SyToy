@@ -1,0 +1,100 @@
+<nav class="admin-pagination" aria-label="การแบ่งหน้า">
+    @BoundaryLink("ไปหน้าแรก", 1, CurrentPage <= 1, "หน้าแรก")
+    @BoundaryLink("ไปหน้าก่อนหน้า", CurrentPage - 1, CurrentPage <= 1, "ก่อนหน้า")
+    <ol>
+        @foreach (var pageNumber in VisiblePages)
+        {
+            <li>
+                @if (pageNumber is null)
+                {
+                    <span class="admin-pagination__ellipsis" aria-hidden="true">…</span>
+                }
+                else if (pageNumber == CurrentPage)
+                {
+                    <span class="admin-pagination__current" aria-current="page">@pageNumber</span>
+                }
+                else
+                {
+                    <a href="@PageUrl(pageNumber.Value)" aria-label="ไปหน้า @pageNumber">@pageNumber</a>
+                }
+            </li>
+        }
+    </ol>
+    @BoundaryLink("ไปหน้าถัดไป", CurrentPage + 1, CurrentPage >= TotalPages, "ถัดไป")
+    @BoundaryLink("ไปหน้าสุดท้าย", TotalPages, CurrentPage >= TotalPages, "หน้าสุดท้าย")
+</nav>
+
+@code {
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int TotalPages { get; set; } = 1;
+
+    [Parameter, EditorRequired]
+    public required Func<int, string> PageUrl { get; set; }
+
+    private IReadOnlyList<int?> VisiblePages => BuildVisiblePages(CurrentPage, TotalPages);
+
+    protected override void OnParametersSet()
+    {
+        if (TotalPages < 1 || CurrentPage < 1 || CurrentPage > TotalPages)
+        {
+            throw new InvalidOperationException("Pagination boundaries are invalid.");
+        }
+    }
+
+    private RenderFragment BoundaryLink(
+        string ariaLabel,
+        int page,
+        bool disabled,
+        string text) => builder =>
+    {
+        if (disabled)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "admin-pagination__boundary");
+            builder.AddAttribute(2, "aria-label", ariaLabel);
+            builder.AddAttribute(3, "aria-disabled", "true");
+            builder.AddContent(4, text);
+            builder.CloseElement();
+            return;
+        }
+
+        builder.OpenElement(5, "a");
+        builder.AddAttribute(6, "class", "admin-pagination__boundary");
+        builder.AddAttribute(7, "aria-label", ariaLabel);
+        builder.AddAttribute(8, "href", PageUrl(page));
+        builder.AddContent(9, text);
+        builder.CloseElement();
+    };
+
+    private static IReadOnlyList<int?> BuildVisiblePages(int current, int total)
+    {
+        if (total <= 7)
+        {
+            return Enumerable.Range(1, total).Select(page => (int?)page).ToArray();
+        }
+
+        var pages = new List<int?> { 1 };
+        var start = Math.Max(2, current - 1);
+        var end = Math.Min(total - 1, current + 1);
+        if (start > 2)
+        {
+            pages.Add(null);
+        }
+
+        for (var page = start; page <= end; page++)
+        {
+            pages.Add(page);
+        }
+
+        if (end < total - 1)
+        {
+            pages.Add(null);
+        }
+
+        pages.Add(total);
+        return pages;
+    }
+}

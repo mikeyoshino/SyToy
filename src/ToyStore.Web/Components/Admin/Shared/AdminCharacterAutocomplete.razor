@@ -1,0 +1,86 @@
+@using System.Linq.Expressions
+@using ToyStore.Application.Characters
+@inject AdminCharacterAutocompleteAdapter Adapter
+
+<StoreAutocompleteMultiSelect TOwner="Guid"
+                              TOption="CharacterOption"
+                              TKey="Guid"
+                              Id="@Id"
+                              Owner="@UniverseId"
+                              Values="@Values"
+                              ValuesChanged="@ValuesChanged"
+                              ValuesExpression="@ValuesExpression"
+                              OptionKey="CharacterKey"
+                              OptionLabel="CharacterLabel"
+                              OptionId="CharacterDomId"
+                              Search="@EffectiveSearch"
+                              InlineCreate="@EffectiveInlineCreate"
+                              Copy="CharacterCopy"
+                              HelpText="@EffectiveHelpText"
+                              Required="@Required"
+                              Disabled="@IsDisabled" />
+
+@code {
+    private static readonly AutocompleteMultiSelectCopy CharacterCopy = new(
+        label: "ตัวละคร",
+        placeholder: "ค้นหาตัวละคร",
+        loading: "กำลังค้นหาตัวละคร",
+        empty: "ไม่พบตัวละคร",
+        results: count => $"พบตัวละคร {count} รายการ",
+        createLabel: term => $"เพิ่มตัวละคร “{term}”",
+        removeLabel: label => $"นำ {label} ออกจากตัวละคร",
+        selected: label => $"เลือก {label} แล้ว",
+        removed: label => $"นำ {label} ออกแล้ว");
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public Guid UniverseId { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<CharacterOption> Values { get; set; } = Array.Empty<CharacterOption>();
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<CharacterOption>> ValuesChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Expression<Func<IReadOnlyList<CharacterOption>>> ValuesExpression { get; set; } = default!;
+
+    [Parameter]
+    public string? HelpText { get; set; } = "ค้นหาและเลือกได้หลายตัวละคร";
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public Func<Guid, string, CancellationToken,
+        Task<AutocompleteSearchResult<CharacterOption>>>? SearchOverride { get; set; }
+
+    [Parameter]
+    public Func<Guid, string, CancellationToken,
+        Task<AutocompleteCreateResult<CharacterOption>>>? InlineCreateOverride { get; set; }
+
+    private bool IsDisabled => Disabled || UniverseId == Guid.Empty;
+
+    private string? EffectiveHelpText => UniverseId == Guid.Empty
+        ? "เลือกจักรวาลก่อน"
+        : HelpText;
+
+    private Func<Guid, string, CancellationToken,
+        Task<AutocompleteSearchResult<CharacterOption>>> EffectiveSearch =>
+        SearchOverride ?? Adapter.SearchAsync;
+
+    private Func<Guid, string, CancellationToken,
+        Task<AutocompleteCreateResult<CharacterOption>>> EffectiveInlineCreate =>
+        InlineCreateOverride ?? Adapter.CreateAsync;
+
+    private static Guid CharacterKey(CharacterOption option) => option.Id;
+
+    private static string CharacterLabel(CharacterOption option) => option.Name;
+
+    private static string CharacterDomId(CharacterOption option) => option.Id.ToString("N");
+}

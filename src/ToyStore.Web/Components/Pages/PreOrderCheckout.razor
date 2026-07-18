@@ -1,0 +1,261 @@
+@page "/checkout/preorder/{ProductId:guid}"
+@page "/checkout/preorder/return"
+@attribute [Authorize(Roles = RoleNames.Customer)]
+@using MediatR
+@using ToyStore.Application.Checkout.BeginPreOrderCheckout
+@using ToyStore.Application.Checkout.GetPreOrderCheckoutStatus
+@using ToyStore.Application.PreOrders.GetPreOrderCheckoutEligibility
+@inject ISender Sender
+@inject IJSRuntime JsRuntime
+@inject ILogger<PreOrderCheckout> Logger
+@implements IAsyncDisposable
+
+<PageTitle>ชำระมัดจำพรีออเดอร์ | SY TOY</PageTitle>
+
+<main class="preorder-checkout store-container">
+    @if (isLoading)
+    {
+        <div class="preorder-checkout__state" role="status"><h1>กำลังเตรียมการสั่งพรีออเดอร์</h1><p>กรุณารอสักครู่</p></div>
+    }
+    else if (completedStatus is not null)
+    {
+        <section class="preorder-checkout__result" aria-labelledby="checkout-success-title">
+            <p class="preorder-checkout__eyebrow">ชำระมัดจำสำเร็จ</p>
+            <h1 id="checkout-success-title">รับคำสั่งพรีออเดอร์แล้ว</h1>
+            <StoreAlert Tone="StoreAlertTone.Success" Title="Stripe ยืนยันการชำระเงินแล้ว"
+                        Message="ระบบสร้างคำสั่งซื้อเพียงครั้งเดียวและบันทึกมัดจำเรียบร้อย" />
+            <dl class="preorder-checkout__summary">
+                <div><dt>เลขคำสั่งซื้อ</dt><dd>@completedStatus.OrderNumber</dd></div>
+                <div><dt>สินค้า</dt><dd>@completedStatus.ProductName</dd></div>
+                <div><dt>มัดจำที่ชำระ</dt><dd>฿@completedStatus.PaymentAmount.ToString("N2")</dd></div>
+            </dl>
+            <div class="preorder-checkout__result-actions">
+                <a class="store-action store-action--primary" href="@OrderUrl(completedStatus.OrderNumber!)">ดูรายละเอียดคำสั่งซื้อ</a>
+                <a class="store-action" href="/products">เลือกดูสินค้าเพิ่มเติม</a>
+            </div>
+        </section>
+    }
+    else if (isProcessingPayment)
+    {
+        <div class="preorder-checkout__state" role="status" aria-live="polite">
+            <h1>กำลังยืนยันการชำระเงิน</h1>
+            <p>ระบบกำลังรอหลักฐานจาก Stripe กรุณาอย่าปิดหน้านี้</p>
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <StoreAlert Tone="StoreAlertTone.Warning" Title="ยังรอการยืนยัน" Message="@errorMessage" />
+                <StoreButton OnClick="CheckPaymentStatusAsync">ตรวจสอบอีกครั้ง</StoreButton>
+            }
+        </div>
+    }
+    else if (checkout is not null)
+    {
+        <header class="preorder-checkout__header">
+            <p class="preorder-checkout__eyebrow">ชำระมัดจำอย่างปลอดภัย</p>
+            <h1>ชำระมัดจำพรีออเดอร์</h1>
+            <p>จำนวนถูกกันไว้ชั่วคราวถึง @checkout.ExpiresAtUtc.ToLocalTime().ToString("HH:mm น.")</p>
+        </header>
+        <div class="preorder-checkout__payment-layout">
+            <section class="preorder-checkout__panel" aria-labelledby="payment-title">
+                <h2 id="payment-title">ช่องทางชำระเงิน</h2>
+                <div id="stripe-preorder-checkout" class="preorder-checkout__stripe" aria-live="polite"></div>
+            </section>
+            <aside class="preorder-checkout__panel preorder-checkout__order-summary" aria-label="สรุปรายการ">
+                <h2>สรุปรายการ</h2>
+                <strong>@checkout.ProductName</strong>
+                <dl class="preorder-checkout__summary">
+                    <div><dt>จำนวน</dt><dd>@checkout.Quantity ชิ้น</dd></div>
+                    <div><dt>มัดจำต่อชิ้น</dt><dd>฿@checkout.DepositAmount.ToString("N2")</dd></div>
+                    <div><dt>ชำระตอนนี้</dt><dd>฿@checkout.PaymentAmount.ToString("N2")</dd></div>
+                    <div><dt>ยอดคงเหลือต่อชิ้น</dt><dd>฿@checkout.BalanceAmount.ToString("N2")</dd></div>
+                </dl>
+            </aside>
+        </div>
+    }
+    else if (eligibility is not null)
+    {
+        <header class="preorder-checkout__header">
+            <p class="preorder-checkout__eyebrow">ขั้นตอนที่ 1 จาก 2</p>
+            <h1>ที่อยู่จัดส่ง</h1>
+            <p>กรอกข้อมูลผู้รับก่อนเข้าสู่การชำระมัดจำผ่าน Stripe</p>
+        </header>
+        <div class="preorder-checkout__layout">
+            <section class="preorder-checkout__panel">
+                <EditForm id="preorder-address-form" EditContext="@editContext" FormName="preorder-address" OnSubmit="BeginCheckoutAsync">
+                    <StoreValidationSummary />
+                    @if (errorMessages.Count != 0)
+                    {
+                        <StoreAlert Tone="StoreAlertTone.Error" Title="ยังเริ่มชำระเงินไม่ได้">
+                            <ul>@foreach (var message in errorMessages) { <li>@message</li> }</ul>
+                        </StoreAlert>
+                    }
+                    <div class="preorder-checkout__fields">
+                        <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
+                        <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
+                        <div class="preorder-checkout__field-wide">
+                            <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
+                        </div>
+                        <ThaiAddressFields Model="address" Disabled="@isSubmitting" />
+                    </div>
+                </EditForm>
+            </section>
+            <aside class="preorder-checkout__panel preorder-checkout__order-summary" aria-label="สรุปรายการ">
+                <h2>สรุปรายการ</h2>
+                <strong>@eligibility.DisplayName</strong>
+                <dl class="preorder-checkout__summary">
+                    <div><dt>จำนวน</dt><dd>@eligibility.RequestedQuantity ชิ้น</dd></div>
+                    <div><dt>มัดจำต่อชิ้น</dt><dd>฿@eligibility.DepositAmount.ToString("N2")</dd></div>
+                    <div><dt>ชำระตอนนี้</dt><dd>฿@((eligibility.DepositAmount * eligibility.RequestedQuantity).ToString("N2"))</dd></div>
+                    <div><dt>จัดส่ง</dt><dd>ฟรี</dd></div>
+                </dl>
+                <StoreAlert Tone="StoreAlertTone.Warning" Title="เงื่อนไขมัดจำ"
+                            Message="มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือชำระยอดคงเหลือเกินกำหนด" />
+                <StoreButton ButtonType="submit" Form="preorder-address-form" FullWidth="true"
+                             IsBusy="@isSubmitting" LoadingText="กำลังเตรียมชำระเงิน…">
+                    ไปชำระมัดจำ
+                </StoreButton>
+            </aside>
+        </div>
+    }
+    else
+    {
+        <div class="preorder-checkout__state" role="alert">
+            <h1>เริ่มพรีออเดอร์ไม่ได้</h1>
+            <p>@errorMessage</p>
+            <a href="/products">กลับไปดูสินค้า</a>
+        </div>
+    }
+</main>
+
+@code {
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly ShippingAddressFormModel address = new();
+    private readonly EditContext editContext;
+    private PreOrderCheckoutEligibilityResult? eligibility;
+    private BeginPreOrderCheckoutResult? checkout;
+    private ToyStore.Application.Checkout.PreOrderCheckoutStatusResult? completedStatus;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<PreOrderCheckout>? dotNetReference;
+    private IReadOnlyList<string> errorMessages = [];
+    private Guid clientRequestId = Guid.NewGuid();
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private bool isProcessingPayment;
+    private bool stripeMounted;
+    private string errorMessage = "ไม่พบรายการพรีออเดอร์ที่ต้องการ";
+
+    private static string OrderUrl(string orderNumber) =>
+        $"/account/orders/{Uri.EscapeDataString(orderNumber)}";
+
+    public PreOrderCheckout() => editContext = new EditContext(address);
+
+    [Parameter] public Guid ProductId { get; set; }
+    [SupplyParameterFromQuery(Name = "quantity")] public int Quantity { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "attempt")] public Guid? AttemptId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AttemptId.HasValue)
+        {
+            isLoading = false;
+            isProcessingPayment = true;
+            await PollPaymentStatusAsync();
+            return;
+        }
+        if (ProductId == Guid.Empty || Quantity <= 0) { isLoading = false; return; }
+        try
+        {
+            var result = await Sender.Send(new GetPreOrderCheckoutEligibilityQuery(ProductId, Quantity), disposalTokenSource.Token);
+            if (result.IsSuccess) eligibility = result.Value;
+            else errorMessage = result.Error.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Pre-order checkout eligibility failed for {ProductId}.", ProductId);
+            errorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง";
+        }
+        finally { isLoading = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (checkout is null || stripeMounted) return;
+        stripeMounted = true;
+        module ??= await JsRuntime.InvokeAsync<IJSObjectReference>("import", disposalTokenSource.Token,
+            "./Components/Pages/PreOrderCheckout.razor.js");
+        dotNetReference ??= DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("mount", disposalTokenSource.Token, "#stripe-preorder-checkout",
+            checkout.PublishableKey, checkout.ClientSecret, dotNetReference);
+    }
+
+    private async Task BeginCheckoutAsync(EditContext _)
+    {
+        if (eligibility is null || isSubmitting) return;
+        isSubmitting = true; errorMessages = [];
+        try
+        {
+            var result = await Sender.Send(new BeginPreOrderCheckoutCommand(ProductId, Quantity, clientRequestId,
+                address.RecipientName ?? "", address.PhoneNumber ?? "", address.AddressLine ?? "",
+                address.SubDistrict ?? "", address.District ?? "", address.Province ?? "",
+                address.PostalCode ?? ""), disposalTokenSource.Token);
+            if (result.IsSuccess) checkout = result.Value;
+            else errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
+                .DefaultIfEmpty(result.Error.Message).ToArray();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Beginning Pre-order checkout failed for {ProductId}.", ProductId);
+            errorMessages = ["เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง"];
+        }
+        finally { isSubmitting = false; }
+    }
+
+    [JSInvokable]
+    public async Task HandleStripeCompletedAsync()
+    {
+        isProcessingPayment = true;
+        await InvokeAsync(StateHasChanged);
+        await PollPaymentStatusAsync();
+    }
+
+    private Task CheckPaymentStatusAsync() => PollPaymentStatusAsync();
+
+    private async Task PollPaymentStatusAsync()
+    {
+        var id = checkout?.CheckoutAttemptId ?? AttemptId;
+        if (!id.HasValue) { errorMessage = "ไม่พบรายการชำระเงิน"; return; }
+        errorMessage = "";
+        for (var attempt = 0; attempt < 12 && !disposalTokenSource.IsCancellationRequested; attempt++)
+        {
+            var result = await Sender.Send(new GetPreOrderCheckoutStatusQuery(id.Value), disposalTokenSource.Token);
+            if (result.IsSuccess && result.Value.Status == "Completed" && result.Value.OrderNumber is not null)
+            {
+                completedStatus = result.Value;
+                isProcessingPayment = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            if (result.IsSuccess && result.Value.Status == "Expired")
+            {
+                isProcessingPayment = false;
+                errorMessage = "หมดเวลาชำระเงินแล้ว ระบบคืนจำนวนพรีออเดอร์ที่จองไว้เรียบร้อย กรุณากลับไปเริ่มใหม่";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2), disposalTokenSource.Token);
+        }
+        errorMessage = "Stripe อาจยังส่งผลการชำระเงินไม่ถึงระบบ กรุณาตรวจสอบอีกครั้ง";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await disposalTokenSource.CancelAsync();
+        if (module is not null)
+        {
+            try { await module.InvokeVoidAsync("dispose"); await module.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+        dotNetReference?.Dispose(); disposalTokenSource.Dispose();
+    }
+
+}

@@ -1,0 +1,387 @@
+@page "/products/{Slug}"
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.PreOrders.GetPreOrderCheckoutEligibility
+@using ToyStore.Application.Storefront.Catalog
+@using ToyStore.Web.Components.Account
+@inject ISender Sender
+@inject ILogger<ProductDetail> Logger
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject CartDrawerCoordinator CartDrawer
+@implements IAsyncDisposable
+
+<PageTitle>@Title</PageTitle>
+@if (product is not null)
+{
+    <HeadContent>
+        <meta name="description" content="@MetaDescription" />
+        <meta property="og:title" content="@product.DisplayName" />
+        <meta property="og:description" content="@MetaDescription" />
+        <meta property="og:image" content="@NavigationManager.ToAbsoluteUri(product.Images.First().Url)" />
+        <link rel="canonical" href="@NavigationManager.ToAbsoluteUri($"/products/{product.Slug}")" />
+    </HeadContent>
+}
+
+<div class="product-detail store-container">
+    @if (isLoading)
+    {
+        <div class="product-detail__state" role="status"><h1>กำลังโหลดสินค้า</h1><p>กรุณารอสักครู่</p></div>
+    }
+    else if (product is null)
+    {
+        <div class="product-detail__state" role="alert">
+            <h1>@(isNotFound ? "ไม่พบสินค้า" : "โหลดสินค้าไม่สำเร็จ")</h1><p>@errorMessage</p>
+            @if (isNotFound) { <a href="/products">กลับไปดูสินค้าทั้งหมด</a> }
+            else { <StoreButton OnClick="LoadAsync">ลองอีกครั้ง</StoreButton> }
+        </div>
+    }
+    else
+    {
+        <nav class="product-detail__breadcrumbs" aria-label="เส้นทางนำทาง">
+            <a href="/">หน้าหลัก</a><span aria-hidden="true">/</span><a href="/products">สินค้า</a><span aria-hidden="true">/</span><span aria-current="page">@product.DisplayName</span>
+        </nav>
+        <article class="product-detail__layout @(IsPreOrder ? "product-detail__layout--preorder" : null)">
+            <div class="product-detail__media-column">
+                <StorefrontProductGallery Images="@product.Images" />
+                <section class="product-detail__additional" aria-labelledby="description-heading">
+                    <div class="product-detail__description">
+                        <h2 id="description-heading">รายละเอียดสินค้า</h2>
+                        <p>@product.Description</p>
+                    </div>
+                    <dl class="product-detail__facts" aria-label="ข้อมูลสินค้า">
+                        <div><dt>แบรนด์</dt><dd><a href="/brands/@product.BrandSlug">@product.BrandName</a></dd></div>
+                        <div><dt>หมวดหมู่</dt><dd>@product.CategoryName</dd></div>
+                        <div><dt>จักรวาล</dt><dd>@product.UniverseName</dd></div>
+                        @if (product.Characters.Count != 0) { <div><dt>ตัวละคร</dt><dd>@string.Join(", ", product.Characters)</dd></div> }
+                    </dl>
+                </section>
+            </div>
+            <div class="product-detail__content">
+                <p class="product-detail__type">@(IsPreOrder ? "พรีออเดอร์" : "สินค้าพร้อมส่ง")</p>
+                <h1>@product.DisplayName</h1>
+                <p class="product-detail__english" lang="en">@product.EnglishName</p>
+                @if (IsPreOrder && product.DepositAmount.HasValue)
+                {
+                    <strong class="product-detail__price product-detail__price--preorder">มัดจำ ฿@product.DepositAmount!.Value.ToString("N2", ThaiCulture)</strong>
+                }
+                else
+                {
+                    <strong class="product-detail__price">฿@product.Price.ToString("N2", ThaiCulture)</strong>
+                }
+
+                @if (IsPreOrder)
+                {
+                    <p class="product-detail__availability @PreOrderAvailabilityCss">@PreOrderAvailabilityText</p>
+                    <dl class="product-detail__offer">
+                        <div><dt>ราคาเต็ม</dt><dd>฿@product.Price.ToString("N2", ThaiCulture)</dd></div>
+                        <div><dt>มัดจำ</dt><dd>฿@product.DepositAmount!.Value.ToString("N2", ThaiCulture)</dd></div>
+                        <div><dt>ปิดรับพรีออเดอร์</dt><dd>@FormatBangkok(product.PreOrderCloseAtUtc!.Value)</dd></div>
+                        <div><dt>สินค้าคาดว่าจะมา</dt><dd>@FormatEstimatedArrival(product.EstimatedArrivalMonth!.Value, product.EstimatedArrivalYear!.Value)</dd></div>
+                        <div><dt>ชำระยอดคงเหลือ</dt><dd>ภายใน @product.BalancePaymentDays!.Value.ToString("N0", ThaiCulture) วันหลังได้รับแจ้ง</dd></div>
+                    </dl>
+                    <StoreAlert Tone="StoreAlertTone.Warning" Title="นโยบายมัดจำ"
+                                Message="มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือภายในเวลาที่กำหนด" />
+                }
+                else
+                {
+                    <p class="product-detail__availability @(product.OfferState == StorefrontOfferState.InStockAvailable ? "" : "product-detail__availability--out")">
+                        @(product.OfferState == StorefrontOfferState.InStockAvailable ? $"พร้อมส่ง เหลือ {product.AvailableQuantity:N0} ชิ้น" : "สินค้าหมดชั่วคราว")
+                    </p>
+                }
+
+                @if (IsPreOrder)
+                {
+                    <StoreButton FullWidth="true"
+                            Disabled="@(!CanRequestPreOrder || isCheckingEligibility)"
+                            OnClick="OpenPreOrderAsync" aria-describedby="preorder-availability-note">
+                        @PreOrderButtonText
+                    </StoreButton>
+                    <p id="preorder-availability-note" class="product-detail__shipping">ตรวจสอบสิทธิ์และจำนวนล่าสุดอีกครั้งก่อนดำเนินการ · ยังไม่มีการกันสินค้า</p>
+                }
+                else
+                {
+                    <StoreButton FullWidth="true"
+                            Disabled="@(product.OfferState != StorefrontOfferState.InStockAvailable)"
+                            IsBusy="@isAdding" LoadingText="กำลังเพิ่ม…"
+                            OnClick="AddToCartAsync" aria-describedby="cart-availability-note"
+                            aria-label="@(product.OfferState == StorefrontOfferState.InStockAvailable ? $"เพิ่ม {product.DisplayName} ลงตะกร้า" : $"{product.DisplayName} สินค้าหมด")">
+                        @(product.OfferState == StorefrontOfferState.InStockAvailable ? "เพิ่มลงตะกร้า" : "สินค้าหมด")
+                    </StoreButton>
+                    @if (addFeedback is not null) { <p class="product-detail__cart-feedback" role="status" aria-live="polite">@addFeedback</p> }
+                    <p id="cart-availability-note" class="product-detail__shipping">จัดส่งฟรี · ระยะเวลาจัดส่งโดยประมาณ 2–5 วันทำการ</p>
+                }
+            </div>
+        </article>
+    }
+</div>
+
+<StoreDialog @bind-IsOpen="isPreOrderDialogOpen" Title="ตรวจสอบพรีออเดอร์"
+             InitialFocusSelector="#preorder-quantity" Closed="ClosePreOrderDialogAsync">
+    <ChildContent>
+        @if (eligibility is not null)
+        {
+            <div class="product-detail__confirmation" role="status" aria-live="polite">
+                <StoreAlert Tone="StoreAlertTone.Success" Title="ตรวจสอบสิทธิ์ล่าสุดแล้ว"
+                            Message="ยังไม่มีการกันสินค้าและยังไม่เกิดคำสั่งซื้อ" />
+                <dl class="product-detail__offer">
+                    <div><dt>สินค้า</dt><dd>@eligibility.DisplayName</dd></div>
+                    <div><dt>จำนวนที่ตรวจสอบ</dt><dd>@eligibility.RequestedQuantity ชิ้น</dd></div>
+                    <div><dt>ราคาเต็มต่อชิ้น</dt><dd>฿@eligibility.FullPrice.ToString("N2", ThaiCulture)</dd></div>
+                    <div><dt>มัดจำต่อชิ้น</dt><dd>฿@eligibility.DepositAmount.ToString("N2", ThaiCulture)</dd></div>
+                    <div><dt>ยอดคงเหลือต่อชิ้น</dt><dd>฿@eligibility.BalanceAmount.ToString("N2", ThaiCulture)</dd></div>
+                    <div><dt>ปิดรับพรีออเดอร์</dt><dd>@FormatBangkok(eligibility.CloseAtUtc)</dd></div>
+                    <div><dt>สินค้าคาดว่าจะมา</dt><dd>@FormatEstimatedArrival(eligibility.EstimatedArrivalMonth, eligibility.EstimatedArrivalYear)</dd></div>
+                    <div><dt>สูงสุดต่อคน</dt><dd>@eligibility.MaxPerCustomer ชิ้น</dd></div>
+                    <div><dt>สิทธิ์ที่ยังใช้ได้</dt><dd>@eligibility.CustomerRemainingAllowance ชิ้น</dd></div>
+                    <div><dt>ชำระยอดคงเหลือ</dt><dd>ภายใน @eligibility.BalancePaymentDays วันหลังได้รับแจ้ง</dd></div>
+                    <div><dt>ตรวจสอบเมื่อ</dt><dd>@FormatBangkok(eligibility.CheckedAtUtc)</dd></div>
+                </dl>
+            </div>
+        }
+        else if (!canSubmitPreOrder)
+        {
+            <StoreAlert Tone="StoreAlertTone.Warning" Title="ใช้บัญชีลูกค้าเพื่อพรีออเดอร์"
+                        Message="บัญชีนี้ไม่มีสิทธิ์พรีออเดอร์ กรุณาเข้าสู่ระบบด้วยบัญชีลูกค้า" />
+        }
+        else
+        {
+            <EditForm id="@PreOrderEligibilityFormId"
+                      EditContext="@preOrderEditContext"
+                      FormName="@PreOrderEligibilityFormId"
+                      OnSubmit="ConfirmPreOrderAsync">
+                <StoreValidationSummary />
+                @if (preOrderErrorMessages.Count != 0)
+                {
+                    <StoreAlert Tone="StoreAlertTone.Error" Title="ยังตรวจสอบพรีออเดอร์ไม่ได้">
+                        <ul>@foreach (var message in preOrderErrorMessages) { <li>@message</li> }</ul>
+                    </StoreAlert>
+                }
+                <StoreNumberField TValue="int?" @bind-Value="preOrderIntent.Quantity" Id="preorder-quantity"
+                                  Label="จำนวนที่ต้องการ" Required="true" Min="1"
+                                  Max="@product?.MaxPerCustomer?.ToString(CultureInfo.InvariantCulture)"
+                                  Step="1" InputMode="numeric" Disabled="@isCheckingEligibility" />
+                <label class="product-detail__policy">
+                    <input type="checkbox" @bind="preOrderIntent.AcceptPolicy" disabled="@isCheckingEligibility" />
+                    <span>ฉันเข้าใจว่ามัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือชำระยอดคงเหลือเกินกำหนด</span>
+                </label>
+            </EditForm>
+        }
+    </ChildContent>
+    <Actions>
+        @if (eligibility is not null)
+        {
+            <StoreButton Tone="StoreButtonTone.Secondary" OnClick="EditPreOrder">แก้ไขจำนวน</StoreButton>
+            <StoreButton OnClick="ContinuePreOrderCheckout">ดำเนินการสั่งพรีออเดอร์</StoreButton>
+        }
+        else if (!canSubmitPreOrder)
+        {
+            <StoreButton OnClick="ClosePreOrderDialogAsync">ปิด</StoreButton>
+        }
+        else
+        {
+            <StoreButtonGroup IsBusy="@isCheckingEligibility">
+                <StoreButton Tone="StoreButtonTone.Secondary" OnClick="ClosePreOrderDialogAsync">ยกเลิก</StoreButton>
+                <StoreButton ButtonType="submit" Form="@PreOrderEligibilityFormId"
+                             IsBusy="@isCheckingEligibility" LoadingText="กำลังตรวจสอบ…">
+                    ยืนยันและตรวจสอบสิทธิ์
+                </StoreButton>
+            </StoreButtonGroup>
+        }
+    </Actions>
+</StoreDialog>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private const string PreOrderEligibilityFormId = "preorder-eligibility";
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly PreOrderIntentModel preOrderIntent = new();
+    private readonly EditContext preOrderEditContext;
+    private StorefrontProductDetail? product;
+    private PreOrderCheckoutEligibilityResult? eligibility;
+    private CancellationTokenSource? loadTokenSource;
+    private IReadOnlyList<string> preOrderErrorMessages = [];
+    private long loadGeneration;
+    private bool isLoading = true;
+    private bool isNotFound;
+    private bool isAdding;
+    private bool isCheckingEligibility;
+    private bool isPreOrderDialogOpen;
+    private bool canSubmitPreOrder = true;
+    private string? addFeedback;
+    private string? handledIntent;
+    private string errorMessage = "ไม่พบสินค้านี้หรือสินค้าไม่ได้เปิดขายแล้ว";
+
+    public ProductDetail() => preOrderEditContext = new EditContext(preOrderIntent);
+
+    [Parameter] public string Slug { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "preorder")] public string? PreOrderIntent { get; set; }
+    [SupplyParameterFromQuery(Name = "quantity")] public int? RequestedQuantity { get; set; }
+
+    private bool IsPreOrder => product?.SaleType == StorefrontSaleType.PreOrder;
+    private bool CanRequestPreOrder => product?.OfferState == StorefrontOfferState.PreOrderOpen;
+    private string Title => product is null ? "สินค้า | SY TOY" : $"{product.DisplayName} | SY TOY";
+    private string MetaDescription => product is null ? "สินค้า SY TOY" : IsPreOrder
+        ? $"{product.DisplayName} โดย {product.BrandName} ราคาเต็ม ฿{product.Price:N2} พรีออเดอร์"
+        : $"{product.DisplayName} โดย {product.BrandName} ราคา ฿{product.Price:N2} สินค้าพร้อมส่ง";
+    private string PreOrderAvailabilityCss => CanRequestPreOrder ? "" : "product-detail__availability--out";
+    private string PreOrderAvailabilityText => product?.OfferState switch
+    {
+        StorefrontOfferState.PreOrderOpen => "เปิดรับพรีออเดอร์",
+        StorefrontOfferState.PreOrderFull => "พรีออเดอร์เต็มแล้ว",
+        _ => "ปิดรับพรีออเดอร์แล้ว",
+    };
+    private string PreOrderButtonText => product?.OfferState switch
+    {
+        StorefrontOfferState.PreOrderFull => "พรีออเดอร์เต็มแล้ว",
+        StorefrontOfferState.PreOrderClosed => "ปิดรับพรีออเดอร์แล้ว",
+        _ => "ตรวจสอบสิทธิ์พรีออเดอร์",
+    };
+
+    private async Task AddToCartAsync()
+    {
+        if (product is null || product.SaleType != StorefrontSaleType.InStock
+            || product.OfferState != StorefrontOfferState.InStockAvailable || isAdding) return;
+        isAdding = true;
+        addFeedback = null;
+        try
+        {
+            addFeedback = await CartDrawer.AddProductAsync(product.Id)
+                ? "เพิ่มสินค้าลงตะกร้าแล้ว"
+                : "เพิ่มสินค้าไม่สำเร็จ กรุณาตรวจสอบตะกร้า";
+        }
+        finally { isAdding = false; }
+    }
+
+    private async Task OpenPreOrderAsync()
+    {
+        if (product is null || !CanRequestPreOrder) return;
+        preOrderIntent.Quantity ??= 1;
+        var authentication = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authentication.User.Identity?.IsAuthenticated != true)
+        {
+            var local = LocalReturnUrl.Normalize($"/products/{product.Slug}?preorder=1&quantity={preOrderIntent.Quantity.Value}");
+            NavigationManager.NavigateTo(
+                $"/Account/Login?ReturnUrl={Uri.EscapeDataString(local)}",
+                forceLoad: true);
+            return;
+        }
+        eligibility = null;
+        canSubmitPreOrder = authentication.User.IsInRole(RoleNames.Customer);
+        preOrderErrorMessages = [];
+        isPreOrderDialogOpen = true;
+    }
+
+    private async Task ConfirmPreOrderAsync(EditContext _)
+    {
+        if (product is null || isCheckingEligibility) return;
+        var messages = new List<string>();
+        if (preOrderIntent.Quantity is null or <= 0) messages.Add("กรุณาระบุจำนวนอย่างน้อย 1 ชิ้น");
+        if (!preOrderIntent.AcceptPolicy) messages.Add("กรุณายอมรับนโยบายมัดจำก่อนตรวจสอบสิทธิ์");
+        if (messages.Count != 0) { preOrderErrorMessages = messages; return; }
+
+        var requestedQuantity = preOrderIntent.Quantity.GetValueOrDefault();
+        isCheckingEligibility = true;
+        preOrderErrorMessages = [];
+        try
+        {
+            var result = await Sender.Send(new GetPreOrderCheckoutEligibilityQuery(
+                product.Id, requestedQuantity), disposalTokenSource.Token);
+            if (result.IsSuccess) eligibility = result.Value;
+            else preOrderErrorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
+                .DefaultIfEmpty(result.Error.Message).ToArray();
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Pre-order eligibility query failed for product {ProductId}.", product.Id);
+            preOrderErrorMessages = ["เกิดข้อผิดพลาดชั่วคราว กรุณาลองตรวจสอบอีกครั้ง"];
+        }
+        finally { isCheckingEligibility = false; }
+    }
+
+    private void EditPreOrder()
+    {
+        eligibility = null;
+        canSubmitPreOrder = true;
+        preOrderErrorMessages = [];
+    }
+
+    private void ContinuePreOrderCheckout()
+    {
+        if (eligibility is null) return;
+        NavigationManager.NavigateTo($"/checkout/preorder/{eligibility.ProductId}?quantity={eligibility.RequestedQuantity}");
+    }
+
+    private Task ClosePreOrderDialogAsync()
+    {
+        isPreOrderDialogOpen = false;
+        eligibility = null;
+        preOrderErrorMessages = [];
+        if (product is not null && (PreOrderIntent == "1" || RequestedQuantity.HasValue))
+            NavigationManager.NavigateTo($"/products/{product.Slug}", replace: true);
+        return Task.CompletedTask;
+    }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var next = CancellationTokenSource.CreateLinkedTokenSource(disposalTokenSource.Token);
+        var previous = Interlocked.Exchange(ref loadTokenSource, next);
+        if (previous is not null) { await previous.CancelAsync(); previous.Dispose(); }
+        isLoading = true; isNotFound = false; product = null;
+        try
+        {
+            var result = await Sender.Send(new GetStorefrontProductQuery(Slug), next.Token);
+            if (generation != Volatile.Read(ref loadGeneration) || next.IsCancellationRequested) return;
+            if (result.IsSuccess)
+            {
+                product = result.Value;
+                var intentKey = $"{Slug}|{PreOrderIntent}|{RequestedQuantity}";
+                if (IsPreOrder && PreOrderIntent == "1" && handledIntent != intentKey)
+                {
+                    handledIntent = intentKey;
+                    preOrderIntent.Quantity = RequestedQuantity is > 0 ? RequestedQuantity : 1;
+                    await OpenPreOrderAsync();
+                }
+            }
+            else
+            {
+                errorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+                isNotFound = result.Error.Type == ErrorType.NotFound || result.ValidationFailures.Count != 0;
+                if (isNotFound) NavigationManager.NotFound();
+            }
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Storefront product detail query failed for slug {ProductSlug}.", Slug);
+            errorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง";
+            isNotFound = false;
+        }
+        finally { if (generation == Volatile.Read(ref loadGeneration)) isLoading = false; }
+    }
+
+    private static string FormatBangkok(DateTimeOffset value) =>
+        TimeZoneInfo.ConvertTime(value, BangkokTimeZone).ToString("d MMMM yyyy เวลา HH:mm น.", ThaiCulture);
+    private static string FormatEstimatedArrival(int month, int year) =>
+        $"ประมาณเดือน{ThaiCulture.DateTimeFormat.GetMonthName(month)} {year.ToString(CultureInfo.InvariantCulture)}";
+
+    public async ValueTask DisposeAsync()
+    {
+        Interlocked.Increment(ref loadGeneration);
+        var current = Interlocked.Exchange(ref loadTokenSource, null);
+        if (current is not null) { await current.CancelAsync(); current.Dispose(); }
+        await disposalTokenSource.CancelAsync(); disposalTokenSource.Dispose();
+    }
+
+    private sealed class PreOrderIntentModel
+    {
+        public int? Quantity { get; set; } = 1;
+        public bool AcceptPolicy { get; set; }
+    }
+}

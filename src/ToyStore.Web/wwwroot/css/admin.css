@@ -1,0 +1,68 @@
+.admin-shell {
+  --color-bg: var(--admin-bg);
+  --color-surface: var(--admin-surface);
+  --color-ink: var(--admin-ink);
+  --color-muted: var(--admin-muted);
+  --color-line: #d8e3e9;
+  --color-accent: var(--admin-accent);
+  --color-focus: var(--admin-accent-strong);
+  --shadow-sm: 0 2px 10px rgb(21 33 42 / 7%);
+  --shadow-md: 0 12px 30px rgb(21 33 42 / 10%);
+  --shadow-lg: 0 24px 60px rgb(21 33 42 / 16%);
+  min-height: 100dvh;
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+  font-family: var(--font-family-base);
+}
+
+.admin-shell button,
+.admin-shell a,
+.admin-shell input,
+.admin-shell select {
+  min-height: 2.75rem;
+}
+
+.admin-shell button,
+.admin-shell [class*="icon-button"] {
+  min-width: 2.75rem;
+}
+
+.admin-shell :focus-visible {
+  outline: .1875rem solid var(--admin-accent-strong);
+  outline-offset: .1875rem;
+}
+
+.admin-shell .store-field__control,
+.admin-shell .store-alert,
+.admin-shell .store-toast,
+.admin-shell .store-dialog__surface {
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+}
+
+.admin-shell .store-field__help {
+  color: var(--admin-muted);
+}
+
+.admin-shell .store-button,
+.admin-shell .account-button {
+  background: var(--admin-accent);
+  color: var(--admin-ink);
+}
+
+.admin-shell .store-dialog__actions {
+  background: var(--admin-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

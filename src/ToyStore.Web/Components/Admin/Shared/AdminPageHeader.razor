@@ -1,0 +1,28 @@
+<header class="admin-page-header">
+    <div class="admin-page-header__copy">
+        <h1 @ref="heading" tabindex="-1">@Title</h1>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <p>@Description</p>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="admin-page-header__actions">@Actions</div>
+    }
+</header>
+
+@code {
+    private ElementReference heading;
+
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    public ValueTask FocusAsync() => heading.FocusAsync();
+}

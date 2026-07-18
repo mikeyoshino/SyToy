@@ -1,0 +1,15 @@
+<article class="collection-card">
+    <a href="@Model.CollectionUrl" aria-label="ดูคอลเลกชัน @Model.Title">
+        <span class="collection-card__copy">
+            <strong>@Model.Title</strong>
+            <small>@Model.Subtitle</small>
+        </span>
+        <span class="collection-card__shape" aria-hidden="true"><i></i></span>
+        <span class="collection-card__arrow" aria-hidden="true">→</span>
+    </a>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public CollectionCardModel Model { get; set; } = new(string.Empty, string.Empty, string.Empty);
+}

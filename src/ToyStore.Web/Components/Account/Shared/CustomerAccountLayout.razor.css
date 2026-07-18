@@ -1,0 +1,11 @@
+.customer-account-shell { padding-block: var(--space-8) var(--space-16); }
+.customer-account-shell__header { max-width: 48rem; }
+.customer-account-shell__header > p { margin-bottom: var(--space-2); font-weight: var(--font-weight-bold); }
+.customer-account-shell__header h1 { font-size: clamp(2rem, 5vw, 3.75rem); line-height: 1.05; }
+.customer-account-shell__header > span { display: block; margin-top: var(--space-3); color: var(--color-muted); }
+.customer-account-shell__layout { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); gap: clamp(var(--space-6), 4vw, var(--space-10)); align-items: start; margin-top: var(--space-8); }
+.customer-account-shell__content { min-width: 0; }
+
+@media (max-width: 47.999rem) {
+    .customer-account-shell__layout { grid-template-columns: 1fr; gap: var(--space-6); }
+}

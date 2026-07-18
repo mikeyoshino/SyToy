@@ -1,0 +1,43 @@
+@page "/brands"
+@using MediatR
+@using ToyStore.Application.Storefront.Catalog
+@inject ISender Sender
+@inject ILogger<BrandDirectory> Logger
+
+<PageTitle>แบรนด์ทั้งหมด | SY TOY</PageTitle>
+<HeadContent><meta name="description" content="เลือกดูแบรนด์ของเล่นสะสมที่มีสินค้าพร้อมส่งกับ SY TOY" /></HeadContent>
+
+<div class="brand-directory store-container">
+    <header><p>// แบรนด์</p><h1>เลือกดูสินค้าตามแบรนด์</h1><span>แสดงเฉพาะแบรนด์ที่มีสินค้าพร้อมส่งเปิดขายอยู่</span></header>
+    @if (state == StorefrontContentState.Loading)
+    { <div class="brand-directory__state" role="status">กำลังโหลดแบรนด์</div> }
+    else if (state == StorefrontContentState.Error)
+    { <div class="brand-directory__state" role="alert"><span>โหลดรายชื่อแบรนด์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</span><StoreButton OnClick="LoadAsync">ลองอีกครั้ง</StoreButton></div> }
+    else if (brands.Count == 0)
+    { <div class="brand-directory__state" role="status">ยังไม่มีแบรนด์ที่เปิดขายสินค้า</div> }
+    else
+    {
+        <section class="brand-directory__grid" aria-label="แบรนด์ที่มีสินค้าพร้อมส่ง">
+            @foreach (var brand in brands)
+            { <CollectionCard @key="brand.Id" Model="@(new CollectionCardModel(brand.Label, "ดูสินค้าพร้อมส่งทั้งหมด", $"/brands/{brand.Slug}"))" /> }
+        </section>
+    }
+</div>
+
+@code {
+    private StorefrontContentState state = StorefrontContentState.Loading;
+    private IReadOnlyList<StorefrontFilterOption> brands = [];
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync()
+    {
+        state = StorefrontContentState.Loading;
+        try
+        {
+            var result = await Sender.Send(new ListStorefrontProductsQuery(PageSize: 1));
+            if (result.IsFailure) { state = StorefrontContentState.Error; return; }
+            brands = result.Value.Brands;
+            state = brands.Count == 0 ? StorefrontContentState.Empty : StorefrontContentState.Normal;
+        }
+        catch (Exception exception) { Logger.LogError(exception, "Storefront brand directory query failed."); state = StorefrontContentState.Error; }
+    }
+}

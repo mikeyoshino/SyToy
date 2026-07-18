@@ -1,0 +1,65 @@
+@if (State == StorefrontContentState.Loading)
+{
+    <div class="@GalleryCssClass" aria-hidden="true">
+        @for (var index = 0; index < LoadingCardCount; index++)
+        {
+            <ProductCard @key="index" IsLoading="true" />
+        }
+    </div>
+    <p class="visually-hidden" role="status">กำลังโหลดรายการสินค้า</p>
+}
+else if (State == StorefrontContentState.Empty)
+{
+    <div class="product-gallery__state" role="status">
+        <h3>ยังไม่มีสินค้าในหมวดนี้</h3>
+        <p>ลองเลือกคอลเลกชันอื่น หรือกลับมาดูสินค้าใหม่เร็ว ๆ นี้</p>
+    </div>
+}
+else if (State == StorefrontContentState.Error)
+{
+    <div class="product-gallery__state product-gallery__state--error" role="alert">
+        <h3>โหลดสินค้าไม่สำเร็จ</h3>
+        <p>กรุณาลองใหม่อีกครั้ง ระบบยังไม่ได้เปลี่ยนแปลงรายการของคุณ</p>
+        @if (OnRetry.HasDelegate)
+        {
+            <StoreButton OnClick="RetryAsync">ลองอีกครั้ง</StoreButton>
+        }
+    </div>
+}
+else if (Products.Count == 0)
+{
+    <div class="product-gallery__state" role="status">
+        <h3>ยังไม่มีสินค้าในหมวดนี้</h3>
+        <p>ลองเลือกคอลเลกชันอื่น หรือกลับมาดูสินค้าใหม่เร็ว ๆ นี้</p>
+    </div>
+}
+else
+{
+    <div class="@GalleryCssClass">
+        @foreach (var product in Products)
+        {
+            <ProductCard @key="product" Model="product" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ProductCardModel> Products { get; set; } = Array.Empty<ProductCardModel>();
+
+    [Parameter]
+    public StorefrontContentState State { get; set; } = StorefrontContentState.Normal;
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public int LoadingCardCount { get; set; } = 6;
+
+    [Parameter]
+    public bool LargeCards { get; set; }
+
+    private string GalleryCssClass => LargeCards ? "product-gallery product-gallery--large" : "product-gallery";
+
+    internal Task RetryAsync() => OnRetry.InvokeAsync();
+}

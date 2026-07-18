@@ -1,0 +1,8 @@
+@page "/admin"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+
+<PageTitle>ภาพรวมร้าน</PageTitle>
+<AdminPageHeader Title="ภาพรวมร้าน"
+                 Description="พื้นที่ติดตามงานสำคัญของร้านในหน้าเดียว" />
+<AdminPhasePlaceholder Message="ยอดขายและคิวงานจะแสดงเมื่อมีคำสั่งค้นหาข้อมูลจริงในระยะถัดไป" />

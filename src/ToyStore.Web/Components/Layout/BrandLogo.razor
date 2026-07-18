@@ -1,0 +1,14 @@
+<img class="brand-logo @(Compact ? "brand-logo--compact" : null)"
+     src="@(Compact ? "/images/brand/sy-toys-mark-v2.png" : "/images/brand/sy-toys-wordmark-v2.png")"
+     alt="@AltText"
+     width="@(Compact ? 256 : 600)"
+     height="@(Compact ? 256 : 97)"
+     decoding="async" />
+
+@code {
+    [Parameter]
+    public bool Compact { get; set; }
+
+    [Parameter]
+    public string AltText { get; set; } = string.Empty;
+}

@@ -1,0 +1,72 @@
+<div class="admin-mobile-nav">
+    <button type="button"
+            class="admin-mobile-nav__trigger icon-button"
+            aria-expanded="@isOpen.ToString().ToLowerInvariant()"
+            aria-label="@(isOpen ? "ปิดเมนูผู้ดูแลระบบ" : "เปิดเมนูผู้ดูแลระบบ")"
+            @onclick="ToggleAsync">
+        <AdminIcon Name="AdminIconName.Menu" />
+        <span>เมนูผู้ดูแล</span>
+    </button>
+
+    <StoreDrawer @ref="drawer"
+                 IsOpen="@isOpen"
+                 IsOpenChanged="DrawerStateChanged"
+                 Title="เมนูผู้ดูแลระบบ"
+                 Placement="DrawerPlacement.Start">
+        <p class="admin-mobile-nav__hint">กด Escape เพื่อปิดเมนู</p>
+        <nav aria-label="เมนูผู้ดูแลระบบสำหรับมือถือ">
+            @foreach (var item in AdminNavigation.Items)
+            {
+                var active = AdminRouteMatcher.IsGroupActive(item.RouteGroup, CurrentUrl);
+                var currentKind = active
+                    ? AdminRouteMatcher.IsExactPath(item.Href, CurrentUrl) ? "page" : "location"
+                    : null;
+                <a href="@item.Href"
+                   aria-current="@currentKind"
+                   @onclick="CloseForNavigationAsync">
+                    <AdminIcon Name="item.Icon" />
+                    <span>@item.Label</span>
+                </a>
+            }
+        </nav>
+        <form action="/Account/Logout" method="post">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="/" />
+            <button type="submit">
+                <AdminIcon Name="AdminIconName.Logout" />
+                <span>ออกจากระบบ</span>
+            </button>
+        </form>
+    </StoreDrawer>
+</div>
+
+@code {
+    private StoreDrawer? drawer;
+    private bool isOpen;
+
+    [Parameter, EditorRequired]
+    public required string CurrentUrl { get; set; }
+
+    private Task ToggleAsync()
+    {
+        isOpen = !isOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task DrawerStateChanged(bool open)
+    {
+        isOpen = open;
+        return Task.CompletedTask;
+    }
+
+    public async Task CloseForNavigationAsync()
+    {
+        if (!isOpen)
+        {
+            return;
+        }
+
+        await (drawer?.CloseWithoutFocusReturnAsync() ?? Task.CompletedTask);
+        isOpen = false;
+    }
+}

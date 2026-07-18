@@ -1,0 +1,55 @@
+@using ToyStore.Application.Storefront.Catalog
+
+<section class="store-product-gallery" aria-label="รูปภาพสินค้า">
+    <div class="store-product-gallery__viewport" tabindex="0" aria-label="เลื่อนซ้ายขวาเพื่อดูรูปสินค้า">
+        @if (_orderedImages.Count != 0)
+        {
+            var activeImage = _orderedImages[_activeImageIndex];
+            <figure class="store-product-gallery__slide">
+                <img src="@activeImage.Url" alt="@activeImage.AltText" />
+                @if (activeImage.IsPrimary) { <figcaption>ภาพหลัก</figcaption> }
+            </figure>
+        }
+    </div>
+    @if (_orderedImages.Count > 1)
+    {
+        <nav class="store-product-gallery__thumbs" aria-label="เลือกรูปสินค้า">
+            @for (var imageIndex = 0; imageIndex < _orderedImages.Count; imageIndex++)
+            {
+                var image = _orderedImages[imageIndex];
+                var currentIndex = imageIndex;
+                <button type="button"
+                        class="store-product-gallery__thumb-button @(IsActiveThumbnail(currentIndex) ? "store-product-gallery__thumb-button--active" : null)"
+                        aria-label="ดู @image.AltText"
+                        aria-current="@(IsActiveThumbnail(currentIndex) ? "page" : null)"
+                        @onclick="() => SelectImage(currentIndex)">
+                    <img src="@image.Url" alt="" />
+                </button>
+            }
+        </nav>
+        <p class="store-product-gallery__hint">ปัดซ้ายหรือขวาเพื่อดูรูปเพิ่มเติม</p>
+    }
+</section>
+@code {
+    [Parameter] public IReadOnlyList<StorefrontProductImage> Images { get; set; } = [];
+    private IReadOnlyList<StorefrontProductImage> _orderedImages = [];
+    private int _activeImageIndex;
+
+    protected override void OnParametersSet()
+    {
+        _orderedImages = Images.OrderBy(image => image.SortOrder).ToList();
+        if (_orderedImages.Count == 0)
+        {
+            _activeImageIndex = 0;
+            return;
+        }
+
+        if (_activeImageIndex >= _orderedImages.Count)
+        {
+            _activeImageIndex = 0;
+        }
+    }
+
+    private void SelectImage(int imageIndex) => _activeImageIndex = imageIndex;
+    private bool IsActiveThumbnail(int imageIndex) => imageIndex == _activeImageIndex;
+}

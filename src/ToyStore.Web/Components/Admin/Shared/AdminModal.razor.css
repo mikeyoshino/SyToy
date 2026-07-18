@@ -1,0 +1,23 @@
+.admin-modal-host ::deep .admin-modal {
+  width: min(94vw, 64rem);
+  max-height: min(92dvh, 56rem);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 56.249rem) {
+  .admin-modal-host ::deep .admin-modal {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .admin-modal-host ::deep .admin-modal .store-dialog__surface {
+    min-height: 100%;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+}

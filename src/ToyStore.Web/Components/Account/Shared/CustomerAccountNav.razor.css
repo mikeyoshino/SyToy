@@ -1,0 +1,58 @@
+.customer-account-nav {
+    position: sticky;
+    top: var(--space-6);
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+    margin: 0;
+}
+
+.customer-account-nav ::deep .customer-account-nav__link {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+    transition: background-color 180ms ease, color 180ms ease;
+}
+
+.customer-account-nav ::deep .customer-account-nav__link:hover {
+    background: var(--color-surface);
+}
+
+.customer-account-nav ::deep .customer-account-nav__link.active {
+    background: var(--color-accent);
+    font-weight: 600;
+}
+
+.customer-account-nav ::deep .customer-account-nav__link,
+.customer-account-nav ::deep .customer-account-nav__link:hover,
+.customer-account-nav ::deep .customer-account-nav__link:focus,
+.customer-account-nav ::deep .customer-account-nav__link:visited,
+.customer-account-nav ::deep .customer-account-nav__link.active {
+    text-decoration: none !important;
+}
+
+.customer-account-nav ::deep .customer-account-nav__link:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+@media (max-width: 47.999rem) {
+    .customer-account-nav {
+        position: static;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .customer-account-nav ::deep .customer-account-nav__link {
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .customer-account-nav ::deep .customer-account-nav__link { transition: none; }
+}

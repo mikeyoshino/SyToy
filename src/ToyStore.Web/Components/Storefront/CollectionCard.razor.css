@@ -1,0 +1,49 @@
+.collection-card { min-width: 0; }
+
+a {
+  position: relative;
+  display: flex;
+  min-height: 9rem;
+  overflow: hidden;
+  align-items: center;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(130deg, #141414, #383838);
+  color: var(--color-surface);
+  text-decoration: none;
+  transition: transform var(--duration-normal) var(--ease-standard), box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+a:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.collection-card__copy { z-index: 1; display: grid; }
+.collection-card__copy strong { font-size: var(--font-size-h3-mobile); }
+.collection-card__copy small { font-size: .875rem; opacity: .78; }
+
+.collection-card__shape {
+  position: absolute;
+  right: 15%;
+  bottom: -32%;
+  width: 30%;
+  aspect-ratio: .75;
+  border-radius: 48% 48% 34% 34%;
+  background: #8e8e88;
+  opacity: .75;
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.collection-card__shape::before,
+.collection-card__shape::after {
+  position: absolute;
+  top: -12%;
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: inherit;
+  content: "";
+}
+
+.collection-card__shape::before { left: 0; }
+.collection-card__shape::after { right: 0; }
+.collection-card__shape i { position: absolute; inset: 26% 18% auto; height: 18%; border-radius: var(--radius-pill); background: var(--color-ink); }
+.collection-card__arrow { position: absolute; right: var(--space-5); z-index: 1; font-size: 1.75rem; }
+a:hover .collection-card__shape { transform: translateY(-8px) rotate(-4deg); }

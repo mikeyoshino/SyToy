@@ -1,0 +1,42 @@
+# .NET
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+.data/
+.stripe/
+
+# IDE and OS
+.vs/
+.vscode/
+.idea/
+.DS_Store
+__pycache__/
+*.py[cod]
+.superpowers/brainstorm/*/state/
+
+# Logs and coverage
+*.log
+coverage/
+coverage.*
+test-results/
+
+# Local certificates and keys
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer

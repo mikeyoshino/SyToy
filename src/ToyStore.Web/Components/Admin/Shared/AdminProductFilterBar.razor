@@ -1,0 +1,81 @@
+@using ToyStore.Application.Products.ManageProducts
+
+<EditForm EditContext="@editContext" FormName="product-management-filter"
+          class="admin-product-filter" role="search" aria-label="ค้นหาและกรองสินค้า"
+          OnSubmit="SubmitAsync">
+    <div class="admin-product-filter__fields">
+        <StoreTextField @bind-Value="model.Search" Label="ค้นหา" Placeholder="ค้นหาชื่อหรือ slug" />
+        <StoreSelectField TValue="string" @bind-Value="model.Status" Label="สถานะ" Options="@StatusOptions" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.ProductCategoryId" Label="หมวดหมู่"
+                          Placeholder="ทุกหมวดหมู่" Options="@CategoryOptions" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.BrandId" Label="แบรนด์"
+                          Placeholder="ทุกแบรนด์" Options="@BrandOptions" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.UniverseId" Label="จักรวาล"
+                          Placeholder="ทุกจักรวาล" Options="@UniverseOptions" />
+    </div>
+    <div class="admin-product-filter__actions">
+        <StoreButton ButtonType="submit">ใช้ตัวกรอง</StoreButton>
+        <a href="@BasePath">ล้างตัวกรอง</a>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<string>> StatusOptions =
+    [new("active", "ทั้งหมด"), new("draft", "ฉบับร่าง"), new("published", "เผยแพร่แล้ว"), new("archived", "เก็บแล้ว")];
+    private readonly FilterModel model = new();
+    private EditContext editContext = default!;
+    private AdminProductFilterQueryState? observedState;
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Parameter, EditorRequired] public required AdminProductFilterQueryState HistoryState { get; set; }
+    [Parameter] public string BasePath { get; set; } = "/admin/products";
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Categories { get; set; } = [];
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Brands { get; set; } = [];
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Universes { get; set; } = [];
+    private IReadOnlyList<SelectOption<Guid?>> CategoryOptions => Categories.Select(x => new SelectOption<Guid?>(x.Id, x.Name)).ToArray();
+    private IReadOnlyList<SelectOption<Guid?>> BrandOptions => Brands.Select(x => new SelectOption<Guid?>(x.Id, x.Name)).ToArray();
+    private IReadOnlyList<SelectOption<Guid?>> UniverseOptions => Universes.Select(x => new SelectOption<Guid?>(x.Id, x.Name)).ToArray();
+
+    protected override void OnParametersSet()
+    {
+        if (HistoryState == observedState) return;
+        observedState = HistoryState;
+        model.Search = HistoryState.Search;
+        model.Status = HistoryState.Status;
+        model.ProductCategoryId = HistoryState.ProductCategoryId;
+        model.BrandId = HistoryState.BrandId;
+        model.UniverseId = HistoryState.UniverseId;
+        editContext = new EditContext(model);
+    }
+
+    private Task SubmitAsync(EditContext _)
+    {
+        NavigationManager.NavigateTo(BuildCanonicalUrl(BasePath, new AdminProductFilterQueryState(
+            model.Search, model.Status, model.ProductCategoryId, model.BrandId, model.UniverseId, 1)));
+        return Task.CompletedTask;
+    }
+
+    internal static string BuildCanonicalUrl(string basePath, AdminProductFilterQueryState query)
+    {
+        var values = new List<string>();
+        var search = string.IsNullOrWhiteSpace(query.Search)
+            ? string.Empty
+            : string.Join(' ', query.Search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (search.Length != 0) values.Add($"q={Uri.EscapeDataString(search)}");
+        if (query.Status != "active") values.Add($"status={Uri.EscapeDataString(query.Status)}");
+        if (query.ProductCategoryId.HasValue) values.Add($"category={query.ProductCategoryId.Value:D}");
+        if (query.BrandId.HasValue) values.Add($"brand={query.BrandId.Value:D}");
+        if (query.UniverseId.HasValue) values.Add($"universe={query.UniverseId.Value:D}");
+        if (query.Page > 1) values.Add($"page={query.Page.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        return values.Count == 0 ? basePath : $"{basePath}?{string.Join('&', values)}";
+    }
+
+    private sealed class FilterModel
+    {
+        public string? Search { get; set; }
+        public string Status { get; set; } = "active";
+        public Guid? ProductCategoryId { get; set; }
+        public Guid? BrandId { get; set; }
+        public Guid? UniverseId { get; set; }
+    }
+}

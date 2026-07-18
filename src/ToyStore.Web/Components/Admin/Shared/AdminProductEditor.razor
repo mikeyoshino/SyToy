@@ -1,0 +1,183 @@
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.Products.ManageProducts
+@implements IDisposable
+
+<EditForm id="@FormId" EditContext="@editContext" FormName="@FormName"
+          class="admin-product-editor" OnSubmit="HandleSubmitAsync">
+    <StoreValidationSummary @ref="validationSummary" />
+    <section class="admin-product-editor__section" aria-labelledby="product-basic-heading">
+        <h3 id="product-basic-heading">ข้อมูลสินค้า</h3>
+        <div class="admin-product-editor__grid">
+            <StoreTextField @bind-Value="Model.DisplayName" Label="ชื่อสินค้า" Required="true"
+                            Disabled="@IsBusy" Autocomplete="off" />
+            <StoreTextField @bind-Value="Model.EnglishName" Label="ชื่อภาษาอังกฤษ" Required="true"
+                            HelpText="ระบบใช้สร้าง slug อัตโนมัติ" Disabled="@IsBusy" Autocomplete="off" />
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.EnglishName))
+        {
+            <div class="admin-product-editor__slug">ตัวอย่าง slug: <output dir="ltr">@SlugPreview(Model.EnglishName)</output></div>
+        }
+        <StoreTextAreaField @bind-Value="Model.Description" Label="คำอธิบายสินค้า"
+                            Required="true" Rows="6" Disabled="@IsBusy" />
+    </section>
+
+    <section class="admin-product-editor__section" aria-labelledby="product-classification-heading">
+        <h3 id="product-classification-heading">การจัดหมวดหมู่</h3>
+        <div class="admin-product-editor__grid">
+            <StoreSelectField TValue="Guid" @bind-Value="Model.ProductCategoryId"
+                              Label="หมวดหมู่" Placeholder="เลือกหมวดหมู่" Required="true"
+                              Disabled="@IsBusy" Options="@CategoryOptions" />
+            <StoreSelectField TValue="Guid" @bind-Value="Model.BrandId"
+                              Label="แบรนด์" Placeholder="เลือกแบรนด์" Required="true"
+                              Disabled="@IsBusy" Options="@BrandOptions" />
+            <StoreSelectField TValue="Guid" Value="@Model.UniverseId"
+                              ValueChanged="ChangeUniverseAsync" ValueExpression="@(() => Model.UniverseId)"
+                              Label="จักรวาล" Placeholder="เลือกจักรวาล" Required="true"
+                              Disabled="@IsBusy" Options="@UniverseOptions" />
+        </div>
+        <AdminCharacterAutocomplete UniverseId="@Model.UniverseId"
+                                    @bind-Values="Model.Characters"
+                                    Disabled="@IsBusy" />
+    </section>
+
+    <section class="admin-product-editor__section" aria-labelledby="product-sale-heading">
+        <h3 id="product-sale-heading">รูปแบบการขาย</h3>
+        <StoreSelectField TValue="ProductManagementSaleType" @bind-Value="Model.SaleType"
+                          Label="ประเภทสินค้า" Required="true" Disabled="@(IsBusy || !IsCreate)"
+                          Options="@SaleTypeOptions" />
+        <div class="admin-product-editor__grid">
+            @if (Model.SaleType == ProductManagementSaleType.InStock)
+            {
+                <StoreNumberField TValue="decimal?" @bind-Value="Model.Price" Label="ราคา (บาท)"
+                                  Required="true" Min="0.01" Step="0.01" InputMode="decimal" Disabled="@IsBusy" />
+                @if (IsCreate)
+                {
+                    <StoreNumberField TValue="int?" @bind-Value="Model.InitialStock" Label="สต็อกเริ่มต้น"
+                                      Required="true" Min="0" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                }
+            }
+            else
+            {
+                <StoreNumberField TValue="decimal?" @bind-Value="Model.FullPrice" Label="ราคาเต็ม (บาท)" Required="true" Min="0.01" Step="0.01" InputMode="decimal" Disabled="@IsBusy" />
+                <StoreNumberField TValue="decimal?" @bind-Value="Model.DepositAmount" Label="เงินมัดจำ (บาท)" Required="true" Min="0.01" Step="0.01" InputMode="decimal" Disabled="@IsBusy" />
+                <StoreTextField @bind-Value="Model.CloseDate" Label="วันที่ปิดรอบ" Type="date" Required="true" Disabled="@IsBusy" HelpText="ปิดอัตโนมัติ 23:59 เวลาไทย" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalMonth" Label="เดือนที่คาดว่าสินค้าจะมา" Required="true" Min="1" Max="12" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalYear" Label="ปีที่คาดว่าสินค้าจะมา" Required="true" Min="2026" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.TotalCapacity" Label="จำนวนรับพรีออเดอร์" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.MaxPerCustomer" Label="จำนวนสูงสุดต่อคน" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.BalancePaymentDays" Label="จำนวนวันชำระยอดคงเหลือ" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" HelpText="ค่าเริ่มต้น 7 วัน" />
+                <p class="admin-product-editor__policy">มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือตามกำหนด</p>
+            }
+        </div>
+    </section>
+
+    <section class="admin-product-editor__section" aria-labelledby="product-media-heading">
+        <h3 id="product-media-heading" class="admin-product-editor__visually-hidden">รูปภาพ</h3>
+        <AdminProductMediaField State="@Model.Media"
+                                Disabled="@IsBusy"
+                                ExternalErrorMessage="@mediaErrorMessage"
+                                ValidityChanged="HandleMediaValidityChangedAsync"
+                                Changed="HandleMediaChangedAsync" />
+    </section>
+</EditForm>
+
+@code {
+    private EditContext editContext = default!;
+    private AdminProductEditorModel? contextModel;
+    private FormValidationStore? validationStore;
+    private StoreValidationSummary? validationSummary;
+    private bool mediaIsValid = true;
+    private string? mediaErrorMessage;
+
+    [Parameter, EditorRequired] public required AdminProductEditorModel Model { get; set; }
+    [Parameter] public string FormId { get; set; } = "admin-product-editor-form";
+    [Parameter] public string FormName { get; set; } = "admin-product-editor";
+    [Parameter] public bool IsCreate { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Categories { get; set; } = [];
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Brands { get; set; } = [];
+    [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Universes { get; set; } = [];
+    [Parameter] public EventCallback<AdminProductEditorModel> Submitted { get; set; }
+
+    private IReadOnlyList<SelectOption<Guid>> CategoryOptions => Categories.Select(x => new SelectOption<Guid>(x.Id, x.Name)).ToArray();
+    private IReadOnlyList<SelectOption<Guid>> BrandOptions => Brands.Select(x => new SelectOption<Guid>(
+        x.Id,
+        x.IsActive ? x.Name : $"{x.Name} (เก็บแล้ว — กรุณาเลือกใหม่)",
+        Disabled: !x.IsActive)).ToArray();
+    private IReadOnlyList<SelectOption<Guid>> UniverseOptions => Universes.Select(x => new SelectOption<Guid>(
+        x.Id,
+        x.IsActive ? x.Name : $"{x.Name} (เก็บแล้ว — กรุณาเลือกใหม่)",
+        Disabled: !x.IsActive)).ToArray();
+    private static readonly IReadOnlyList<SelectOption<ProductManagementSaleType>> SaleTypeOptions =
+    [
+        new(ProductManagementSaleType.InStock, "พร้อมส่ง"),
+        new(ProductManagementSaleType.PreOrder, "พรีออเดอร์"),
+    ];
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(contextModel, Model)) return;
+        validationStore?.Dispose();
+        contextModel = Model;
+        editContext = new EditContext(Model);
+        validationStore = new FormValidationStore(editContext);
+    }
+
+    private Task HandleSubmitAsync(EditContext _) => IsBusy || !mediaIsValid || !string.IsNullOrWhiteSpace(mediaErrorMessage)
+        ? Task.CompletedTask
+        : Submitted.InvokeAsync(Model);
+
+    private Task HandleMediaValidityChangedAsync(bool isValid)
+    {
+        mediaIsValid = isValid;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleMediaChangedAsync()
+    {
+        mediaErrorMessage = null;
+        return Task.CompletedTask;
+    }
+    private async Task ChangeUniverseAsync(Guid universeId)
+    {
+        if (Model.UniverseId != universeId) Model.Characters = [];
+        Model.UniverseId = universeId;
+        await Task.CompletedTask;
+    }
+
+    public async Task DisplayFailureAsync(Result result)
+    {
+        if (result.IsSuccess) return;
+        var mediaFailure = result.ValidationFailures.FirstOrDefault(failure =>
+            failure.PropertyName.Equals("Images", StringComparison.Ordinal)
+            || failure.PropertyName.StartsWith("Images[", StringComparison.Ordinal));
+        if (mediaFailure is not null || result.Error.Code.StartsWith("Media.", StringComparison.Ordinal))
+        {
+            mediaErrorMessage = mediaFailure?.ErrorMessage ?? result.Error.Message;
+            mediaIsValid = false;
+        }
+
+        var failures = result.ValidationFailures.Count == 0
+            ? [new FieldValidationFailure(string.Empty, result.Error.Message)]
+            : result.ValidationFailures
+                .Select(failure => new FieldValidationFailure(
+                    failure.PropertyName == "CharacterIds"
+                        ? nameof(AdminProductEditorModel.Characters)
+                        : failure.PropertyName,
+                    failure.ErrorMessage)).ToArray();
+        validationStore!.Display(failures);
+        await InvokeAsync(StateHasChanged);
+        if (validationSummary is not null) await validationSummary.FocusAsync();
+    }
+
+    private static string SlugPreview(string value)
+    {
+        var normalized = new string(value.Trim().ToLowerInvariant()
+            .Select(character => char.IsAsciiLetterOrDigit(character) ? character : '-')
+            .ToArray());
+        while (normalized.Contains("--", StringComparison.Ordinal)) normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+        return normalized.Trim('-');
+    }
+
+    public void Dispose() => validationStore?.Dispose();
+}

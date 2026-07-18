@@ -1,0 +1,40 @@
+<section class="store-alert store-alert--@ToneName" role="@Role">
+    @if (TitleContent is not null)
+    {
+        <div class="store-alert__title">@TitleContent</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="store-alert__title">@Title</div>
+    }
+
+    @if (ChildContent is not null)
+    {
+        <div class="store-alert__content">@ChildContent</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="store-alert__content">@Message</div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public StoreAlertTone Tone { get; set; } = StoreAlertTone.Info;
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? TitleContent { get; set; }
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string Role => Tone == StoreAlertTone.Error ? "alert" : "status";
+
+    private string ToneName => Tone.ToString().ToLowerInvariant();
+}

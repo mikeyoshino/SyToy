@@ -1,0 +1,45 @@
+.admin-pagination,
+.admin-pagination ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.admin-pagination {
+  margin-block-start: var(--space-5);
+}
+
+.admin-pagination ol {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.admin-pagination :is(a, span) {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  text-decoration: none;
+}
+
+.admin-pagination__current {
+  background: var(--admin-accent) !important;
+  font-weight: var(--font-weight-extrabold);
+}
+
+.admin-pagination [aria-disabled="true"] {
+  color: var(--admin-muted);
+  opacity: .72;
+}
+
+.admin-pagination__ellipsis {
+  min-width: 2rem !important;
+  background: transparent !important;
+}

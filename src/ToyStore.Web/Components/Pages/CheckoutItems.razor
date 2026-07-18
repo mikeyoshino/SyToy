@@ -1,0 +1,20 @@
+@using ToyStore.Application.Checkout
+
+<ul class="checkout-page__items">
+    @foreach (var item in Items)
+    {
+        <li>
+            @if (!string.IsNullOrWhiteSpace(item.PrimaryImageUrl))
+            {
+                <img src="@item.PrimaryImageUrl" alt="@item.ProductName" />
+            }
+            <span><strong>@item.ProductName</strong><small>@item.Quantity ชิ้น × ฿@item.UnitPrice.ToString("N2")</small></span>
+            <b>฿@item.LineAmount.ToString("N2")</b>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<PreparedInStockCheckoutItem> Items { get; set; } = [];
+}

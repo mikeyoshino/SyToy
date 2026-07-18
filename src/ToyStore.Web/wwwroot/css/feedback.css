@@ -1,0 +1,205 @@
+.store-alert,
+.store-toast {
+  padding: var(--space-4);
+  border-inline-start: .25rem solid var(--color-focus);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.store-alert--success,
+.store-toast--success {
+  border-inline-start-color: var(--color-success);
+}
+
+.store-alert--warning,
+.store-toast--warning {
+  border-inline-start-color: var(--color-accent);
+}
+
+.store-alert--error,
+.store-toast--error {
+  border-inline-start-color: var(--color-danger);
+}
+
+.store-alert__title {
+  font-weight: var(--font-weight-bold);
+}
+
+.store-alert__content {
+  margin-block-start: var(--space-1);
+}
+
+.store-toast {
+  position: relative;
+  z-index: var(--z-toast);
+  display: flex;
+  max-width: 30rem;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.store-toast-host {
+  position: fixed;
+  z-index: var(--z-toast);
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  max-width: min(92vw, 24rem);
+  display: grid;
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.store-toast-host .store-toast {
+  width: 100%;
+  pointer-events: auto;
+  animation: store-toast-pop var(--duration-normal) var(--ease-standard);
+}
+
+.store-toast__body {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.store-toast__dismiss,
+.store-dialog__close {
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.store-dialog__close:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.store-skeleton {
+  min-height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    100deg,
+    var(--color-line) 20%,
+    var(--color-surface) 40%,
+    var(--color-line) 60%);
+  background-size: 200% 100%;
+  animation: store-skeleton-shimmer var(--duration-slow) var(--ease-standard) infinite alternate;
+}
+
+@keyframes store-skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.store-dialog {
+  width: min(90vw, 38rem);
+  max-height: min(88dvh, 50rem);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  box-shadow: var(--shadow-lg);
+  color: var(--color-ink);
+  overflow: hidden;
+}
+
+.store-dialog::backdrop {
+  background: rgb(17 17 17 / 58%);
+  backdrop-filter: blur(.15rem);
+}
+
+.store-dialog__surface {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: inherit;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.store-dialog__header,
+.store-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.store-dialog__title {
+  font-size: var(--font-size-h3-mobile);
+  font-weight: var(--font-weight-extrabold);
+}
+
+.store-dialog__content {
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.store-dialog__actions {
+  justify-content: flex-end;
+  background: var(--color-bg);
+}
+
+.store-drawer {
+  width: min(92vw, 28rem);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin-block: 0;
+  border-radius: 0;
+}
+
+.store-drawer--start {
+  margin-inline: 0 auto;
+}
+
+.store-drawer--end {
+  margin-inline: auto 0;
+}
+
+.store-drawer .store-dialog__surface {
+  min-height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  transition: transform var(--duration-normal) var(--ease-standard);
+  will-change: transform;
+}
+
+.store-drawer--start .store-dialog__surface {
+  transform: translateX(-100%);
+}
+
+.store-drawer--end .store-dialog__surface {
+  transform: translateX(100%);
+}
+
+.store-drawer[open] .store-dialog__surface {
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-skeleton {
+    animation: none;
+  }
+
+  .store-drawer .store-dialog__surface {
+    transition: none;
+  }
+}
+
+@keyframes store-toast-pop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-.75 * var(--space-3)));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

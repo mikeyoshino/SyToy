@@ -1,0 +1,40 @@
+<svg class="admin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    @switch (Name)
+    {
+        case AdminIconName.Dashboard:
+            <path d="M4 4h6v6H4zM14 4h6v4h-6zM4 14h6v6H4zM14 12h6v8h-6z" />
+            break;
+        case AdminIconName.Catalog:
+            <path d="M4 6.5 12 3l8 3.5-8 3.5-8-3.5Zm0 5L12 15l8-3.5M4 16.5 12 21l8-4.5" />
+            break;
+        case AdminIconName.Inventory:
+            <path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6" />
+            break;
+        case AdminIconName.Orders:
+            <path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h4" />
+            break;
+        case AdminIconName.Notifications:
+            <path d="M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5L6 17Zm4 3h4" />
+            break;
+        case AdminIconName.Reports:
+            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+            break;
+        case AdminIconName.Settings:
+            <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+            break;
+        case AdminIconName.Logout:
+            <path d="M10 5H5v14h5M14 8l4 4-4 4m4-4H9" />
+            break;
+        case AdminIconName.Menu:
+            <path d="M4 7h16M4 12h16M4 17h16" />
+            break;
+        case AdminIconName.Pin:
+            <path d="m9 4 6 6m-8 2 5 5m3-12 4 4-3 3-7-7 3-3 3 3ZM8 16l-4 4" />
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired]
+    public AdminIconName Name { get; set; }
+}

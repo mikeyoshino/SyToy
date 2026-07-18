@@ -1,0 +1,33 @@
+@inject NavigationManager NavigationManager
+
+<a href="@Href"
+   class="store-nav-link @(IsCurrent ? "active" : null)"
+   aria-current="@(IsCurrent ? "page" : null)">
+    @ChildContent
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string CurrentUrl { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    private bool IsCurrent => string.Equals(
+        NormalizePathAndQuery(CurrentUrl),
+        NormalizePathAndQuery(Href),
+        StringComparison.Ordinal);
+
+    private string NormalizePathAndQuery(string location)
+    {
+        var uri = NavigationManager.ToAbsoluteUri(location);
+        var path = uri.AbsolutePath.Length > 1
+            ? uri.AbsolutePath.TrimEnd('/')
+            : uri.AbsolutePath;
+
+        return $"{path}{uri.Query}";
+    }
+}

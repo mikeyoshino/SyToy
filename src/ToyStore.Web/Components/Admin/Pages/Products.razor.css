@@ -1,0 +1,2 @@
+.admin-product-page { display: grid; gap: 1rem; }
+.admin-product-page__primary { background: var(--admin-accent); color: var(--admin-surface); }

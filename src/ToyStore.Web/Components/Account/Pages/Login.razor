@@ -1,0 +1,101 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using MediatR
+@using ToyStore.Application.Accounts
+@using ToyStore.Application.Accounts.Login
+
+@inject ISender Sender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>เข้าสู่ระบบ</PageTitle>
+
+<section class="store-container account-page" aria-labelledby="login-heading">
+    <h1 id="login-heading">เข้าสู่ระบบ</h1>
+    <p>เข้าสู่ระบบเพื่อชำระเงินและติดตามคำสั่งซื้อ</p>
+
+    <StatusMessage Message="@message" />
+    <EditForm Model="Input" method="post" OnValidSubmit="LoginUserAsync" FormName="login" class="account-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="store-validation-summary" role="alert" />
+
+        <StoreTextField @bind-Value="Input.Email"
+                        Id="login-email"
+                        Label="อีเมล"
+                        Required="true"
+                        Autocomplete="email"
+                        Placeholder="name@example.com" />
+        <StoreTextField @bind-Value="Input.Password"
+                        Id="login-password"
+                        Label="รหัสผ่าน"
+                        Required="true"
+                        Type="password"
+                        Autocomplete="current-password"
+                        Placeholder="รหัสผ่าน" />
+        <div class="account-checkbox">
+            <InputCheckbox @bind-Value="Input.RememberMe" id="remember-me" />
+            <label for="remember-me">จดจำฉัน</label>
+        </div>
+
+        <StoreButton ButtonType="submit">เข้าสู่ระบบ</StoreButton>
+        <div class="account-page__links">
+            <span aria-disabled="true" class="account-page__muted">ลืมรหัสผ่าน (ยังไม่เปิดใช้งาน)</span>
+            <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">สมัครสมาชิก</a>
+        </div>
+    </EditForm>
+</section>
+
+@code {
+    private string? message;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Input ??= new();
+    }
+
+    private async Task LoginUserAsync()
+    {
+        var result = await Sender.Send(
+            new LoginCommand(Input.Email, Input.Password, Input.RememberMe),
+            HttpContext.RequestAborted);
+
+        if (result.IsSuccess)
+        {
+            RedirectManager.RedirectTo(
+                result.Value.MustChangePassword
+                    ? "Account/Manage/ChangePassword"
+                    : ReturnUrl);
+            return;
+        }
+
+        if (result.Error == AccountErrors.LockedOut)
+        {
+            RedirectManager.RedirectTo("Account/Lockout");
+            return;
+        }
+
+        message = $"ข้อผิดพลาด: {result.Error.Message}";
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกรหัสผ่าน")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

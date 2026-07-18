@@ -1,0 +1,50 @@
+.admin-filter-bar {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-5);
+  margin-block-end: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-filter-bar__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.admin-filter-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.admin-filter-bar__actions :is(button, a) {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--admin-accent);
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.admin-filter-bar__actions a {
+  background: var(--admin-accent-soft);
+}
+
+@media (max-width: 47.999rem) {
+  .admin-filter-bar { gap: var(--space-5); padding: var(--space-4); }
+  .admin-filter-bar__fields { grid-template-columns: 1fr; }
+  .admin-filter-bar__actions { display: grid; grid-template-columns: 1fr; }
+  .admin-filter-bar__actions ::deep .store-action,
+  .admin-filter-bar__actions a { width: 100%; }
+}

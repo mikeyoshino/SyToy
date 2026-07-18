@@ -1,0 +1,476 @@
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Cart
+@using ToyStore.Application.Cart.AddCartItem
+@using ToyStore.Application.Cart.ChangeCartItemQuantity
+@using ToyStore.Application.Cart.GetAnonymousCartPreview
+@using ToyStore.Application.Cart.GetCart
+@using ToyStore.Application.Cart.MergeAnonymousCart
+@using ToyStore.Application.Cart.RemoveCartItem
+@using ToyStore.Application.Common.Models
+@using ToyStore.Domain.Carts
+@using ToyStore.Web.Identity
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AnonymousCartBrowserStore BrowserStore
+@inject CartDrawerCoordinator Coordinator
+@inject NavigationManager NavigationManager
+@inject ILogger<StoreCartDrawer> Logger
+
+<div class="store-cart-host">
+<StoreDrawer @ref="drawer"
+             IsOpen="@Coordinator.IsOpen"
+             IsOpenChanged="HandleOpenChanged"
+             Title="ตะกร้าของคุณ"
+             Dismissible="@(!isBusy)"
+             InitialFocusSelector=".store-cart">
+    <TitleContent>
+        <span>ตะกร้าของคุณ</span>
+        <small class="store-cart__title-count">@View.TotalQuantity ชิ้น</small>
+    </TitleContent>
+    <ChildContent>
+        <section class="store-cart" tabindex="-1" aria-label="รายการในตะกร้า" aria-busy="@isBusy.ToString().ToLowerInvariant()">
+            @if (!isLoading && errorMessage is null && mergeMessages.Count != 0)
+            {
+                <div class="store-cart__merge-result" role="status" aria-live="polite">
+                    <strong>ตรวจสอบตะกร้าหลังเข้าสู่ระบบแล้ว</strong>
+                    <ul>
+                        @foreach (var message in mergeMessages) { <li>@message</li> }
+                    </ul>
+                </div>
+            }
+            @if (isLoading)
+            {
+                <div class="store-cart__loading" role="status" aria-live="polite">
+                    <StoreSkeleton StatusText="กำลังโหลดตะกร้าสินค้า" />
+                    <StoreSkeleton />
+                    <span>กำลังโหลดตะกร้าสินค้า</span>
+                </div>
+            }
+            else if (errorMessage is not null)
+            {
+                <div class="store-cart__state store-cart__state--error" role="alert">
+                    <strong>โหลดตะกร้าไม่สำเร็จ</strong>
+                    <p>@errorMessage</p>
+                    <StoreButton Disabled="@isBusy" OnClick="RetryAsync">ลองอีกครั้ง</StoreButton>
+                </div>
+            }
+            else if (View.Items.Count == 0)
+            {
+                <div class="store-cart__state" role="status">
+                    <span class="store-cart__empty-mark" aria-hidden="true">0</span>
+                    <strong>ตะกร้ายังว่างอยู่</strong>
+                    <p>เลือกสินค้าพร้อมส่งที่ชอบ แล้วกลับมาดูได้ตรงนี้</p>
+                </div>
+            }
+            else
+            {
+                <ul class="store-cart__items">
+                    @foreach (var item in View.Items)
+                    {
+                        <li @key="item.ProductId" class="store-cart__item @(item.IsCurrentlyAvailable ? "" : "store-cart__item--unavailable")">
+                            <div class="store-cart__media">
+                                @if (!string.IsNullOrWhiteSpace(item.PrimaryImageUrl))
+                                {
+                                    <img src="@item.PrimaryImageUrl" alt="@item.DisplayName" />
+                                }
+                                else
+                                {
+                                    <span aria-hidden="true"></span>
+                                }
+                            </div>
+                            <div class="store-cart__item-body">
+                                @if (item.IsCurrentlyAvailable && !string.IsNullOrWhiteSpace(item.Slug))
+                                {
+                                    <a href="@($"/products/{item.Slug}")">@item.DisplayName</a>
+                                    <strong>฿@item.CurrentUnitPrice.ToString("N2", ThaiCulture)</strong>
+                                }
+                                else
+                                {
+                                    <strong>@item.DisplayName</strong>
+                                    <span class="store-cart__unavailable">ไม่พร้อมขายแล้ว กรุณานำออกจากตะกร้า</span>
+                                }
+                                <div class="store-cart__item-actions">
+                                    @if (item.IsCurrentlyAvailable)
+                                    {
+                                        <div class="store-cart__quantity" aria-label="จำนวน @item.DisplayName">
+                                            <button type="button" aria-label="ลดจำนวน @item.DisplayName"
+                                                    disabled="@(isBusy || item.Quantity <= 1)"
+                                                    @onclick="() => SetQuantityAsync(item, item.Quantity - 1)">−</button>
+                                            <output aria-live="polite">@item.Quantity</output>
+                                            <button type="button" aria-label="เพิ่มจำนวน @item.DisplayName"
+                                                    disabled="@(isBusy || item.Quantity >= CartLimits.MaximumQuantityPerItem)"
+                                                    @onclick="() => SetQuantityAsync(item, item.Quantity + 1)">+</button>
+                                        </div>
+                                    }
+                                    <button type="button" class="store-cart__remove"
+                                            aria-label="นำ @item.DisplayName ออกจากตะกร้า"
+                                            disabled="@isBusy"
+                                            @onclick="() => RemoveAsync(item)">นำออก</button>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+                <div class="store-cart__summary">
+                    <span>ยอดรวมที่แสดง</span>
+                    <strong>฿@View.DisplayTotal.ToString("N2", ThaiCulture)</strong>
+                </div>
+                <p class="store-cart__notice">ราคานี้เป็นราคาปัจจุบัน ระบบจะตรวจสอบราคาและสต็อกอีกครั้งตอนชำระเงิน</p>
+            }
+        </section>
+    </ChildContent>
+    <Actions>
+        <div class="store-cart__footer">
+            <StoreButtonGroup IsBusy="@isBusy">
+                <StoreButton Tone="StoreButtonTone.Secondary" OnClick="Close">เลือกซื้อสินค้าต่อ</StoreButton>
+                <StoreButton IsBusy="@isBusy" LoadingText="กำลังเตรียมชำระเงิน…"
+                             Disabled="@(!CanCheckout)" OnClick="CheckoutAsync"
+                             aria-describedby="store-cart-checkout-note">
+                    ไปชำระเงิน
+                </StoreButton>
+            </StoreButtonGroup>
+            <span id="store-cart-checkout-note" class="visually-hidden">
+                @CheckoutNote
+            </span>
+        </div>
+    </Actions>
+</StoreDrawer>
+</div>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly SemaphoreSlim operationGate = new(1, 1);
+    private readonly TaskCompletionSource browserReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private StoreDrawer? drawer;
+    private CustomerCartView View { get; set; } = new(null, 0, [], 0);
+    private AnonymousCartSnapshot anonymous = new(null, []);
+    private bool isCustomer;
+    private bool browserLoaded;
+    private bool isLoading;
+    private bool isBusy;
+    private bool disposed;
+    private string? errorMessage;
+    private IReadOnlyList<string> mergeMessages = [];
+    private bool CanCheckout => !isBusy && errorMessage is null
+        && View.Items.Count != 0 && View.Items.All(item => item.IsCurrentlyAvailable);
+    private string CheckoutNote => View.Items.Count == 0
+        ? "กรุณาเพิ่มสินค้าก่อนชำระเงิน"
+        : View.Items.Any(item => !item.IsCurrentlyAvailable)
+            ? "กรุณานำสินค้าที่ไม่พร้อมขายออกก่อนชำระเงิน"
+            : isCustomer ? "ไปยังหน้าชำระเงิน" : "ระบบจะให้เข้าสู่ระบบก่อนชำระเงิน";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Coordinator.Changed += HandleCoordinatorChanged;
+        Coordinator.Attach(AddProductAsync);
+        var authentication = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isCustomer = authentication.User.Identity?.IsAuthenticated == true
+            && authentication.User.IsInRole(RoleNames.Customer);
+        if (isCustomer) await LoadCustomerAsync(disposalTokenSource.Token);
+        else Coordinator.SetTotalQuantity(0);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || disposed) return;
+        if (!isCustomer)
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        try { await LoadBrowserAndMergeAsync(disposalTokenSource.Token); }
+        finally
+        {
+            browserReady.TrySetResult();
+            Coordinator.MarkReady();
+        }
+        if (!disposed) await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadBrowserAndMergeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            anonymous = await BrowserStore.LoadAsync(cancellationToken);
+            browserLoaded = true;
+            if (isCustomer && anonymous.Items is { Count: > 0 })
+            {
+                isBusy = true;
+                var merge = await Sender.Send(new MergeAnonymousCartCommand(
+                    Guid.Parse(anonymous.MergeOperationId!),
+                    anonymous.Items.Select(item => new AnonymousCartInput(item.ProductId, item.Quantity)).ToArray()),
+                    cancellationToken);
+                if (merge.IsFailure)
+                {
+                    errorMessage = merge.Error.Message;
+                    return;
+                }
+
+                await BrowserStore.ClearAsync(cancellationToken);
+                anonymous = new(Guid.NewGuid().ToString("D"), []);
+                await LoadCustomerAsync(cancellationToken);
+                mergeMessages = BuildMergeMessages(merge.Value);
+            }
+            else if (!isCustomer)
+            {
+                await LoadAnonymousPreviewAsync(cancellationToken);
+            }
+            else await LoadCustomerAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Anonymous cart browser storage failed.");
+            errorMessage = "อ่านตะกร้าในอุปกรณ์นี้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+        }
+        finally
+        {
+            isLoading = false;
+            isBusy = false;
+        }
+    }
+
+    private async Task<bool> AddProductAsync(Guid productId)
+    {
+        Coordinator.Open();
+        await EnsureBrowserReadyAsync(disposalTokenSource.Token);
+        await operationGate.WaitAsync(disposalTokenSource.Token);
+        isBusy = true;
+        errorMessage = null;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            if (isCustomer)
+            {
+                var result = await Sender.Send(new AddCartItemCommand(
+                    Guid.NewGuid(), productId, 1, View.Version), disposalTokenSource.Token);
+                if (result.IsFailure) return ShowBusinessFailure(result.Error);
+                await LoadCustomerAsync(disposalTokenSource.Token);
+            }
+            else
+            {
+                if (!browserLoaded) await LoadBrowserAndMergeAsync(disposalTokenSource.Token);
+                var items = anonymous.Items?.ToList() ?? [];
+                var index = items.FindIndex(item => item.ProductId == productId);
+                if (index >= 0)
+                {
+                    if (items[index].Quantity >= CartLimits.MaximumQuantityPerItem)
+                        return ShowBusinessFailure(ToyStore.Application.Cart.CartErrors.QuantityExceedsLimit);
+                    items[index] = items[index] with { Quantity = items[index].Quantity + 1 };
+                }
+                else
+                {
+                    if (!AnonymousCartBrowserStore.CanAddDistinctProduct(anonymous, productId))
+                    {
+                        errorMessage = "ตะกร้าในอุปกรณ์นี้เก็บสินค้าได้สูงสุด 100 รายการ กรุณานำบางรายการออกก่อน";
+                        return false;
+                    }
+                    items.Add(new(productId, 1));
+                }
+                anonymous = new(Guid.NewGuid().ToString("D"), items);
+                await BrowserStore.SaveAsync(anonymous, disposalTokenSource.Token);
+                await LoadAnonymousPreviewAsync(disposalTokenSource.Token);
+            }
+            return true;
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested) { return false; }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Cart add failed for product {ProductId}.", productId);
+            errorMessage = "เพิ่มสินค้าลงตะกร้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+            return false;
+        }
+        finally
+        {
+            isBusy = false;
+            operationGate.Release();
+            if (!disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SetQuantityAsync(CustomerCartItemView item, int quantity)
+    {
+        if (quantity is < 1 or > CartLimits.MaximumQuantityPerItem) return;
+        await MutateAsync(async token =>
+        {
+            if (isCustomer)
+            {
+                var result = await Sender.Send(new ChangeCartItemQuantityCommand(
+                    Guid.NewGuid(), item.ProductId, quantity, View.Version), token);
+                if (result.IsFailure) return result.Error;
+                await LoadCustomerAsync(token);
+            }
+            else
+            {
+                anonymous = new(Guid.NewGuid().ToString("D"), anonymous.Items!
+                    .Select(value => value.ProductId == item.ProductId ? value with { Quantity = quantity } : value)
+                    .ToArray());
+                await BrowserStore.SaveAsync(anonymous, token);
+                await LoadAnonymousPreviewAsync(token);
+            }
+            return null;
+        });
+    }
+
+    private async Task RemoveAsync(CustomerCartItemView item) => await MutateAsync(async token =>
+    {
+        if (isCustomer)
+        {
+            var result = await Sender.Send(new RemoveCartItemCommand(
+                Guid.NewGuid(), item.ProductId, View.Version), token);
+            if (result.IsFailure) return result.Error;
+            await LoadCustomerAsync(token);
+        }
+        else
+        {
+            anonymous = new(Guid.NewGuid().ToString("D"), anonymous.Items!
+                .Where(value => value.ProductId != item.ProductId).ToArray());
+            await BrowserStore.SaveAsync(anonymous, token);
+            await LoadAnonymousPreviewAsync(token);
+        }
+        return null;
+    });
+
+    private async Task MutateAsync(Func<CancellationToken, Task<Error?>> action)
+    {
+        await EnsureBrowserReadyAsync(disposalTokenSource.Token);
+        await operationGate.WaitAsync(disposalTokenSource.Token);
+        isBusy = true;
+        errorMessage = null;
+        try
+        {
+            var failure = await action(disposalTokenSource.Token);
+            if (failure is not null) ShowBusinessFailure(failure);
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Cart mutation failed.");
+            errorMessage = "อัปเดตตะกร้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+        }
+        finally
+        {
+            isBusy = false;
+            operationGate.Release();
+        }
+    }
+
+    private bool ShowBusinessFailure(Error error)
+    {
+        errorMessage = error.Message;
+        return false;
+    }
+
+    private async Task LoadCustomerAsync(CancellationToken cancellationToken)
+    {
+        isLoading = true;
+        try
+        {
+            var result = await Sender.Send(new GetCartQuery(), cancellationToken);
+            if (result.IsFailure) errorMessage = result.Error.Message;
+            else ApplyView(result.Value);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Customer cart query failed.");
+            errorMessage = "โหลดตะกร้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+        }
+        finally { isLoading = false; }
+    }
+
+    private async Task LoadAnonymousPreviewAsync(CancellationToken cancellationToken)
+    {
+        var lines = anonymous.Items ?? [];
+        if (lines.Count == 0)
+        {
+            ApplyView(new(null, 0, [], 0));
+            return;
+        }
+        var result = await Sender.Send(new GetAnonymousCartPreviewQuery(
+            lines.Select(item => new AnonymousCartPreviewInput(item.ProductId, item.Quantity)).ToArray()), cancellationToken);
+        if (result.IsFailure) errorMessage = result.Error.Message;
+        else ApplyView(result.Value);
+    }
+
+    private void ApplyView(CustomerCartView view)
+    {
+        View = view;
+        errorMessage = null;
+        Coordinator.SetTotalQuantity(view.TotalQuantity);
+    }
+
+    private async Task RetryAsync()
+    {
+        await EnsureBrowserReadyAsync(disposalTokenSource.Token);
+        await operationGate.WaitAsync(disposalTokenSource.Token);
+        errorMessage = null;
+        isLoading = true;
+        try { await LoadBrowserAndMergeAsync(disposalTokenSource.Token); }
+        finally { operationGate.Release(); }
+    }
+
+    private void HandleOpenChanged(bool value)
+    {
+        Coordinator.SetOpen(value);
+        if (!value) mergeMessages = [];
+    }
+
+    private void HandleCoordinatorChanged()
+    {
+        if (!disposed)
+            _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Close() => Coordinator.Close();
+
+    private async Task CheckoutAsync()
+    {
+        await EnsureBrowserReadyAsync(disposalTokenSource.Token);
+        await operationGate.WaitAsync(disposalTokenSource.Token);
+        try
+        {
+            if (!CanCheckout) return;
+            if (drawer is not null) await drawer.CloseWithoutFocusReturnAsync();
+            var destination = isCustomer
+                ? "/checkout"
+                : "/Account/Login?ReturnUrl=%2Fcheckout";
+
+            // Account pages use static SSR because their form handlers require HttpContext.
+            // Force a document request instead of asking the interactive router to render them.
+            NavigationManager.NavigateTo(destination, forceLoad: !isCustomer);
+        }
+        finally { operationGate.Release(); }
+    }
+
+    private async Task EnsureBrowserReadyAsync(CancellationToken cancellationToken)
+    {
+        if (browserReady.Task.IsCompleted) return;
+        await browserReady.Task.WaitAsync(cancellationToken);
+    }
+
+    private IReadOnlyList<string> BuildMergeMessages(MergeAnonymousCartResult result)
+    {
+        var messages = new List<string>();
+        if (result.RejectedItems.Count != 0)
+            messages.Add($"นำสินค้า {result.RejectedItems.Count:N0} รายการที่ไม่พร้อมขายออกแล้ว");
+        foreach (var clamped in result.ClampedItems)
+        {
+            var name = View.Items.FirstOrDefault(item => item.ProductId == clamped.ProductId)?.DisplayName ?? "สินค้า";
+            messages.Add($"{name}: ปรับจำนวนจาก {clamped.RequestedQuantity:N0} เป็น {clamped.AppliedQuantity:N0} ชิ้น");
+        }
+        return messages;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        Coordinator.Changed -= HandleCoordinatorChanged;
+        Coordinator.Detach(AddProductAsync);
+        await disposalTokenSource.CancelAsync();
+        disposalTokenSource.Dispose();
+    }
+}

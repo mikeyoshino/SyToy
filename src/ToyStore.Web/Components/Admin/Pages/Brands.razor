@@ -1,0 +1,555 @@
+@page "/admin/brands"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@attribute [Authorize(Policy = PolicyNames.CanManageProducts)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Brands
+@using ToyStore.Application.Brands.ArchiveBrand
+@using ToyStore.Application.Brands.CreateBrand
+@using ToyStore.Application.Brands.ListBrands
+@using ToyStore.Application.Brands.UpdateBrand
+@using ToyStore.Application.Common.Files
+@using ToyStore.Application.Common.Models
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject AdminRequestExecutor RequestExecutor
+@inject NavigationManager NavigationManager
+@inject IStoreToastService ToastService
+
+<PageTitle>แบรนด์</PageTitle>
+<AdminPageHeader @ref="header"
+                 Title="แบรนด์"
+                 Description="ดูแลข้อมูลแบรนด์ รูปภาพ และความพร้อมสำหรับแคตตาล็อกสินค้า">
+    <Actions>
+        <StoreButton OnClick="OpenCreateAsync">
+            เพิ่มแบรนด์
+        </StoreButton>
+    </Actions>
+</AdminPageHeader>
+
+<AdminContextNav Label="เมนูแคตตาล็อก"
+                 CurrentUrl="@NavigationManager.Uri"
+                 Items="AdminNavigation.CatalogContextItems" />
+
+<div class="admin-brand-page">
+    <AdminFilterBar HistoryState="@filterState"
+                    BasePath="@BasePath"
+                    FormName="brand-list-filter"
+                    Label="ค้นหาและกรองแบรนด์" />
+
+    <AdminContentStateView State="@contentState"
+                           LoadingMessage="กำลังโหลดรายการแบรนด์"
+                           EmptyTitle="ยังไม่มีแบรนด์"
+                           EmptyMessage="@EmptyMessage"
+                           EmptyActionLabel="@EmptyActionLabel"
+                           EmptyActionClicked="HandleEmptyActionAsync"
+                           ErrorTitle="ไม่สามารถโหลดรายการแบรนด์ได้"
+                           ErrorMessage="@listErrorMessage"
+                           Retry="ReloadAsync">
+        <ReadyContent>
+            <AdminCatalogReferenceList Caption="รายการแบรนด์"
+                                           Items="@items"
+                                           EntityLabel="แบรนด์"
+                                           MissingImageText="ยังไม่มีรูปแบรนด์"
+                                           EditRequested="OpenEditAsync"
+                                           ArchiveRequested="OpenArchiveAsync"
+                                           CurrentPage="@currentPage"
+                                           TotalPages="@totalPages"
+                                           PageUrl="BuildPageUrl" />
+        </ReadyContent>
+    </AdminContentStateView>
+</div>
+
+<AdminModal @ref="editorModal"
+            IsOpen="@isEditorOpen"
+            IsOpenChanged="SetEditorOpenAsync"
+            Closed="HandleMutationDialogClosedAsync"
+            Title="@EditorTitle"
+            IsBusy="@isEditorBusy"
+            InitialFocusSelector=".store-field__control">
+    <ChildContent>
+        <AdminCatalogReferenceEditor @ref="editor"
+                                     @key="editorModel"
+                                     Model="@editorModel"
+                                     FormId="brand-editor-form"
+                                     FormName="brand-editor"
+                                     ImageLabel="รูปภาพแบรนด์"
+                                     ImageRequired="@(editingItem is null || string.IsNullOrWhiteSpace(editingItem.ImageUrl))"
+                                     CurrentImageUrl="@editingItem?.ImageUrl"
+                                     CurrentImageAlt="@(editingItem?.ImageAlt ?? "รูปแบรนด์ที่บันทึกไว้")"
+                                     PreviewAlt="ตัวอย่างรูปแบรนด์ที่เลือก"
+                                     IsBusy="@isEditorBusy"
+                                     FieldAliases="@EditorFieldAliases"
+                                     Submitted="SaveEditorAsync" />
+    </ChildContent>
+    <Actions>
+        <StoreButtonGroup IsBusy="@isEditorBusy">
+            <StoreButton Tone="StoreButtonTone.Secondary" OnClick="CloseEditorAsync">ยกเลิก</StoreButton>
+            <StoreButton ButtonType="submit" Form="brand-editor-form"
+                         IsBusy="@isEditorBusy" LoadingText="กำลังบันทึก…">
+                บันทึกแบรนด์
+            </StoreButton>
+        </StoreButtonGroup>
+    </Actions>
+</AdminModal>
+
+<AdminCatalogReferenceArchive IsOpen="@isArchiveOpen"
+                              IsOpenChanged="SetArchiveOpenAsync"
+                              Closed="HandleMutationDialogClosedAsync"
+                              Title="เก็บแบรนด์"
+                              Description="@ArchiveDescription"
+                              ConfirmLabel="เก็บแบรนด์"
+                              IsBusy="@isArchiveBusy"
+                              ErrorMessage="@archiveErrorMessage"
+                              Confirmed="ArchiveAsync">
+    <ReferenceSummary>
+        แบรนด์นี้ถูกใช้งานกับสินค้า @(archiveItem?.ProductCount ?? 0) รายการ
+        ข้อมูลสินค้าเดิมและรูปภาพจะยังคงอยู่
+    </ReferenceSummary>
+</AdminCatalogReferenceArchive>
+
+@code {
+    private const string BasePath = "/admin/brands";
+    private const long BrowserUploadReadLimit = 5 * 1024 * 1024 + 1;
+    private static readonly TimeZoneInfo BangkokTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly IReadOnlyDictionary<string, string> EditorFieldAliases =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [nameof(CreateBrandCommand.Image)] = nameof(AdminCatalogReferenceEditorModel.Image),
+            [nameof(UpdateBrandCommand.ReplacementImage)] = nameof(AdminCatalogReferenceEditorModel.Image),
+        };
+
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private CancellationTokenSource? loadTokenSource;
+    private long loadGeneration;
+    private AdminPageHeader? header;
+    private AdminModal? editorModal;
+    private AdminCatalogReferenceEditor? editor;
+    private AdminContentState contentState = AdminContentState.Loading;
+    private AdminFilterQueryState filterState = new();
+    private IReadOnlyList<AdminCatalogReferenceListItem> items = [];
+    private int currentPage = 1;
+    private int totalPages;
+    private string listErrorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+    private bool isEditorOpen;
+    private bool isEditorBusy;
+    private AdminCatalogReferenceEditorModel editorModel = new();
+    private AdminCatalogReferenceListItem? editingItem;
+    private bool isArchiveOpen;
+    private bool isArchiveBusy;
+    private string? archiveErrorMessage;
+    private AdminCatalogReferenceListItem? archiveItem;
+    private bool focusHeaderAfterDialogClosed;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Search { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? Status { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public string? Page { get; set; }
+
+    private bool IsFiltered => !string.IsNullOrWhiteSpace(filterState.Search)
+        || !string.Equals(filterState.Status, "active", StringComparison.Ordinal);
+
+    private string EmptyMessage => IsFiltered
+        ? "ไม่พบแบรนด์ที่ตรงกับตัวกรอง ลองเปลี่ยนคำค้นหรือสถานะ"
+        : "เพิ่มแบรนด์แรกเพื่อเริ่มใช้งานกับสินค้าในแคตตาล็อก";
+
+    private string EmptyActionLabel => IsFiltered ? "ล้างตัวกรอง" : "เพิ่มแบรนด์";
+
+    private string EditorTitle => editingItem is null ? "เพิ่มแบรนด์" : "แก้ไขแบรนด์";
+
+    private string ArchiveDescription => archiveItem is null
+        ? "ยืนยันการเก็บแบรนด์นี้"
+        : $"ยืนยันการเก็บแบรนด์ {archiveItem.DisplayName}";
+
+    protected override Task OnParametersSetAsync() => LoadFromUrlAsync();
+
+    private async Task LoadFromUrlAsync()
+    {
+        var requestedState = CreateFilterState(Search, Status, Page);
+        var canonicalUrl = AdminFilterBar.BuildCanonicalUrl(BasePath, requestedState);
+        if (!CurrentRelativeUrl().Equals(canonicalUrl, StringComparison.Ordinal))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(canonicalUrl, replace: true);
+            return;
+        }
+
+        filterState = requestedState;
+        await LoadAsync(requestedState);
+    }
+
+    private Task ReloadAsync() => LoadAsync(filterState);
+
+    private async Task LoadAsync(AdminFilterQueryState requestedState)
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var nextTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+            disposalTokenSource.Token);
+        var previousTokenSource = Interlocked.Exchange(ref loadTokenSource, nextTokenSource);
+        if (previousTokenSource is not null)
+        {
+            await previousTokenSource.CancelAsync();
+            previousTokenSource.Dispose();
+        }
+
+        contentState = AdminContentState.Loading;
+        listErrorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+        try
+        {
+            var result = await RequestExecutor.ExecuteAsync(
+                cancellationToken => Sender.Send(
+                    new ListBrandsQuery(
+                        requestedState.Search,
+                        ParseStatus(requestedState.Status),
+                        requestedState.Page,
+                        PageSize: 20),
+                    cancellationToken),
+                nextTokenSource.Token);
+
+            if (generation != Volatile.Read(ref loadGeneration)
+                || nextTokenSource.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (result.IsFailure)
+            {
+                listErrorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage
+                    ?? result.Error.Message;
+                contentState = AdminContentState.Error;
+                return;
+            }
+
+            var page = result.Value;
+            if (page.PageNumber != requestedState.Page)
+            {
+                var effectiveUrl = AdminFilterBar.BuildCanonicalUrl(
+                    BasePath,
+                    requestedState with { Page = page.PageNumber });
+                await CancelCurrentLoadAsync();
+                NavigationManager.NavigateTo(effectiveUrl, replace: true);
+                return;
+            }
+
+            items = page.Items.Select(MapItem).ToArray();
+            currentPage = page.PageNumber;
+            totalPages = page.TotalPages;
+            contentState = items.Count == 0
+                ? AdminContentState.Empty
+                : AdminContentState.Ready;
+        }
+        catch (OperationCanceledException) when (nextTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    private Task HandleEmptyActionAsync() => IsFiltered
+        ? ClearFiltersAsync()
+        : OpenCreateAsync();
+
+    private Task ClearFiltersAsync()
+    {
+        NavigationManager.NavigateTo(BasePath);
+        return Task.CompletedTask;
+    }
+
+    private Task OpenCreateAsync()
+    {
+        editingItem = null;
+        editorModel = new AdminCatalogReferenceEditorModel();
+        editor?.ClearValidation();
+        isEditorOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenEditAsync(AdminCatalogReferenceListItem item)
+    {
+        editingItem = item;
+        editorModel = new AdminCatalogReferenceEditorModel
+        {
+            DisplayName = item.DisplayName,
+            EnglishName = item.EnglishName,
+            Slug = item.Slug,
+        };
+        editor?.ClearValidation();
+        isEditorOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveEditorAsync(AdminCatalogReferenceEditorModel model)
+    {
+        if (isEditorBusy)
+        {
+            return;
+        }
+
+        isEditorBusy = true;
+        try
+        {
+            Result<BrandMutationResult> result;
+            try
+            {
+                result = await ExecuteSaveAsync(model);
+            }
+            catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (result.IsFailure)
+            {
+                await editor!.DisplayFailureAsync(result);
+                var failureMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+                ToastService.ShowError(failureMessage, "บันทึกล้มเหลว");
+                return;
+            }
+
+            var savedId = result.Value.Id;
+            var successMessage = editingItem is null
+                ? $"เพิ่มแบรนด์ {result.Value.DisplayName} แล้ว"
+                : $"บันทึกแบรนด์ {result.Value.DisplayName} แล้ว";
+            ToastService.ShowSuccess(successMessage, editingItem is null ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
+            await ReloadAsync();
+            if (ShouldFocusHeader(savedId))
+            {
+                focusHeaderAfterDialogClosed = true;
+            }
+            isEditorOpen = false;
+        }
+        finally
+        {
+            isEditorBusy = false;
+        }
+    }
+
+    private Task<Result<BrandMutationResult>> ExecuteSaveAsync(
+        AdminCatalogReferenceEditorModel model) =>
+        RequestExecutor.ExecuteAsync(
+            async cancellationToken =>
+            {
+                var selectedFile = model.Image;
+                if (selectedFile is not null && selectedFile.Size > BrowserUploadReadLimit)
+                {
+                    return Result<BrandMutationResult>.Failure(
+                        MediaStorageErrors.TooLarge,
+                        [new FieldValidationFailure(
+                            editingItem is null
+                                ? nameof(CreateBrandCommand.Image)
+                                : nameof(UpdateBrandCommand.ReplacementImage),
+                            MediaStorageErrors.TooLarge.Message)]);
+                }
+
+                await using var uploadStream = selectedFile?.OpenReadStream(
+                    BrowserUploadReadLimit,
+                    cancellationToken);
+                var upload = selectedFile is null
+                    ? null
+                    : new MediaUpload(uploadStream!, selectedFile.ContentType);
+                return editingItem is null
+                    ? await Sender.Send(
+                        new CreateBrandCommand(
+                            model.DisplayName ?? string.Empty,
+                            model.EnglishName ?? string.Empty,
+                            upload),
+                        cancellationToken)
+                    : await Sender.Send(
+                        new UpdateBrandCommand(
+                            editingItem.Id,
+                            editingItem.Version,
+                            model.DisplayName ?? string.Empty,
+                            model.EnglishName ?? string.Empty,
+                            upload),
+                        cancellationToken);
+            },
+            disposalTokenSource.Token);
+
+    private Task CloseEditorAsync() =>
+        isEditorBusy
+            ? Task.CompletedTask
+            : editorModal?.RequestCloseAsync() ?? Task.CompletedTask;
+
+    private Task SetEditorOpenAsync(bool isOpen)
+    {
+        isEditorOpen = isOpen;
+        if (!isOpen && !isEditorBusy)
+        {
+            editingItem = null;
+            editorModel = new AdminCatalogReferenceEditorModel();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OpenArchiveAsync(AdminCatalogReferenceListItem item)
+    {
+        archiveItem = item;
+        archiveErrorMessage = null;
+        isArchiveOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (isArchiveBusy || archiveItem is null)
+        {
+            return;
+        }
+
+        isArchiveBusy = true;
+        archiveErrorMessage = null;
+        var archivedId = archiveItem.Id;
+        try
+        {
+            Result<BrandMutationResult> result;
+            try
+            {
+                result = await RequestExecutor.ExecuteAsync(
+                    cancellationToken => Sender.Send(
+                        new ArchiveBrandCommand(archiveItem.Id, archiveItem.Version),
+                        cancellationToken),
+                    disposalTokenSource.Token);
+            }
+            catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (result.IsFailure)
+            {
+                archiveErrorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage
+                    ?? result.Error.Message;
+                ToastService.ShowError(archiveErrorMessage, "ไม่สามารถดำเนินการได้");
+                return;
+            }
+
+            ToastService.ShowSuccess($"เก็บแบรนด์ {result.Value.DisplayName} แล้ว", "เก็บสำเร็จ");
+            await ReloadAsync();
+            if (ShouldFocusHeader(archivedId))
+            {
+                focusHeaderAfterDialogClosed = true;
+            }
+            isArchiveOpen = false;
+        }
+        finally
+        {
+            isArchiveBusy = false;
+        }
+    }
+
+    private Task SetArchiveOpenAsync(bool isOpen)
+    {
+        isArchiveOpen = isOpen;
+        if (!isOpen && !isArchiveBusy)
+        {
+            archiveItem = null;
+            archiveErrorMessage = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private bool ShouldFocusHeader(Guid affectedId) =>
+        contentState != AdminContentState.Ready || items.All(item => item.Id != affectedId);
+
+    private async Task HandleMutationDialogClosedAsync()
+    {
+        if (!focusHeaderAfterDialogClosed || header is null)
+        {
+            return;
+        }
+
+        focusHeaderAfterDialogClosed = false;
+        await header.FocusAsync();
+    }
+
+    private string BuildPageUrl(int page) => AdminFilterBar.BuildCanonicalUrl(
+        BasePath,
+        filterState with { Page = page });
+
+    private static AdminFilterQueryState CreateFilterState(
+        string? search,
+        string? status,
+        string? page) =>
+        new(
+            search,
+            NormalizeStatus(status),
+            ParsePage(page));
+
+    private static int ParsePage(string? page) =>
+        int.TryParse(
+            page,
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var parsedPage)
+        && parsedPage > 0
+            ? parsedPage
+            : 1;
+
+    private static string NormalizeStatus(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "archived" => "archived",
+        "all" => "all",
+        _ => "active",
+    };
+
+    private static CatalogReferenceListStatus ParseStatus(string status) => status switch
+    {
+        "archived" => CatalogReferenceListStatus.Archived,
+        "all" => CatalogReferenceListStatus.All,
+        _ => CatalogReferenceListStatus.Active,
+    };
+
+    private static AdminCatalogReferenceListItem MapItem(BrandListItem item)
+    {
+        var active = string.Equals(item.Status.ToString(), "Active", StringComparison.Ordinal);
+        var updatedAtBangkok = TimeZoneInfo.ConvertTime(item.UpdatedAtUtc, BangkokTimeZone);
+        return new AdminCatalogReferenceListItem(
+            item.Id,
+            item.DisplayName,
+            item.EnglishName,
+            item.Slug,
+            item.ImagePublicRelativeUrl,
+            item.ImageAltText ?? $"รูปแบรนด์ {item.DisplayName}",
+            active ? "ใช้งาน" : "เก็บแล้ว",
+            active ? AdminStatusTone.Info : AdminStatusTone.Neutral,
+            item.CanBeUsedByPublishedProduct ? "พร้อมใช้งาน" : "ยังไม่พร้อมใช้งาน",
+            item.CanBeUsedByPublishedProduct ? AdminStatusTone.Success : AdminStatusTone.Warning,
+            item.ProductReferenceCount,
+            CharacterCount: null,
+            updatedAtBangkok.ToString("d MMM yyyy HH:mm", ThaiCulture),
+            CanArchive: active,
+            Version: item.Version,
+            CanEdit: active);
+    }
+
+    private string CurrentRelativeUrl()
+    {
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return relative.Length == 0 ? "/" : $"/{relative}";
+    }
+
+    private async Task CancelCurrentLoadAsync()
+    {
+        Interlocked.Increment(ref loadGeneration);
+        var currentLoadTokenSource = Interlocked.Exchange(ref loadTokenSource, null);
+        if (currentLoadTokenSource is not null)
+        {
+            await currentLoadTokenSource.CancelAsync();
+            currentLoadTokenSource.Dispose();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await CancelCurrentLoadAsync();
+        await disposalTokenSource.CancelAsync();
+        disposalTokenSource.Dispose();
+    }
+}

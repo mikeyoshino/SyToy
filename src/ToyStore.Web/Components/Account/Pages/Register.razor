@@ -1,0 +1,122 @@
+@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using MediatR
+@using ToyStore.Application.Accounts.Login
+@using ToyStore.Application.Accounts.RegisterCustomer
+
+@inject ISender Sender
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>สมัครสมาชิก</PageTitle>
+
+<section class="store-container account-page" aria-labelledby="register-heading">
+    <h1 id="register-heading">สมัครสมาชิก</h1>
+    <p>สร้างบัญชีด้วยอีเมลเพื่อสั่งซื้อและติดตามคำสั่งซื้อ</p>
+
+    <StatusMessage Message="@message" />
+    <EditForm EditContext="editContext" method="post" OnValidSubmit="RegisterUserAsync" FormName="register" class="account-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="store-validation-summary" role="alert" />
+
+        <StoreTextField @bind-Value="Input.Email"
+                        Id="register-email"
+                        Label="อีเมล"
+                        Required="true"
+                        Autocomplete="email"
+                        Placeholder="name@example.com" />
+        <StoreTextField @bind-Value="Input.Password"
+                        Id="register-password"
+                        Label="รหัสผ่าน"
+                        Required="true"
+                        Type="password"
+                        Autocomplete="new-password"
+                        Placeholder="รหัสผ่าน" />
+        <StoreTextField @bind-Value="Input.ConfirmPassword"
+                        Id="register-confirm-password"
+                        Label="ยืนยันรหัสผ่าน"
+                        Required="true"
+                        Type="password"
+                        Autocomplete="new-password"
+                        Placeholder="ยืนยันรหัสผ่าน" />
+
+        <StoreButton ButtonType="submit">สมัครสมาชิก</StoreButton>
+        <p>มีบัญชีแล้ว? <a href="Account/Login">เข้าสู่ระบบ</a></p>
+    </EditForm>
+</section>
+
+@code {
+    private string? message;
+    private EditContext editContext = default!;
+    private FormValidationStore validationStore = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Input ??= new();
+        editContext = new EditContext(Input);
+        validationStore = new FormValidationStore(editContext);
+    }
+
+    private async Task RegisterUserAsync()
+    {
+        message = null;
+        validationStore.Clear();
+
+        var registration = await Sender.Send(
+            new RegisterCustomerCommand(Input.Email, Input.Password, Input.ConfirmPassword),
+            HttpContext.RequestAborted);
+
+        if (registration.IsFailure)
+        {
+            if (registration.ValidationFailures.Count != 0)
+            {
+                validationStore.Display(registration.ValidationFailures);
+            }
+            else
+            {
+                message = $"ข้อผิดพลาด: {registration.Error.Message}";
+            }
+
+            return;
+        }
+
+        var login = await Sender.Send(
+            new LoginCommand(Input.Email, Input.Password, RememberMe: false),
+            HttpContext.RequestAborted);
+
+        if (login.IsFailure)
+        {
+            message = $"ข้อผิดพลาด: {login.Error.Message}";
+            return;
+        }
+
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "กรุณากรอกอีเมล")]
+        [EmailAddress(ErrorMessage = "รูปแบบอีเมลไม่ถูกต้อง")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณากรอกรหัสผ่าน")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "รหัสผ่านต้องมีความยาว 8–100 ตัวอักษร")]
+        [RegularExpression(
+            "^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).+$",
+            ErrorMessage = "รหัสผ่านต้องมีตัวอักษรภาษาอังกฤษพิมพ์ใหญ่ พิมพ์เล็ก และตัวเลขอย่างน้อยอย่างละ 1 ตัว")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "กรุณายืนยันรหัสผ่าน")]
+        [Compare(nameof(Password), ErrorMessage = "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

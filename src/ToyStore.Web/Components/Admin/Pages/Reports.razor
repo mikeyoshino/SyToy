@@ -1,0 +1,8 @@
+@page "/admin/reports"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+
+<PageTitle>รายงานยอดขาย</PageTitle>
+<AdminPageHeader Title="รายงานยอดขาย"
+                 Description="ดูแนวโน้มยอดขายจากข้อมูลการชำระเงินจริง" />
+<AdminPhasePlaceholder Message="รายงานยอดขายจะพร้อมใช้งานในระยะถัดไป" />

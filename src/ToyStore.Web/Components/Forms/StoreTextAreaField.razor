@@ -1,0 +1,42 @@
+@using System.Linq.Expressions
+
+<StoreFieldShell FieldId="@FieldId" Label="@Label" HelpText="@HelpText" Required="@Required">
+    <ChildContent>
+        <InputTextArea Value="@Value"
+                       ValueChanged="@ValueChanged"
+                       ValueExpression="@ValueExpression"
+                       @attributes="ControlAttributes" />
+    </ChildContent>
+    <ErrorContent><ValidationMessage For="@ValueExpression" /></ErrorContent>
+</StoreFieldShell>
+
+@code {
+    private readonly string generatedId = $"store-field-{Guid.NewGuid():N}";
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter, EditorRequired] public required string Label { get; set; }
+    [Parameter] public string? HelpText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public int Rows { get; set; } = 5;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter, EditorRequired] public Expression<Func<string?>> ValueExpression { get; set; } = default!;
+
+    private string FieldId => Id ?? generatedId;
+    private bool IsInvalid => EditContext is not null
+        && EditContext.GetValidationMessages(FieldIdentifier.Create(ValueExpression)).Any();
+    private string DescribedBy => string.IsNullOrWhiteSpace(HelpText)
+        ? $"{FieldId}-error"
+        : $"{FieldId}-help {FieldId}-error";
+    private Dictionary<string, object> ControlAttributes => FieldAttributeBuilder.Create(
+        null,
+        FieldId,
+        "store-field__control store-field__textarea",
+        Required,
+        Disabled,
+        IsInvalid,
+        DescribedBy,
+        ("rows", Rows));
+}

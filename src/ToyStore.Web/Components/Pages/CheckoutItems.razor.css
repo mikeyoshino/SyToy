@@ -1,0 +1,12 @@
+.checkout-page__items { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.checkout-page__items li { display: grid; grid-template-columns: 3.75rem minmax(0,1fr) auto; gap: var(--space-3); align-items: center; }
+.checkout-page__items img { width: 3.75rem; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.checkout-page__items span { display: grid; gap: var(--space-1); min-width: 0; }
+.checkout-page__items strong { overflow: hidden; text-overflow: ellipsis; }
+.checkout-page__items small { color: var(--color-muted); }
+.checkout-page__items b { white-space: nowrap; }
+@media (max-width: 47.999rem) {
+  .checkout-page__items li { grid-template-columns: 3.25rem minmax(0,1fr); }
+  .checkout-page__items img { width: 3.25rem; }
+  .checkout-page__items b { grid-column: 2; }
+}

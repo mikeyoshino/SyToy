@@ -1,0 +1,16 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">ข้ามไปยังเนื้อหา</a>
+
+<div class="store-shell">
+    <StoreHeader />
+    <main id="main-content" tabindex="-1">@Body</main>
+    <StoreFooter />
+</div>
+<StoreToastHost />
+
+<div id="blazor-error-ui" role="alert" data-nosnippet>
+    เกิดข้อผิดพลาดที่ไม่คาดคิด
+    <a href="." class="reload">โหลดหน้าใหม่</a>
+    <button type="button" class="dismiss" aria-label="ปิดข้อความแจ้งเตือน">🗙</button>
+</div>

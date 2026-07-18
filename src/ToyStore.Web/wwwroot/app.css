@@ -1,0 +1,64 @@
+/* Blazor-specific validation, loading and unhandled-error hooks. */
+.valid.modified:not([type="checkbox"]) {
+  outline: 1px solid var(--color-success);
+  outline-offset: 1px;
+}
+
+.invalid {
+  outline: 1px solid var(--color-danger);
+  outline-offset: 1px;
+}
+
+.validation-message {
+  color: var(--color-danger);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+}
+
+.blazor-error-boundary {
+  padding: var(--space-4);
+  border-inline-start: var(--space-1) solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  box-shadow: var(--shadow-sm);
+}
+
+.blazor-error-boundary::after {
+  content: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+}
+
+.loading-progress {
+  position: relative;
+  display: block;
+  width: 8rem;
+  height: 8rem;
+  margin: 20vh auto 1rem;
+}
+
+.loading-progress circle {
+  fill: none;
+  stroke: var(--color-line);
+  stroke-width: .6rem;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+  stroke: var(--color-accent);
+  stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * .8), 500%;
+  transition: stroke-dasharray var(--duration-fast) var(--ease-standard);
+}
+
+.loading-progress-text {
+  position: absolute;
+  inset-block-start: calc(20vh + 3.25rem);
+  width: 100%;
+  color: var(--color-muted);
+  font-size: var(--font-size-body);
+  text-align: center;
+}
+
+.loading-progress-text::after {
+  content: var(--blazor-load-percentage-text, "กำลังโหลด");
+}

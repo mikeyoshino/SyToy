@@ -1,0 +1,3 @@
+.admin-product-lifecycle { min-block-size: 5rem; }
+.admin-product-lifecycle p { color: var(--admin-muted); }
+.admin-product-lifecycle__confirm { background: var(--admin-accent); color: var(--admin-surface); }

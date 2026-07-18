@@ -1,0 +1,12 @@
+@page "/admin/orders"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@inject NavigationManager NavigationManager
+
+<PageTitle>คำสั่งซื้อ</PageTitle>
+<AdminPageHeader Title="คำสั่งซื้อ"
+                 Description="ติดตามขั้นตอนชำระเงินและการจัดส่ง" />
+<AdminContextNav Label="ตัวกรองคำสั่งซื้อ"
+                 CurrentUrl="@NavigationManager.Uri"
+                 Items="AdminNavigation.OrderContextItems" />
+<AdminPhasePlaceholder Message="การจัดการคำสั่งซื้อจะพร้อมใช้งานในระยะถัดไป" />

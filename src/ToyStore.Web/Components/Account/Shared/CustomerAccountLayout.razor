@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+@layout ToyStore.Web.Components.Layout.MainLayout
+
+<section class="customer-account-shell store-container">
+    <header class="customer-account-shell__header">
+        <p>บัญชีของฉัน</p>
+        <h1>จัดการบัญชี</h1>
+        <span>ดูคำสั่งซื้อและตั้งค่าความปลอดภัยของบัญชีในที่เดียว</span>
+    </header>
+
+    <div class="customer-account-shell__layout">
+        <CustomerAccountNav />
+        <div class="customer-account-shell__content">
+            @Body
+        </div>
+    </div>
+</section>

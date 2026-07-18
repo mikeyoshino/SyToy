@@ -1,0 +1,19 @@
+<span class="admin-status-badge admin-status-badge--@Tone.ToString().ToLowerInvariant()">
+    @if (!string.IsNullOrWhiteSpace(AccessiblePrefix))
+    {
+        <span class="visually-hidden">@AccessiblePrefix: </span>
+    }
+    <span class="admin-status-badge__icon" aria-hidden="true">●</span>
+    <span>@Text</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Text { get; set; }
+
+    [Parameter]
+    public AdminStatusTone Tone { get; set; }
+
+    [Parameter]
+    public string? AccessiblePrefix { get; set; }
+}

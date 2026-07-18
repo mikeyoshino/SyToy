@@ -1,0 +1,25 @@
+.section-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+h2,
+h3 {
+  font-size: clamp(var(--font-size-h2-mobile), 4vw, var(--font-size-h2));
+  font-weight: var(--font-weight-extrabold);
+}
+
+h3 { font-size: var(--font-size-h3); }
+
+a {
+  flex: none;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}

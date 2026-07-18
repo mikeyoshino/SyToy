@@ -1,0 +1,37 @@
+@inject IStoreToastService ToastService
+@implements IDisposable
+
+<div class="store-toast-host" aria-live="polite" aria-label="ข้อความแจ้งเตือน" role="status">
+    @if (toasts.Count != 0)
+    {
+        @foreach (var toast in toasts)
+        {
+            <StoreToast Tone="@toast.Tone"
+                        Title="@toast.Title"
+                        Message="@toast.Message"
+                        Dismissed="() => ToastService.Dismiss(toast.Id)"
+                        ShowDismiss="@toast.Dismissible" />
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<StoreToastItem> toasts = [];
+
+    protected override void OnInitialized()
+    {
+        toasts = ToastService.Toasts;
+        ToastService.ToastsUpdated += OnToastsUpdated;
+    }
+
+    private void OnToastsUpdated()
+    {
+        toasts = ToastService.Toasts;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ToastService.ToastsUpdated -= OnToastsUpdated;
+    }
+}

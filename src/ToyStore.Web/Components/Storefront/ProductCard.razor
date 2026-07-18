@@ -1,0 +1,94 @@
+@using ToyStore.Application.Storefront.Catalog
+@inject CartDrawerCoordinator CartDrawer
+
+@if (IsLoading)
+{
+    <article class="product-card product-card--loading" aria-hidden="true">
+        <div class="product-card__media product-card__skeleton"></div>
+        <div class="product-card__body">
+            <span class="product-card__skeleton product-card__skeleton--short"></span>
+            <span class="product-card__skeleton"></span>
+            <span class="product-card__skeleton product-card__skeleton--price"></span>
+        </div>
+    </article>
+    <span class="visually-hidden" role="status">กำลังโหลดสินค้า</span>
+}
+else
+{
+    <article class="product-card">
+        <a class="product-card__detail" href="@Model.ProductUrl" aria-label="ดูรายละเอียด @Model.Name โดย @Model.Brand">
+            <div class="product-card__media">
+                @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" alt="@($"{Model.Name} โดย {Model.Brand}")" />
+                }
+                else
+                {
+                    <span class="product-card__placeholder" aria-hidden="true"><i></i></span>
+                }
+                <span class="product-card__badge">@Model.TypeLabel</span>
+            </div>
+            <div class="product-card__body">
+                <h3>@Model.Name</h3>
+                <p>@Model.Brand</p>
+                <strong>@Model.PriceLabel</strong>
+            </div>
+        </a>
+        @if (Model.SaleType == StorefrontSaleType.InStock && Model.OfferState == StorefrontOfferState.InStockAvailable)
+        {
+            <button class="product-card__action touch-target" type="button" disabled="@isAdding"
+                    @onclick="AddAsync" aria-label="เพิ่ม @Model.Name ลงตะกร้า">
+                @(isAdding ? "กำลังเพิ่ม…" : "เพิ่มลงตะกร้า") <span aria-hidden="true">+</span>
+            </button>
+        }
+        else if (Model.SaleType == StorefrontSaleType.InStock)
+        {
+            <button class="product-card__action product-card__action--disabled" type="button" disabled aria-label="@Model.Name สินค้าหมดชั่วคราว">
+                สินค้าหมดชั่วคราว
+            </button>
+        }
+        else if (Model.OfferState == StorefrontOfferState.PreOrderOpen)
+        {
+            <a class="product-card__action product-card__action--preorder touch-target"
+               href="@Model.ProductUrl" aria-label="ดูรายละเอียดพรีออเดอร์ @Model.Name">
+                ดูรายละเอียดพรีออเดอร์
+            </a>
+        }
+        else
+        {
+            <span class="product-card__action product-card__action--disabled" aria-disabled="true">
+                @(Model.OfferState == StorefrontOfferState.PreOrderFull ? "พรีออเดอร์เต็มแล้ว" : "ปิดรับพรีออเดอร์แล้ว")
+            </span>
+        }
+    </article>
+}
+
+@code {
+    private static readonly ProductCardModel LoadingModel = new(
+        Guid.Empty,
+        string.Empty,
+        string.Empty,
+        string.Empty,
+        string.Empty,
+        null,
+        string.Empty,
+        StorefrontSaleType.InStock,
+        StorefrontOfferState.InStockOutOfStock);
+
+    [Parameter]
+    public ProductCardModel Model { get; set; } = LoadingModel;
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private bool isAdding;
+
+    private async Task AddAsync()
+    {
+        if (isAdding || Model.ProductId == Guid.Empty || Model.SaleType != StorefrontSaleType.InStock
+            || Model.OfferState != StorefrontOfferState.InStockAvailable) return;
+        isAdding = true;
+        try { await CartDrawer.AddProductAsync(Model.ProductId); }
+        finally { isAdding = false; }
+    }
+}

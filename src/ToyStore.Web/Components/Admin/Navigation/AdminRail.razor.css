@@ -1,0 +1,134 @@
+.admin-rail {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-header);
+  width: 5.25rem;
+  height: 100dvh;
+  padding: var(--space-3);
+  background: var(--admin-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--admin-ink);
+  overflow-x: visible;
+  overflow-y: auto;
+  transition: width var(--duration-normal) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.admin-rail:hover,
+.admin-rail:focus-within,
+.admin-rail--pinned {
+  width: 16.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.admin-rail__brand,
+.admin-rail__link,
+.admin-rail__logout button {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-rail__brand {
+  margin-block-end: var(--space-5);
+}
+
+.admin-rail__brand > a {
+  display: grid;
+  min-width: 2.75rem;
+  place-items: center;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.admin-rail__brand > span,
+.admin-rail__label,
+.admin-rail__pin,
+.admin-rail__badge {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.admin-rail:hover :is(.admin-rail__brand > span, .admin-rail__label, .admin-rail__pin, .admin-rail__badge),
+.admin-rail:focus-within :is(.admin-rail__brand > span, .admin-rail__label, .admin-rail__pin, .admin-rail__badge),
+.admin-rail--pinned :is(.admin-rail__brand > span, .admin-rail__label, .admin-rail__pin, .admin-rail__badge) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.admin-rail__pin {
+  margin-inline-start: auto;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--admin-ink);
+}
+
+.admin-rail nav {
+  display: grid;
+  min-height: calc(100dvh - 5.5rem);
+  grid-template-rows: 1fr auto;
+}
+
+.admin-rail ul {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.admin-rail__link,
+.admin-rail__logout button {
+  position: relative;
+  width: 100%;
+  min-width: 2.75rem;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-rail__link:hover,
+.admin-rail__logout button:hover,
+.admin-rail__link--active {
+  background: var(--admin-accent-soft);
+}
+
+.admin-rail__link--active::before {
+  position: absolute;
+  inset-block: .5rem;
+  inset-inline-start: -.25rem;
+  width: .2rem;
+  border-radius: var(--radius-pill);
+  background: var(--admin-accent-strong);
+  content: "";
+}
+
+.admin-rail__badge {
+  min-width: 1.5rem;
+  padding: .1rem .4rem;
+  margin-inline-start: auto;
+  border-radius: var(--radius-pill);
+  background: var(--admin-accent-strong);
+  color: #ffffff;
+  font-size: var(--font-size-caption);
+  text-align: center;
+}
+
+@media (min-width: 75rem) {
+  .admin-rail {
+    width: 16.5rem;
+  }
+
+  .admin-rail :is(.admin-rail__brand > span, .admin-rail__label, .admin-rail__pin, .admin-rail__badge) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

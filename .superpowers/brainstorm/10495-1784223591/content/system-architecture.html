@@ -1,0 +1,67 @@
+<style>
+  .flow-grid { display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:12px; align-items:stretch; }
+  .flow-card { border:1px solid #d8d8d2; border-radius:14px; padding:16px; background:#fff; min-height:150px; }
+  .flow-card h3 { margin:0 0 8px; font-size:16px; }
+  .flow-card p, .flow-card li { font-size:13px; line-height:1.5; }
+  .flow-card ul { padding-left:18px; margin:8px 0 0; }
+  .arrow { text-align:center; font-size:24px; padding:6px; color:#70706a; }
+  .lane { display:grid; grid-template-columns:160px 1fr; gap:12px; margin:14px 0; align-items:stretch; }
+  .lane-label { border-radius:12px; padding:18px 14px; font-weight:800; background:#151515; color:white; }
+  .lane-flow { border:1px solid #ddd; border-radius:12px; padding:16px; background:#fafafa; line-height:1.8; }
+  .pill { display:inline-block; border-radius:999px; padding:5px 9px; margin:3px; background:#e9f7a8; color:#242414; font-size:12px; font-weight:700; }
+  .note { border-left:4px solid #dfff29; padding:10px 14px; background:#f7f9ec; border-radius:8px; }
+  @media(max-width:900px){ .flow-grid{grid-template-columns:1fr 1fr}.lane{grid-template-columns:1fr}.lane-label{padding:10px 14px} }
+</style>
+
+<h2>Section 1 — System Architecture & Business Boundaries</h2>
+<p class="subtitle">หนึ่ง modular monolith แบ่งตาม business capability และใช้ PostgreSQL ฐานเดียว</p>
+
+<div class="flow-grid">
+  <div class="flow-card">
+    <h3>Identity</h3>
+    <span class="pill">Customer</span><span class="pill">Admin</span>
+    <ul><li>Email/password</li><li>Saved addresses ≤ 5</li><li>Policy authorization</li></ul>
+  </div>
+  <div class="flow-card">
+    <h3>Catalog</h3>
+    <ul><li>Product — no variants</li><li>ArtToy / Gundam</li><li>Brand, Universe</li><li>Many Characters</li><li>Ordered images</li></ul>
+  </div>
+  <div class="flow-card">
+    <h3>Inventory & Checkout</h3>
+    <ul><li>Stock movements</li><li>CheckoutAttempt</li><li>30-min reservation</li><li>2-min safety grace</li><li>Concurrency control</li></ul>
+  </div>
+  <div class="flow-card">
+    <h3>Payments & Orders</h3>
+    <ul><li>Stripe Embedded</li><li>Verified webhooks</li><li>Order after payment</li><li>Immutable snapshots</li><li>Deposit + balance</li></ul>
+  </div>
+  <div class="flow-card">
+    <h3>Fulfillment & Ops</h3>
+    <ul><li>Shipment + tracking</li><li>Email deliveries</li><li>LINE Messaging API</li><li>Sales dashboard</li><li>Retry/audit records</li></ul>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Customer purchase flows</h3>
+  <div class="lane">
+    <div class="lane-label">IN-STOCK</div>
+    <div class="lane-flow">Browse → Anonymous cart → Login & merge → CheckoutAttempt + stock reservation → Stripe Embedded → Verified webhook → <strong>Order: Paid + ReadyToShip</strong></div>
+  </div>
+  <div class="lane">
+    <div class="lane-label">PRE-ORDER</div>
+    <div class="lane-flow">Product detail → Login → Direct pre-order checkout → Capacity reservation → Stripe deposit → <strong>Order: DepositPaid + AwaitingArrival</strong> → Admin marks arrival → 7-day balance request → Stripe balance payment → <strong>Paid + ReadyToShip</strong></div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Critical boundary:</strong> ก่อนชำระยังไม่มี Order แต่มี CheckoutAttempt + Reservation ที่ durable; Order จริงเกิดจาก verified payment เท่านั้น และ PaymentStatus แยกจาก FulfillmentStatus
+</div>
+
+<h3 style="margin-top:24px">Does this system boundary look right?</h3>
+<div class="options">
+  <div class="option" data-choice="approved" onclick="toggleSelect(this)">
+    <div class="letter">✓</div><div class="content"><h3>Looks right</h3><p>Proceed to data model and state transitions.</p></div>
+  </div>
+  <div class="option" data-choice="changes" onclick="toggleSelect(this)">
+    <div class="letter">✎</div><div class="content"><h3>Needs changes</h3><p>Tell me what should move, merge, or behave differently.</p></div>
+  </div>
+</div>

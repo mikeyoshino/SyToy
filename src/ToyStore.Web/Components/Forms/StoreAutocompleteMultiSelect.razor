@@ -1,0 +1,479 @@
+@using System.Linq.Expressions
+@implements IDisposable
+@typeparam TOwner
+@typeparam TOption
+@typeparam TKey
+
+<StoreFieldShell FieldId="@FieldId"
+                 Label="@Copy.Label"
+                 HelpText="@HelpText"
+                 Required="@Required">
+    <ChildContent>
+        <div class="store-autocomplete">
+            @if (State.Values.Count > 0)
+            {
+                <div class="store-autocomplete__chips" aria-label="@($"{Copy.Label}ที่เลือก")">
+                    @foreach (var value in State.Values)
+                    {
+                        var optionLabel = OptionLabel(value);
+                        <span class="store-autocomplete__chip" @key="OptionKey(value)">
+                            <span>@optionLabel</span>
+                            <button type="button"
+                                    class="store-autocomplete__remove"
+                                    aria-label="@Copy.RemoveLabel(optionLabel)"
+                                    disabled="@Disabled"
+                                    @onclick="() => RemoveAsync(value)">
+                                ×
+                            </button>
+                        </span>
+                    }
+                </div>
+            }
+
+            <input @ref="inputElement"
+                   id="@FieldId"
+                   class="store-field__control store-autocomplete__input"
+                   type="text"
+                   form="@DetachedFormId"
+                   value="@State.Term"
+                   placeholder="@Copy.Placeholder"
+                   autocomplete="off"
+                   role="combobox"
+                   aria-autocomplete="list"
+                   aria-expanded="@BooleanText(State.IsOpen)"
+                   aria-controls="@ListboxId"
+                   aria-activedescendant="@(State.IsOpen ? State.ActiveDescendantId : null)"
+                   aria-required="@BooleanText(Required)"
+                   aria-invalid="@BooleanText(IsInvalid)"
+                   aria-describedby="@DescribedBy"
+                   disabled="@Disabled"
+                   @oninput="HandleInputAsync"
+                   @onfocus="HandleFocusAsync"
+                   @onblur="HandleBlur"
+                   @onkeydown="HandleKeyDownAsync"
+                   @oncompositionstart="HandleCompositionStart"
+                   @oncompositionend="HandleCompositionEndAsync" />
+
+            <div id="@ListboxId"
+                 class="store-autocomplete__listbox"
+                 role="listbox"
+                 aria-label="@Copy.Label"
+                 aria-multiselectable="true"
+                 hidden="@(!State.IsOpen)">
+                @foreach (var option in State.Options)
+                {
+                    <div id="@OptionDomId(option)"
+                         class="@OptionClass(option)"
+                         role="option"
+                         aria-selected="false"
+                         @key="OptionKey(option)"
+                         @onmousedown:preventDefault
+                         @onclick="() => SelectAsync(option)">
+                        @OptionLabel(option)
+                    </div>
+                }
+                @if (State.CanOfferInlineCreate && InlineCreate is not null)
+                {
+                    <div id="@InlineCreateId"
+                         class="@InlineCreateClass"
+                         role="option"
+                         aria-selected="false"
+                         aria-disabled="@BooleanText(State.IsCreating || State.IsLoading)"
+                         @onmousedown:preventDefault
+                         @onclick="CreateInlineAsync">
+                        @Copy.CreateLabel(State.Term.Trim())
+                    </div>
+                }
+            </div>
+
+            <div id="@StatusId" class="store-autocomplete__status" role="status" aria-live="polite">
+                @StatusText
+            </div>
+            <div id="@AlertId" class="store-autocomplete__alert" role="alert">
+                @State.Error?.Message
+            </div>
+        </div>
+    </ChildContent>
+    <ErrorContent>
+        <ValidationMessage For="@ValuesExpression" />
+    </ErrorContent>
+</StoreFieldShell>
+
+@code {
+    private readonly string generatedId = $"store-autocomplete-{Guid.NewGuid():N}";
+    private AutocompleteMultiSelectState<TOwner, TOption, TKey>? state;
+    private IReadOnlyList<TOption>? pendingValues;
+    private CancellationTokenSource? createCancellation;
+    private EditContext? observedEditContext;
+    private FieldIdentifier fieldIdentifier;
+    private bool hasFieldIdentifier;
+    private long createGeneration;
+    private string? statusMessage;
+    private ElementReference inputElement;
+
+    [CascadingParameter]
+    private EditContext? EditContext { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter, EditorRequired]
+    public TOwner Owner { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<TOption> Values { get; set; } = Array.Empty<TOption>();
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<TOption>> ValuesChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Expression<Func<IReadOnlyList<TOption>>> ValuesExpression { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<TOption, TKey> OptionKey { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<TOption, string> OptionLabel { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<TOption, string> OptionId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<TOwner, string, CancellationToken, Task<AutocompleteSearchResult<TOption>>> Search { get; set; } = default!;
+
+    [Parameter]
+    public Func<TOwner, string, CancellationToken, Task<AutocompleteCreateResult<TOption>>>? InlineCreate { get; set; }
+
+    [Parameter, EditorRequired]
+    public AutocompleteMultiSelectCopy Copy { get; set; } = default!;
+
+    [Parameter]
+    public string? HelpText { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public IEqualityComparer<TKey>? KeyComparer { get; set; }
+
+    [Parameter]
+    public IEqualityComparer<TOwner>? OwnerComparer { get; set; }
+
+    private string FieldId => Id ?? generatedId;
+
+    private string ListboxId => $"{FieldId}-listbox";
+
+    private string InlineCreateId => $"{FieldId}-inline-create";
+
+    private string DetachedFormId => $"{FieldId}-detached-form";
+
+    private string StatusId => $"{FieldId}-status";
+
+    private string AlertId => $"{FieldId}-alert";
+
+    private AutocompleteMultiSelectState<TOwner, TOption, TKey> State =>
+        state ?? throw new InvalidOperationException("Autocomplete state is not initialized.");
+
+    private bool IsInvalid =>
+        State.Error is not null
+        || (observedEditContext is not null
+            && hasFieldIdentifier
+            && observedEditContext.GetValidationMessages(fieldIdentifier).Any());
+
+    private string DescribedBy => string.IsNullOrWhiteSpace(HelpText)
+        ? $"{FieldId}-error"
+        : $"{FieldId}-help {FieldId}-error";
+
+    private string? StatusText => statusMessage
+        ?? (State.IsLoading
+            ? Copy.Loading
+            : State.IsOpen
+                && State.Error is null
+                && State.Options.Count == 0
+                && !State.CanOfferInlineCreate
+                    ? Copy.Empty
+                    : null);
+
+    private string InlineCreateClass => State.ActiveItem == AutocompleteActiveItem.InlineCreate
+        ? "store-autocomplete__option store-autocomplete__option--active store-autocomplete__option--create"
+        : "store-autocomplete__option store-autocomplete__option--create";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        ArgumentNullException.ThrowIfNull(Values);
+        ArgumentNullException.ThrowIfNull(ValuesExpression);
+        ArgumentNullException.ThrowIfNull(OptionKey);
+        ArgumentNullException.ThrowIfNull(OptionLabel);
+        ArgumentNullException.ThrowIfNull(OptionId);
+        ArgumentNullException.ThrowIfNull(Search);
+        ArgumentNullException.ThrowIfNull(Copy);
+
+        UpdateValidationBinding();
+
+        if (state is null)
+        {
+            state = new AutocompleteMultiSelectState<TOwner, TOption, TKey>(
+                Owner,
+                new AutocompleteOptionContract<TOption, TKey>(
+                    OptionKey,
+                    OptionLabel,
+                    OptionDomId,
+                    KeyComparer),
+                values => pendingValues = values,
+                InlineCreateId,
+                ownerComparer: OwnerComparer);
+            state.SetInlineCreateEnabled(InlineCreate is not null);
+            state.SetValues(Values);
+        }
+        else
+        {
+            state.SetInlineCreateId(InlineCreateId);
+            state.SetInlineCreateEnabled(InlineCreate is not null);
+            if (state.SetOwner(Owner))
+            {
+                CancelCreate();
+                statusMessage = null;
+                await PublishPendingValuesAsync();
+                return;
+            }
+
+            state.SetValues(Values);
+        }
+    }
+
+    private async Task HandleInputAsync(ChangeEventArgs args)
+    {
+        statusMessage = null;
+        await State.SearchAsync(Convert.ToString(args.Value) ?? string.Empty, Search);
+        SetSearchStatus();
+    }
+
+    private async Task HandleFocusAsync()
+    {
+        State.Open();
+        if (State.Options.Count == 0 && !State.IsLoading)
+        {
+            await State.SearchAsync(State.Term, Search);
+            SetSearchStatus();
+        }
+    }
+
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        var key = args.Key switch
+        {
+            "ArrowDown" => AutocompleteKey.ArrowDown,
+            "ArrowUp" => AutocompleteKey.ArrowUp,
+            "Enter" => AutocompleteKey.Enter,
+            "Escape" => AutocompleteKey.Escape,
+            "Tab" => AutocompleteKey.Tab,
+            "Backspace" => AutocompleteKey.Backspace,
+            _ => (AutocompleteKey?)null,
+        };
+        if (!key.HasValue)
+        {
+            return;
+        }
+
+        var activeLabel = State.ActiveItem == AutocompleteActiveItem.Option
+            ? State.Options
+                .Where(option => OptionDomId(option) == State.ActiveDescendantId)
+                .Select(OptionLabel)
+                .FirstOrDefault()
+            : null;
+        var removedLabel = key == AutocompleteKey.Backspace
+            && State.Term.Length == 0
+            && State.Values.Count > 0
+                ? OptionLabel(State.Values[^1])
+                : null;
+        var result = State.HandleKey(key.Value);
+        if (result.Intent == AutocompleteKeyIntent.InlineCreateRequested)
+        {
+            await CreateInlineAsync();
+        }
+        else
+        {
+            if (result.Intent == AutocompleteKeyIntent.SelectionPublished
+                && activeLabel is not null)
+            {
+                statusMessage = Copy.Selected(activeLabel);
+            }
+            else if (result.Intent == AutocompleteKeyIntent.RemovalPublished
+                     && removedLabel is not null)
+            {
+                statusMessage = Copy.Removed(removedLabel);
+            }
+
+            await PublishPendingValuesAsync();
+        }
+    }
+
+    private void HandleBlur() => State.CloseFromBlur();
+
+    private void HandleCompositionStart() => State.BeginComposition();
+
+    private async Task HandleCompositionEndAsync()
+    {
+        await State.EndCompositionAsync(Search);
+        SetSearchStatus();
+    }
+
+    private async Task SelectAsync(TOption option)
+    {
+        if (Disabled || !State.Select(option))
+        {
+            return;
+        }
+
+        statusMessage = Copy.Selected(OptionLabel(option));
+        await PublishPendingValuesAsync();
+    }
+
+    private async Task RemoveAsync(TOption option)
+    {
+        if (Disabled || !State.Remove(option))
+        {
+            return;
+        }
+
+        statusMessage = Copy.Removed(OptionLabel(option));
+        await PublishPendingValuesAsync();
+        await inputElement.FocusAsync();
+    }
+
+    private async Task CreateInlineAsync()
+    {
+        if (Disabled || InlineCreate is null || !State.BeginInlineCreate())
+        {
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        CancelCreate();
+        var localGeneration = ++createGeneration;
+        var cancellation = new CancellationTokenSource();
+        createCancellation = cancellation;
+        var term = State.Term.Trim();
+        try
+        {
+            var result = await InlineCreate(Owner, term, cancellation.Token);
+            if (cancellation.IsCancellationRequested || localGeneration != createGeneration)
+            {
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                State.FailInlineCreate(result.Failure!);
+                return;
+            }
+
+            var option = result.Option!;
+            if (State.CompleteInlineCreate(option))
+            {
+                statusMessage = Copy.Selected(OptionLabel(option));
+                await PublishPendingValuesAsync();
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (localGeneration == createGeneration)
+            {
+                createCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private async Task PublishPendingValuesAsync()
+    {
+        var nextValues = pendingValues;
+        pendingValues = null;
+        if (nextValues is null)
+        {
+            return;
+        }
+
+        await ValuesChanged.InvokeAsync(nextValues);
+        if (observedEditContext is not null && hasFieldIdentifier)
+        {
+            observedEditContext.NotifyFieldChanged(fieldIdentifier);
+        }
+    }
+
+    private string OptionDomId(TOption option) =>
+        $"{ListboxId}-option-{OptionId(option)}";
+
+    private string OptionClass(TOption option) =>
+        State.ActiveDescendantId == OptionDomId(option)
+            ? "store-autocomplete__option store-autocomplete__option--active"
+            : "store-autocomplete__option";
+
+    private static string BooleanText(bool value) => value ? "true" : "false";
+
+    private void SetSearchStatus()
+    {
+        if (State.Error is null && State.Options.Count > 0)
+        {
+            statusMessage = Copy.Results(State.Options.Count);
+        }
+    }
+
+    private void UpdateValidationBinding()
+    {
+        if (!ReferenceEquals(observedEditContext, EditContext))
+        {
+            if (observedEditContext is not null)
+            {
+                observedEditContext.OnValidationStateChanged -= HandleValidationStateChanged;
+            }
+
+            observedEditContext = EditContext;
+            if (observedEditContext is not null)
+            {
+                observedEditContext.OnValidationStateChanged += HandleValidationStateChanged;
+            }
+        }
+
+        if (observedEditContext is null)
+        {
+            hasFieldIdentifier = false;
+            return;
+        }
+
+        fieldIdentifier = FieldIdentifier.Create(ValuesExpression);
+        hasFieldIdentifier = true;
+    }
+
+    private void HandleValidationStateChanged(
+        object? sender,
+        ValidationStateChangedEventArgs args) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    private void CancelCreate()
+    {
+        createGeneration++;
+        var cancellation = createCancellation;
+        createCancellation = null;
+        cancellation?.Cancel();
+    }
+
+    public void Dispose()
+    {
+        if (observedEditContext is not null)
+        {
+            observedEditContext.OnValidationStateChanged -= HandleValidationStateChanged;
+        }
+
+        CancelCreate();
+        state?.Dispose();
+    }
+}

@@ -1,0 +1,35 @@
+<nav class="store-pagination" aria-label="@AriaLabel">
+    @if (CurrentPage > 1) { <a href="@PageUrl(CurrentPage - 1)" rel="prev" aria-label="หน้าก่อนหน้า">ก่อนหน้า</a> }
+    @if (StartPage > 1)
+    {
+        <a href="@PageUrl(1)" aria-label="หน้า 1">1</a>
+        @if (StartPage > 2) { <span class="store-pagination__ellipsis" aria-hidden="true">…</span> }
+    }
+    @for (var page = StartPage; page <= EndPage; page++)
+    {
+        var pageNumber = page;
+        if (pageNumber == CurrentPage)
+        {
+            <span aria-current="page" aria-label="หน้าปัจจุบัน หน้า @pageNumber">@pageNumber</span>
+        }
+        else
+        {
+            <a href="@PageUrl(pageNumber)" aria-label="หน้า @pageNumber">@pageNumber</a>
+        }
+    }
+    @if (EndPage < TotalPages)
+    {
+        @if (EndPage < TotalPages - 1) { <span class="store-pagination__ellipsis" aria-hidden="true">…</span> }
+        <a href="@PageUrl(TotalPages)" aria-label="หน้า @TotalPages">@TotalPages</a>
+    }
+    @if (CurrentPage < TotalPages) { <a href="@PageUrl(CurrentPage + 1)" rel="next" aria-label="หน้าถัดไป">ถัดไป</a> }
+</nav>
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public string AriaLabel { get; set; } = "หน้ารายการสินค้า";
+    [Parameter, EditorRequired] public required Func<int, string> PageUrl { get; set; }
+
+    private int StartPage => Math.Max(1, Math.Min(CurrentPage - 2, TotalPages - 4));
+    private int EndPage => Math.Min(TotalPages, StartPage + 4);
+}

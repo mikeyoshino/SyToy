@@ -1,0 +1,4 @@
+interface:
+  display_name: "Toy Store Development"
+  short_description: "Build and maintain the Thai Blazor toy store"
+  default_prompt: "Use $toy-store-development to implement a feature in the Toy Store project."

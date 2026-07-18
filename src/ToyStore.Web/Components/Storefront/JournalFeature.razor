@@ -1,0 +1,36 @@
+<section class="journal-feature" aria-labelledby="journal-feature-title">
+    <div class="journal-feature__intro">
+        <p class="journal-feature__eyebrow">// เรื่องราว</p>
+        <h2 id="journal-feature-title">@Heading</h2>
+        <p>@Summary</p>
+        <a class="journal-feature__all touch-target" href="@AllStoriesUrl">อ่านทุกเรื่อง <span aria-hidden="true">→</span></a>
+        <span class="journal-feature__art" aria-hidden="true"><i></i></span>
+    </div>
+    <div class="journal-feature__stories">
+        @foreach (var story in Stories)
+        {
+            <article @key="story">
+                <span class="journal-feature__story-art" aria-hidden="true"></span>
+                <div>
+                    <time datetime="@story.PublishedDate">@story.PublishedLabel</time>
+                    <h3>@story.Title</h3>
+                </div>
+                <a href="@story.StoryUrl" aria-label="อ่านเรื่อง @story.Title">อ่าน <span aria-hidden="true">→</span></a>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Heading { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Summary { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AllStoriesUrl { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<JournalStoryModel> Stories { get; set; } = Array.Empty<JournalStoryModel>();
+}

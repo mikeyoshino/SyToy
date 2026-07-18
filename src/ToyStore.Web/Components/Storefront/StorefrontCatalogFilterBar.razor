@@ -1,0 +1,90 @@
+@using ToyStore.Application.Storefront.Catalog
+@using System.Globalization
+
+<EditForm EditContext="@editContext" FormName="storefront-catalog-filter"
+          class="@FilterCssClass" role="search" aria-label="ค้นหาและกรองสินค้า"
+          OnSubmit="SubmitAsync">
+    <div class="catalog-filter__fields">
+        <StoreTextField @bind-Value="model.Search" Label="ค้นหา" Placeholder="ชื่อสินค้า หรือ slug" />
+        <StoreSelectField TValue="string" @bind-Value="model.SaleType" Label="ประเภทการขาย" Options="SaleTypeOptions" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.CategoryId" Label="หมวดหมู่" Placeholder="ทุกหมวดหมู่" Options="CategoryOptions" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.BrandId" Label="แบรนด์" Placeholder="ทุกแบรนด์" Options="BrandOptions" Disabled="@LockBrand" Searchable="true" SearchPlaceholder="พิมพ์ชื่อแบรนด์" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.CharacterId" Label="ตัวละคร" Placeholder="ทุกตัวละคร" Options="CharacterOptions" Searchable="true" SearchPlaceholder="พิมพ์ชื่อตัวละคร" />
+        <StoreSelectField TValue="Guid?" @bind-Value="model.UniverseId" Label="จักรวาล" Placeholder="ทุกจักรวาล" Options="UniverseOptions" />
+        <StoreNumberField TValue="decimal?" @bind-Value="model.MinimumPrice" Label="ราคาต่ำสุด" Min="0" Step="1" InputMode="decimal" />
+        <StoreNumberField TValue="decimal?" @bind-Value="model.MaximumPrice" Label="ราคาสูงสุด" Min="0" Step="1" InputMode="decimal" />
+    </div>
+    <div class="catalog-filter__actions">
+        <StoreButton ButtonType="submit">ใช้ตัวกรอง</StoreButton>
+        <a href="@BasePath">ล้างตัวกรอง</a>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<string>> SaleTypeOptions =
+    [new("all", "ทั้งหมด"), new("in-stock", "สินค้าพร้อมส่ง"), new("pre-order", "พรีออเดอร์")];
+    private readonly FilterModel model = new();
+    private EditContext editContext = default!;
+    private StorefrontCatalogQueryState? observed;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Parameter, EditorRequired] public required StorefrontCatalogQueryState State { get; set; }
+    [Parameter] public string BasePath { get; set; } = "/products";
+    [Parameter] public bool LockBrand { get; set; }
+    [Parameter] public bool IsSidebar { get; set; }
+    [Parameter] public IReadOnlyList<StorefrontFilterOption> Categories { get; set; } = [];
+    [Parameter] public IReadOnlyList<StorefrontFilterOption> Brands { get; set; } = [];
+    [Parameter] public IReadOnlyList<StorefrontFilterOption> Characters { get; set; } = [];
+    [Parameter] public IReadOnlyList<StorefrontFilterOption> Universes { get; set; } = [];
+    private IReadOnlyList<SelectOption<Guid?>> CategoryOptions => Options(Categories);
+    private IReadOnlyList<SelectOption<Guid?>> BrandOptions => Options(Brands);
+    private IReadOnlyList<SelectOption<Guid?>> CharacterOptions => Options(Characters);
+    private IReadOnlyList<SelectOption<Guid?>> UniverseOptions => Options(Universes);
+    private string FilterCssClass => IsSidebar ? "catalog-filter catalog-filter--sidebar" : "catalog-filter";
+    private static IReadOnlyList<SelectOption<Guid?>> Options(IEnumerable<StorefrontFilterOption> source) =>
+        source.Select(option => new SelectOption<Guid?>(option.Id, option.Label)).ToArray();
+
+    protected override void OnParametersSet()
+    {
+        if (State == observed) return;
+        observed = State;
+        model.Search = State.Search; model.SaleType = State.SaleType;
+        model.CategoryId = State.CategoryId; model.BrandId = State.BrandId;
+        model.CharacterId = State.CharacterId; model.UniverseId = State.UniverseId;
+        model.MinimumPrice = State.MinimumPrice; model.MaximumPrice = State.MaximumPrice;
+        editContext = new EditContext(model);
+    }
+
+    private Task SubmitAsync(EditContext _)
+    {
+        NavigationManager.NavigateTo(BuildCanonicalUrl(BasePath, new StorefrontCatalogQueryState(
+            model.Search, model.SaleType, model.CategoryId, LockBrand ? null : model.BrandId,
+            model.CharacterId, model.UniverseId, model.MinimumPrice, model.MaximumPrice, 1)));
+        return Task.CompletedTask;
+    }
+
+    public static string BuildCanonicalUrl(string basePath, StorefrontCatalogQueryState state)
+    {
+        var values = new List<string>();
+        var search = string.IsNullOrWhiteSpace(state.Search) ? "" : string.Join(' ', state.Search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (search.Length != 0) values.Add($"q={Uri.EscapeDataString(search)}");
+        if (state.SaleType != "all") values.Add($"type={Uri.EscapeDataString(state.SaleType)}");
+        AddId(values, "category", state.CategoryId); AddId(values, "brand", state.BrandId);
+        AddId(values, "character", state.CharacterId); AddId(values, "universe", state.UniverseId);
+        if (state.MinimumPrice.HasValue) values.Add($"min={state.MinimumPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (state.MaximumPrice.HasValue) values.Add($"max={state.MaximumPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (state.Page > 1) values.Add($"page={state.Page.ToString(CultureInfo.InvariantCulture)}");
+        return values.Count == 0 ? basePath : $"{basePath}?{string.Join('&', values)}";
+    }
+    private static void AddId(ICollection<string> values, string name, Guid? id) { if (id.HasValue) values.Add($"{name}={id.Value:D}"); }
+    private sealed class FilterModel
+    {
+        public string? Search { get; set; }
+        public string SaleType { get; set; } = "all";
+        public Guid? CategoryId { get; set; }
+        public Guid? BrandId { get; set; }
+        public Guid? CharacterId { get; set; }
+        public Guid? UniverseId { get; set; }
+        public decimal? MinimumPrice { get; set; }
+        public decimal? MaximumPrice { get; set; }
+    }
+}

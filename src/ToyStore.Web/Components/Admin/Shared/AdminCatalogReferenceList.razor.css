@@ -1,0 +1,43 @@
+.admin-catalog-reference-list {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.admin-catalog-reference-list ::deep td > strong,
+.admin-catalog-reference-list ::deep td > [lang="en"] {
+  display: block;
+}
+
+.admin-catalog-reference-list__image {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-md);
+  background: var(--admin-accent-soft);
+  object-fit: contain;
+}
+
+.admin-catalog-reference-list__missing-image {
+  color: var(--admin-muted);
+}
+
+.admin-catalog-reference-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-catalog-reference-list__actions button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--admin-accent-soft);
+  color: var(--admin-ink);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-catalog-reference-list__actions .admin-catalog-reference-list__archive {
+  background: var(--admin-danger-bg, #ffedeb);
+  color: var(--admin-danger-ink, #913630);
+}

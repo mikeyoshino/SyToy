@@ -1,0 +1,354 @@
+@typeparam TValue
+@using System.Globalization
+@using System.Linq.Expressions
+
+<StoreFieldShell FieldId="@FieldId"
+                 Label="@Label"
+                 HelpText="@HelpText"
+                 Required="@Required">
+    <ChildContent>
+        <div class="store-select @(isOpen ? "store-select--open" : null)"
+             @onfocusout="CloseAfterFocusLeavesAsync">
+            <button type="button"
+                    @attributes="ControlAttributes"
+                    aria-haspopup="listbox"
+                    aria-expanded="@isOpen"
+                    aria-controls="@ListboxId"
+                    aria-activedescendant="@(isOpen && activeIndex >= 0 ? OptionId(activeIndex) : null)"
+                    @onclick="ToggleAsync"
+                    @onkeydown="HandleTriggerKeyDownAsync">
+                <span class="@(IsPlaceholderSelected ? "store-select__placeholder" : null)">@SelectedLabel</span>
+            </button>
+            @if (isOpen)
+            {
+                <div class="store-select__listbox">
+                    @if (Searchable)
+                    {
+                        <input class="store-select__search"
+                               type="search"
+                               form="@DetachedFormId"
+                               value="@searchTerm"
+                               placeholder="@EffectiveSearchPlaceholder"
+                               autocomplete="off"
+                               role="combobox"
+                               aria-autocomplete="list"
+                               aria-expanded="true"
+                               aria-controls="@ListboxId"
+                               aria-activedescendant="@(activeIndex >= 0 ? OptionId(activeIndex) : null)"
+                               aria-label="@SearchLabel"
+                               @oninput="HandleSearchInputAsync"
+                               @onkeydown="HandleSearchKeyDownAsync"
+                               @onblur="CloseSearchable"
+                               @onkeydown:stopPropagation />
+                    }
+                    <div id="@ListboxId" class="store-select__options" role="listbox" aria-label="@Label">
+                        @if (VisibleOptions.Count == 0)
+                        {
+                            <p class="store-select__empty" role="status">ไม่พบรายการที่ค้นหา</p>
+                        }
+                        @for (var index = 0; index < VisibleOptions.Count; index++)
+                        {
+                            var optionIndex = index;
+                            var option = VisibleOptions[index];
+                            <button @key="option"
+                                    id="@OptionId(optionIndex)"
+                                    type="button"
+                                    class="store-select__option @(optionIndex == activeIndex ? "store-select__option--active" : null)"
+                                    role="option"
+                                    aria-selected="@IsOptionSelected(option.Value)"
+                                    disabled="@option.Disabled"
+                                    @onmousedown:preventDefault
+                                    @onmouseenter="() => Activate(optionIndex)"
+                                    @onclick="() => SelectAsync(option)">
+                                <span>@option.Label</span>
+                                @if (IsOptionSelected(option.Value))
+                                {
+                                    <span class="store-select__check" aria-hidden="true">✓</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <ErrorContent>
+        <ValidationMessage For="@ValueExpression" />
+    </ErrorContent>
+</StoreFieldShell>
+
+@code {
+    private readonly string generatedId = $"store-field-{Guid.NewGuid():N}";
+    private bool isOpen;
+    private bool ignoreNextClick;
+    private int activeIndex = -1;
+    private string searchTerm = string.Empty;
+
+    [CascadingParameter]
+    private EditContext? EditContext { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Label { get; set; }
+
+    [Parameter]
+    public string? HelpText { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public bool Searchable { get; set; }
+
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
+
+    [Parameter]
+    public TValue Value { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<TValue> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Expression<Func<TValue>> ValueExpression { get; set; } = default!;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string FieldId => Id ?? IdFromAttributes ?? generatedId;
+
+    private string? IdFromAttributes => AdditionalAttributes is not null
+        && AdditionalAttributes.TryGetValue("id", out var id)
+            ? Convert.ToString(id, CultureInfo.InvariantCulture)
+            : null;
+
+    private bool IsInvalid => EditContext is not null
+        && ValueExpression is not null
+        && EditContext.GetValidationMessages(FieldIdentifier.Create(ValueExpression)).Any();
+
+    private bool IsPlaceholderSelected => !string.IsNullOrWhiteSpace(Placeholder)
+        && !Options.Any(option => IsOptionSelected(option.Value));
+
+    private string SelectedLabel => Options.FirstOrDefault(option => IsOptionSelected(option.Value))?.Label
+        ?? Placeholder
+        ?? "เลือกรายการ";
+
+    private string ListboxId => $"{FieldId}-listbox";
+
+    private string DetachedFormId => $"{FieldId}-detached-form";
+
+    private string EffectiveSearchPlaceholder => SearchPlaceholder ?? "ค้นหารายการ…";
+
+    private string SearchLabel => $"ค้นหา{Label}";
+
+    private IReadOnlyList<SelectOption<TValue>> VisibleOptions => !Searchable || string.IsNullOrWhiteSpace(searchTerm)
+        ? Options
+        : Options.Where(option => option.Label.Contains(searchTerm.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
+
+    private string OptionId(int index) => $"{FieldId}-option-{index}";
+
+    internal string? FormatOptionValue(TValue value) =>
+        Convert.ToString(
+            BindConverter.FormatValue(value, CultureInfo.CurrentCulture),
+            CultureInfo.CurrentCulture);
+
+    internal bool IsOptionSelected(TValue optionValue) =>
+        EqualityComparer<TValue>.Default.Equals(Value, optionValue);
+
+    internal async Task HandleValueChangedAsync(TValue value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+        if (EditContext is not null && ValueExpression is not null)
+        {
+            EditContext.NotifyFieldChanged(FieldIdentifier.Create(ValueExpression));
+        }
+    }
+
+    private string DescribedBy => string.IsNullOrWhiteSpace(HelpText)
+        ? $"{FieldId}-error"
+        : $"{FieldId}-help {FieldId}-error";
+
+    private Dictionary<string, object> ControlAttributes => FieldAttributeBuilder.Create(
+        AdditionalAttributes,
+        FieldId,
+        "store-field__control store-select__trigger",
+        Required,
+        Disabled,
+        IsInvalid,
+        DescribedBy);
+
+    private Task ToggleAsync()
+    {
+        if (ignoreNextClick)
+        {
+            ignoreNextClick = false;
+            return Task.CompletedTask;
+        }
+
+        if (Disabled)
+        {
+            return Task.CompletedTask;
+        }
+
+        isOpen = !isOpen;
+        if (isOpen)
+        {
+            Open();
+        }
+        else { searchTerm = string.Empty; }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task SelectAsync(SelectOption<TValue> option)
+    {
+        if (option.Disabled || Disabled)
+        {
+            return;
+        }
+
+        isOpen = false;
+        searchTerm = string.Empty;
+        await HandleValueChangedAsync(option.Value);
+    }
+
+    private async Task HandleTriggerKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (Disabled)
+        {
+            return;
+        }
+
+        switch (args.Key)
+        {
+            case "ArrowDown":
+                OpenAndMove(1);
+                break;
+            case "ArrowUp":
+                OpenAndMove(-1);
+                break;
+            case "Home" when isOpen:
+                activeIndex = FindEnabledIndex(0, 1);
+                break;
+            case "End" when isOpen:
+                activeIndex = FindEnabledIndex(VisibleOptions.Count - 1, -1);
+                break;
+            case "Enter" or " " when isOpen && activeIndex >= 0:
+                ignoreNextClick = true;
+                await SelectAsync(VisibleOptions[activeIndex]);
+                break;
+            case "Escape" when isOpen:
+            case "Tab" when isOpen:
+                isOpen = false;
+                searchTerm = string.Empty;
+                break;
+        }
+    }
+
+    private async Task HandleSearchInputAsync(ChangeEventArgs args)
+    {
+        searchTerm = Convert.ToString(args.Value, CultureInfo.CurrentCulture) ?? string.Empty;
+        activeIndex = -1;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleSearchKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key is "ArrowDown" or "ArrowUp" or "Home" or "End" or "Enter" or "Escape" or "Tab")
+        {
+            await HandleTriggerKeyDownAsync(args);
+        }
+    }
+
+    private void OpenAndMove(int direction)
+    {
+        if (!isOpen)
+        {
+            Open();
+        }
+
+        var start = activeIndex < 0
+            ? direction > 0 ? 0 : VisibleOptions.Count - 1
+            : activeIndex + direction;
+        var next = FindEnabledIndex(start, direction);
+        if (next >= 0)
+        {
+            activeIndex = next;
+        }
+    }
+
+    private int SelectedOptionIndex()
+    {
+        for (var index = 0; index < VisibleOptions.Count; index++)
+        {
+            if (IsOptionSelected(VisibleOptions[index].Value))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private int FindEnabledIndex(int start, int direction)
+    {
+        for (var index = start; index >= 0 && index < VisibleOptions.Count; index += direction)
+        {
+            if (!VisibleOptions[index].Disabled)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void Activate(int index)
+    {
+        if (!VisibleOptions[index].Disabled)
+        {
+            activeIndex = index;
+        }
+    }
+
+    private async Task CloseAfterFocusLeavesAsync()
+    {
+        if (Searchable) return;
+        await Task.Yield();
+        isOpen = false;
+    }
+
+    private void CloseSearchable()
+    {
+        isOpen = false;
+        searchTerm = string.Empty;
+    }
+
+    private void Open()
+    {
+        searchTerm = string.Empty;
+        if (Searchable)
+        {
+            activeIndex = -1;
+            return;
+        }
+
+        activeIndex = SelectedOptionIndex();
+        if (activeIndex < 0)
+        {
+            activeIndex = FindEnabledIndex(0, 1);
+        }
+    }
+}

@@ -1,0 +1,29 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+        string destination;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            var returnUrl = LocalReturnUrl.Normalize(
+                string.IsNullOrEmpty(relative) ? "/" : $"/{relative}");
+            destination = $"/Account/Login?ReturnUrl={Uri.EscapeDataString(returnUrl)}";
+        }
+        else if (user.IsInRole(RoleNames.Admin)
+            && user.HasClaim(IdentityClaimNames.MustChangePassword, bool.TrueString))
+        {
+            destination = "/Account/Manage/ChangePassword";
+        }
+        else
+        {
+            destination = "/Account/AccessDenied";
+        }
+
+        NavigationManager.NavigateTo(destination, forceLoad: true);
+    }
+}

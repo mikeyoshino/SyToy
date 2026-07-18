@@ -1,0 +1,56 @@
+.design-system {
+  display: grid;
+  gap: var(--space-12);
+  padding-block: var(--space-12);
+}
+
+.design-system__header,
+.design-system__section,
+.design-system__stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.design-system__eyebrow {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-extrabold);
+}
+
+.design-system__section {
+  max-width: 46rem;
+}
+
+.design-system__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.design-system__skeleton {
+  min-height: 8rem;
+}
+
+.design-system__autocomplete-specimen {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--admin-surface, var(--color-surface));
+  box-shadow: var(--shadow-md);
+}
+
+.design-system__after-autocomplete {
+  justify-self: start;
+}
+
+.design-system__selection {
+  color: var(--admin-muted, var(--color-text-muted));
+  font-size: var(--font-size-body-small);
+}
+
+@media (max-width: 35rem) {
+  .design-system__autocomplete-specimen {
+    padding: var(--space-4);
+  }
+}

@@ -1,0 +1,89 @@
+@page "/"
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Storefront.Catalog
+@using ToyStore.Web.Components.Storefront.Models
+@inject ISender Sender
+@inject ILogger<Home> Logger
+
+<PageTitle>SY TOY | อาร์ตทอยดีไซน์เด่นสำหรับทุกคอลเลกชัน</PageTitle>
+
+<div class="home store-container">
+    <HeroShowcase Products="@latestProducts" State="@featuredState" />
+
+    <section class="home__section" aria-labelledby="featured-products-title">
+        <SectionHeader
+            Title="สินค้าแนะนำ"
+            HeadingId="featured-products-title"
+            ActionLabel="ดูทั้งหมด"
+            ActionUrl="/products" />
+        <ProductGallery Products="@featuredProducts" State="@featuredState" OnRetry="LoadFeaturedAsync" />
+    </section>
+
+    <section class="home__section" aria-labelledby="collections-title">
+        <SectionHeader
+            Title="คอลเลกชันที่น่าสำรวจ"
+            HeadingId="collections-title"
+            ActionLabel="สำรวจทั้งหมด"
+            ActionUrl="/products" />
+        <div class="home__collections">
+            @foreach (var collection in collections)
+            {
+                <CollectionCard @key="collection" Model="collection" />
+            }
+        </div>
+    </section>
+
+    <div class="home__section">
+        <JournalFeature Heading="เรื่องเล่าจากโลกของเล่น"
+                        Summary="ไอเดียเลือกและจัดแสดงของเล่นให้สนุกในทุกพื้นที่"
+                        AllStoriesUrl="/products"
+                        Stories="@JournalStories" />
+    </div>
+
+    <div class="home__section home__section--trust">
+        <TrustBenefits />
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private IReadOnlyList<ProductCardModel> featuredProducts = [];
+    private IReadOnlyList<ProductCardModel> latestProducts = [];
+    private IReadOnlyList<CollectionCardModel> collections = [];
+    private static readonly IReadOnlyList<JournalStoryModel> JournalStories =
+    [
+        new("เลือกอาร์ตทอยชิ้นแรกอย่างไรให้ตรงใจ", "12 กรกฎาคม 2026", "2026-07-12", "/products"),
+        new("จากเส้นร่างสู่คาแรกเตอร์บนชั้นสะสม", "28 มิถุนายน 2026", "2026-06-28", "/products"),
+        new("จัดมุมแสดงของเล่นให้สนุกและดูแลง่าย", "9 มิถุนายน 2026", "2026-06-09", "/products"),
+    ];
+    private StorefrontContentState featuredState = StorefrontContentState.Loading;
+
+    protected override Task OnInitializedAsync() => LoadFeaturedAsync();
+
+    private async Task LoadFeaturedAsync()
+    {
+        featuredState = StorefrontContentState.Loading;
+        try
+        {
+            var result = await Sender.Send(new ListStorefrontProductsQuery(
+                SaleType: StorefrontSaleTypeFilter.All,
+                PageSize: 6));
+            if (result.IsFailure)
+            {
+                featuredState = StorefrontContentState.Error;
+                return;
+            }
+            featuredProducts = result.Value.Items.Select(item => ProductCardModel.From(item, ThaiCulture)).ToArray();
+            latestProducts = featuredProducts.Take(5).ToArray();
+            collections = result.Value.Categories.Select(option => new CollectionCardModel(
+                option.Label, $"เลือกดู{option.Label}พร้อมส่ง", $"/products?category={option.Id:D}")).ToArray();
+            featuredState = featuredProducts.Count == 0 ? StorefrontContentState.Empty : StorefrontContentState.Normal;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Storefront home catalog query failed.");
+            featuredState = StorefrontContentState.Error;
+        }
+    }
+}

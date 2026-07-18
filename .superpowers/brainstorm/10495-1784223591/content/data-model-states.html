@@ -1,0 +1,30 @@
+<style>
+  .entity-grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:14px}.entity{background:#fff;border:1px solid #d9d9d2;border-radius:14px;padding:16px}.entity h3{margin:0 0 8px}.entity ul{margin:0;padding-left:18px;font-size:13px;line-height:1.55}.relation{margin:16px 0;padding:14px;border-radius:12px;background:#f5f5f1;font-size:13px;line-height:1.7}.states{display:grid;grid-template-columns:1fr 1fr;gap:16px}.state-lane{border:1px solid #ddd;border-radius:14px;padding:16px;background:white}.state{display:block;margin:8px 0;padding:9px 11px;border-radius:9px;background:#f1f1ed;font-size:13px;font-weight:700}.ok{background:#e9f7a8}.warn{background:#fff0c7}.stop{background:#f9d8d5}@media(max-width:850px){.entity-grid,.states{grid-template-columns:1fr}}
+</style>
+
+<h2>Section 2 — Data Model & State Transitions</h2>
+<p class="subtitle">ออกแบบให้ business rule อยู่ใน aggregate และเก็บ snapshot ทุกค่าที่ห้ามเปลี่ยนตามข้อมูลปัจจุบัน</p>
+
+<div class="entity-grid">
+  <div class="entity"><h3>Product Aggregate</h3><ul><li>DisplayName, EnglishName, Slug</li><li>Description, Category, SaleType</li><li>Brand, Universe, Characters[]</li><li>Images[] + ordered primary</li><li>Draft / Published / Archived</li><li>InStockOffer หรือ PreOrderOffer เท่านั้น</li></ul></div>
+  <div class="entity"><h3>PreOrderOffer</h3><ul><li>FullPrice + DepositAmount</li><li>BalanceAmount = Full − Deposit</li><li>CloseDate @ 23:59 Bangkok</li><li>ETA month/year</li><li>TotalCapacity</li><li>MaxPerCustomer</li><li>BalancePaymentDays = 7</li></ul></div>
+  <div class="entity"><h3>Inventory Aggregate</h3><ul><li>InventoryItem per Product</li><li>OnHand / active Reserved</li><li>StockMovement audit</li><li>Reservation + expiry</li><li>Optimistic concurrency</li><li>Available = OnHand − Reserved</li></ul></div>
+  <div class="entity"><h3>CheckoutAttempt</h3><ul><li>Customer/anonymous owner</li><li>Price and item snapshot</li><li>Address snapshot</li><li>Reservation references</li><li>Stripe Checkout Session</li><li>ExpiresAt + idempotency key</li></ul></div>
+  <div class="entity"><h3>Order Aggregate</h3><ul><li>OrderNumber + SaleType</li><li>Customer + address snapshot</li><li>OrderItem snapshots</li><li>PaymentStatus</li><li>FulfillmentStatus</li><li>Pre-order policy snapshot</li><li>Audit trail</li></ul></div>
+  <div class="entity"><h3>Operational Records</h3><ul><li>Payment: Full / Deposit / Balance</li><li>BalancePaymentRequest</li><li>Shipment + carrier + tracking</li><li>EmailDelivery</li><li>LineDelivery</li><li>Refund + provider reference</li></ul></div>
+</div>
+
+<div class="relation"><strong>Uniqueness:</strong> Product EnglishName and Slug are case-insensitive unique; Brand/Universe names and slugs are unique; Character name is unique within its Universe. Stripe event, Checkout Session and Payment reference each have unique constraints for idempotency.</div>
+
+<div class="states">
+  <div class="state-lane"><h3>In-stock Order</h3><span class="state warn">CheckoutAttempt + Reservation</span><span class="state ok">Paid + ReadyToShip</span><span class="state ok">Paid + Shipped</span><span class="state stop">Cancelled + Refunded (Admin, before shipped)</span></div>
+  <div class="state-lane"><h3>Pre-order Order</h3><span class="state warn">DepositPaid + AwaitingPreOrderArrival</span><span class="state warn">DepositPaid + AwaitingBalancePayment</span><span class="state ok">Paid + ReadyToShip</span><span class="state ok">Paid + Shipped</span><span class="state stop">Cancelled + DepositForfeited (customer/overdue)</span><span class="state stop">Cancelled + Refunded (Admin/supplier)</span></div>
+</div>
+
+<div class="relation"><strong>Deletion rule:</strong> Product, Brand and Universe ที่ถูกอ้างอิงแล้วใช้ Archive แทน hard delete; Order, Payment, StockMovement, Shipment และ audit records ห้ามลบจากหน้า Admin</div>
+
+<h3>Does this model and lifecycle match the business?</h3>
+<div class="options">
+  <div class="option" data-choice="model-approved" onclick="toggleSelect(this)"><div class="letter">✓</div><div class="content"><h3>Approved</h3><p>Proceed to Admin dashboard and management UX.</p></div></div>
+  <div class="option" data-choice="model-changes" onclick="toggleSelect(this)"><div class="letter">✎</div><div class="content"><h3>Needs changes</h3><p>Tell me which field, relationship, or transition should change.</p></div></div>
+</div>

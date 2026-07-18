@@ -1,0 +1,315 @@
+@implements IAsyncDisposable
+<dialog @ref="dialogElement"
+        class="@DialogCssClass"
+        data-dismissible="@Dismissible.ToString().ToLowerInvariant()"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="@titleId">
+    <div class="store-dialog__surface">
+        <header class="store-dialog__header">
+            @if (TitleContent is not null)
+            {
+                <div class="store-dialog__title" id="@titleId">@TitleContent</div>
+            }
+            else
+            {
+                <h2 class="store-dialog__title" id="@titleId">@Title</h2>
+            }
+            <button type="button"
+                    class="store-dialog__close touch-target"
+                    aria-label="ปิดหน้าต่าง"
+                    aria-disabled="@(!Dismissible)"
+                    disabled="@(!Dismissible)"
+                    @onclick="RequestCloseAsync">×</button>
+        </header>
+        <div class="store-dialog__content">
+            @ChildContent
+        </div>
+        @if (Actions is not null)
+        {
+            <footer class="store-dialog__actions">@Actions</footer>
+        }
+    </div>
+</dialog>
+
+@code {
+    private readonly string titleId = $"store-dialog-title-{Guid.NewGuid():N}";
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private ElementReference dialogElement;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<StoreDialog>? dotNetReference;
+    private bool currentIsOpen;
+    private bool hasReceivedParameters;
+    private bool lastIsOpenParameter;
+    private bool closeNotificationSent;
+    private bool disposed;
+
+    [Inject]
+    internal IJSRuntime JsRuntime { get; set; } = default!;
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? TitleContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    [Parameter]
+    public bool Dismissible { get; set; } = true;
+
+    [Parameter]
+    public string? InitialFocusSelector { get; set; }
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    private string DialogCssClass => string.IsNullOrWhiteSpace(CssClass)
+        ? "store-dialog"
+        : $"store-dialog {CssClass}";
+
+    protected override void OnParametersSet()
+    {
+        ReceiveOpenState(IsOpen);
+    }
+
+    internal void ReceiveOpenState(bool isOpen)
+    {
+        if (!hasReceivedParameters || isOpen != lastIsOpenParameter)
+        {
+            currentIsOpen = isOpen;
+            lastIsOpenParameter = isOpen;
+            hasReceivedParameters = true;
+
+            if (isOpen)
+            {
+                closeNotificationSent = false;
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await SynchronizeDialogAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Disposal can race with the final render of an interactive circuit.
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit can disconnect while a dialog is being rendered.
+        }
+        catch (JSException)
+        {
+            // Enhanced navigation can remove the element while an interop call is queued.
+            // A dialog lifecycle race must not terminate the whole interactive circuit.
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    internal async Task SynchronizeDialogAsync()
+    {
+        // A closed dialog needs no browser state. Deferring module initialization until the
+        // first open also avoids sending a default ElementReference during prerender hydration.
+        if (!currentIsOpen && module is null)
+        {
+            return;
+        }
+
+        await EnsureModuleAsync();
+        var dialogModule = module!;
+        await dialogModule.InvokeVoidAsync(
+            "setDismissible",
+            disposalTokenSource.Token,
+            dialogElement,
+            Dismissible);
+        if (!currentIsOpen)
+        {
+            await dialogModule.InvokeVoidAsync("close", disposalTokenSource.Token, dialogElement);
+        }
+        else if (string.IsNullOrWhiteSpace(InitialFocusSelector))
+        {
+            await dialogModule.InvokeVoidAsync("show", disposalTokenSource.Token, dialogElement);
+        }
+        else
+        {
+            await dialogModule.InvokeVoidAsync(
+                "show",
+                disposalTokenSource.Token,
+                dialogElement,
+                InitialFocusSelector);
+        }
+    }
+
+    internal async Task RequestCloseAsync()
+    {
+        if (!currentIsOpen || !Dismissible)
+        {
+            return;
+        }
+
+        currentIsOpen = false;
+        await TryCloseNativeDialogAsync(restoreFocus: true);
+        await NotifyClosedOnceAsync();
+    }
+
+    internal async Task CloseWithoutFocusReturnAsync()
+    {
+        if (!currentIsOpen)
+        {
+            return;
+        }
+
+        currentIsOpen = false;
+        await TryCloseNativeDialogAsync(restoreFocus: false);
+        await NotifyClosedOnceAsync();
+    }
+
+    [JSInvokable]
+    public async Task HandleNativeClosedAsync()
+    {
+        currentIsOpen = false;
+        await NotifyClosedOnceAsync();
+    }
+
+    private async Task EnsureModuleAsync()
+    {
+        if (module is not null)
+        {
+            return;
+        }
+
+        module = await JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import",
+            disposalTokenSource.Token,
+            "./Components/Feedback/StoreDialog.razor.js");
+        dotNetReference = DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync(
+            "initialize",
+            disposalTokenSource.Token,
+            dialogElement,
+            dotNetReference);
+    }
+
+    private async Task TryCloseNativeDialogAsync(bool restoreFocus)
+    {
+        try
+        {
+            await EnsureModuleAsync();
+            await module!.InvokeVoidAsync(
+                restoreFocus ? "close" : "closeWithoutFocusReturn",
+                disposalTokenSource.Token,
+                dialogElement);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task NotifyClosedOnceAsync()
+    {
+        if (closeNotificationSent)
+        {
+            return;
+        }
+
+        closeNotificationSent = true;
+        await IsOpenChanged.InvokeAsync(false);
+        await Closed.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync(
+                    "dispose",
+                    CancellationToken.None,
+                    dialogElement);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (JSException)
+            {
+                // The browser may already have torn down the dialog document.
+            }
+            catch (OperationCanceledException)
+            {
+                // Circuit disposal can cancel outstanding JS work.
+            }
+
+            try
+            {
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (JSException)
+            {
+                // The module can be released by the browser before circuit disposal.
+            }
+            catch (OperationCanceledException)
+            {
+                // Circuit disposal can cancel module disposal.
+            }
+        }
+
+        disposalTokenSource.Cancel();
+        disposalTokenSource.Dispose();
+        dotNetReference?.Dispose();
+    }
+}

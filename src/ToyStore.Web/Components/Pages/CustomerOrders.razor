@@ -1,0 +1,192 @@
+@page "/account/orders"
+@layout CustomerAccountLayout
+@attribute [Authorize(Policy = PolicyNames.CanViewCustomerOrders)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Common.Authorization
+@using ToyStore.Application.Orders
+@using ToyStore.Application.Orders.ListCustomerOrders
+@inject ISender Sender
+@inject NavigationManager NavigationManager
+
+<PageTitle>คำสั่งซื้อของฉัน | SY TOY</PageTitle>
+
+<section class="customer-orders">
+    <header class="customer-orders__header">
+        <h2>คำสั่งซื้อของฉัน</h2>
+        <span>ติดตามสถานะการชำระเงินและการจัดส่งจากข้อมูลจริงของคำสั่งซื้อ</span>
+    </header>
+
+    <form class="customer-orders__tools" action="/account/orders" method="get" role="search">
+        <div class="customer-orders__search-field">
+            <StoreTextField @bind-Value="searchInput"
+                            Id="customer-order-search"
+                            Label="ค้นหาคำสั่งซื้อ"
+                            Placeholder="เลขคำสั่งซื้อหรือชื่อสินค้า"
+                            Type="search"
+                            Autocomplete="off"
+                            UpdateOnInput="true"
+                            name="q"
+                            maxlength="100" />
+        </div>
+        <StoreButton ButtonType="submit">ค้นหา</StoreButton>
+        @if (HasSearch)
+        {
+            <a class="store-action store-action--ghost" href="/account/orders">ล้างการค้นหา</a>
+        }
+    </form>
+
+    @if (isLoading)
+            {
+                <section class="customer-orders__state" role="status" aria-live="polite">
+                    <h2>กำลังโหลดคำสั่งซื้อ</h2>
+                    <p>กรุณารอสักครู่</p>
+                </section>
+            }
+            else if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <section class="customer-orders__state" role="alert">
+                    <h2>โหลดคำสั่งซื้อไม่ได้</h2>
+                    <p>@errorMessage</p>
+                    <button type="button" @onclick="LoadAsync">ลองอีกครั้ง</button>
+                </section>
+            }
+            else if (orderPage is null || orderPage.Items.Count == 0)
+            {
+                <section class="customer-orders__state customer-orders__state--empty">
+                    <span aria-hidden="true">01</span>
+                    @if (HasSearch)
+                    {
+                        <h2>ไม่พบคำสั่งซื้อที่ค้นหา</h2>
+                        <p>ลองตรวจเลขคำสั่งซื้อหรือใช้คำจากชื่อสินค้าอีกครั้ง</p>
+                        <a class="store-action store-action--primary" href="/account/orders">ดูคำสั่งซื้อทั้งหมด</a>
+                    }
+                    else
+                    {
+                        <h2>ยังไม่มีคำสั่งซื้อ</h2>
+                        <p>เมื่อชำระเงินและ Stripe ยืนยันสำเร็จ คำสั่งซื้อจะปรากฏที่นี่</p>
+                        <a class="store-action store-action--primary" href="/products">เลือกดูสินค้า</a>
+                    }
+                </section>
+            }
+            else
+            {
+                <p class="customer-orders__count">@(HasSearch ? "พบ" : "ทั้งหมด") @orderPage.TotalCount.ToString("N0", ThaiCulture) คำสั่งซื้อ</p>
+                <div class="customer-orders__list">
+                    @foreach (var order in orderPage.Items)
+                    {
+                        <article class="customer-order-card">
+                    <div class="customer-order-card__top">
+                        <div>
+                            <span>เลขคำสั่งซื้อ</span>
+                            <strong>@order.Number</strong>
+                            <time datetime="@order.CreatedAtUtc.ToString("O")">@FormatBangkok(order.CreatedAtUtc)</time>
+                        </div>
+                        <CustomerOrderStatus PaymentStatus="order.PaymentStatus"
+                                             FulfillmentStatus="order.FulfillmentStatus" />
+                    </div>
+
+                    <ul class="customer-order-card__items">
+                        @foreach (var item in order.Items)
+                        {
+                            <li>
+                                <img src="@item.PrimaryImageUrl" alt="รูปสินค้า @item.DisplayName" />
+                                <span>
+                                    <strong>@item.DisplayName</strong>
+                                    <small>@item.BrandName · @item.Quantity.ToString("N0", ThaiCulture) ชิ้น</small>
+                                </span>
+                            </li>
+                        }
+                    </ul>
+
+                    <footer>
+                        <div>
+                            <span>@(order.SaleType == ToyStore.Domain.Products.SaleType.PreOrder ? "ชำระมัดจำแล้ว" : "ยอดชำระ")</span>
+                            <strong>฿@order.TotalPaid.ToString("N2", ThaiCulture)</strong>
+                        </div>
+                        <a href="@OrderUrl(order.Number)" aria-label="ดูรายละเอียดคำสั่งซื้อ @order.Number">ดูรายละเอียด <span aria-hidden="true">→</span></a>
+                    </footer>
+                        </article>
+                    }
+                </div>
+
+                @if (orderPage.TotalPages > 1)
+                {
+                    <StorefrontPagination CurrentPage="orderPage.Page"
+                                          TotalPages="orderPage.TotalPages"
+                                          AriaLabel="หน้ารายการคำสั่งซื้อ"
+                                          PageUrl="PageUrl" />
+                }
+            }
+</section>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private CustomerOrderPage? orderPage;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? searchInput;
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchTerm { get; set; }
+
+    protected override Task OnParametersSetAsync()
+    {
+        searchInput = SearchTerm;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        var page = Math.Max(1, Page);
+        try
+        {
+            var result = await Sender.Send(new ListCustomerOrdersQuery(page, 12, SearchTerm));
+            if (result.IsFailure)
+            {
+                errorMessage = result.Error.Message;
+                orderPage = null;
+                return;
+            }
+
+            orderPage = result.Value;
+            if (Page != orderPage.Page)
+            {
+                NavigationManager.NavigateTo(PageUrl(orderPage.Page), replace: true);
+            }
+        }
+        catch
+        {
+            errorMessage = "เกิดข้อผิดพลาดระหว่างอ่านคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง";
+            orderPage = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string OrderUrl(string number) =>
+        $"/account/orders/{Uri.EscapeDataString(number)}";
+
+    private string PageUrl(int page)
+    {
+        var url = $"/account/orders?page={page}";
+        return HasSearch
+            ? $"{url}&q={Uri.EscapeDataString(SearchTerm!.Trim())}"
+            : url;
+    }
+
+    private bool HasSearch => !string.IsNullOrWhiteSpace(SearchTerm);
+
+    private static string FormatBangkok(DateTimeOffset value) =>
+        TimeZoneInfo.ConvertTime(value, BangkokTimeZone)
+            .ToString("d MMMM yyyy เวลา HH:mm น.", ThaiCulture);
+}

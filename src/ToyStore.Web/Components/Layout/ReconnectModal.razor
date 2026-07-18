@@ -1,0 +1,31 @@
+﻿<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet>
+    <div class="components-reconnect-container">
+        <div class="components-rejoining-animation" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="components-reconnect-first-attempt-visible">
+            กำลังเชื่อมต่อกับระบบอีกครั้ง…
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            ยังเชื่อมต่อไม่ได้ ระบบจะลองอีกครั้งใน <span id="components-seconds-to-next-attempt"></span> วินาที
+        </p>
+        <p class="components-reconnect-failed-visible">
+            ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่หรือโหลดหน้านี้อีกครั้ง
+        </p>
+        <button type="button" id="components-reconnect-button" class="components-reconnect-failed-visible">
+            ลองเชื่อมต่ออีกครั้ง
+        </button>
+        <p class="components-pause-visible">
+            การใช้งานถูกพักชั่วคราว
+        </p>
+        <p class="components-resume-failed-visible">
+            ไม่สามารถกลับมาใช้งานต่อได้ กรุณาลองใหม่หรือโหลดหน้านี้อีกครั้ง
+        </p>
+        <button type="button" id="components-resume-button" class="components-pause-visible components-resume-failed-visible">
+            ใช้งานต่อ
+        </button>
+    </div>
+</dialog>

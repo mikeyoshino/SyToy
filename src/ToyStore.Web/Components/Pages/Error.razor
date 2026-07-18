@@ -1,0 +1,27 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>เกิดข้อผิดพลาด | SY TOY</PageTitle>
+
+<section class="store-container" aria-labelledby="error-heading">
+    <h1 id="error-heading">ขออภัย ระบบไม่สามารถดำเนินการได้</h1>
+    <p>กรุณาลองใหม่อีกครั้ง หากยังพบปัญหา โปรดติดต่อทีมช่วยเหลือ</p>
+
+    @if (ShowRequestId)
+    {
+        <p>
+            <strong>รหัสอ้างอิง:</strong> <code>@RequestId</code>
+        </p>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

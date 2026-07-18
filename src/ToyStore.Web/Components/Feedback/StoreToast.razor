@@ -1,0 +1,47 @@
+<aside class="store-toast store-toast--@ToneName" role="status" aria-live="polite" aria-atomic="true">
+    <div class="store-toast__body">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <strong>@Title</strong>
+        }
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @Message
+        }
+    </div>
+    @if (ShowDismiss)
+    {
+        <button type="button"
+                class="store-toast__dismiss touch-target"
+                aria-label="ปิดข้อความแจ้งเตือน"
+                @onclick="DismissAsync">×</button>
+    }
+</aside>
+
+@code {
+    [Parameter]
+    public StoreAlertTone Tone { get; set; } = StoreAlertTone.Info;
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool ShowDismiss { get; set; } = true;
+
+    [Parameter]
+    public EventCallback Dismissed { get; set; }
+
+    private string ToneName => Tone.ToString().ToLowerInvariant();
+
+    internal Task DismissAsync() => Dismissed.InvokeAsync();
+}

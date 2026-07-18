@@ -1,0 +1,92 @@
+<AdminModal @ref="modal"
+            IsOpen="@IsOpen"
+            IsOpenChanged="@IsOpenChanged"
+            Closed="@Closed"
+            Title="@Title"
+            IsBusy="@IsBusy"
+            InitialFocusSelector="[data-admin-archive-cancel]">
+    <ChildContent>
+        <div class="admin-catalog-archive">
+            <p>@Description</p>
+            @if (ReferenceSummary is not null)
+            {
+                <div class="admin-catalog-archive__references">@ReferenceSummary</div>
+            }
+            <p class="admin-catalog-archive__warning">การเก็บรายการนี้ย้อนกลับไม่ได้</p>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <StoreAlert Tone="StoreAlertTone.Error"
+                            Title="ไม่สามารถเก็บรายการได้"
+                            Message="@ErrorMessage" />
+            }
+        </div>
+    </ChildContent>
+    <Actions>
+        <StoreButtonGroup IsBusy="@IsBusy">
+            <StoreButton Tone="StoreButtonTone.Secondary"
+                         data-admin-archive-cancel
+                         OnClick="CancelAsync">
+                ยกเลิก
+            </StoreButton>
+            <StoreButton Tone="StoreButtonTone.Danger"
+                         IsBusy="@IsBusy"
+                         LoadingText="กำลังบันทึก…"
+                         OnClick="ConfirmAsync">
+                @ConfirmLabel
+            </StoreButton>
+        </StoreButtonGroup>
+    </Actions>
+</AdminModal>
+
+@code {
+    private AdminModal? modal;
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Description { get; set; }
+
+    [Parameter]
+    public RenderFragment? ReferenceSummary { get; set; }
+
+    [Parameter]
+    public string ConfirmLabel { get; set; } = "ยืนยันการเก็บ";
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback Confirmed { get; set; }
+
+    [Parameter]
+    public EventCallback Cancelled { get; set; }
+
+    private async Task CancelAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        await Cancelled.InvokeAsync();
+        if (modal is not null)
+        {
+            await modal.RequestCloseAsync();
+        }
+    }
+
+    private Task ConfirmAsync() => IsBusy ? Task.CompletedTask : Confirmed.InvokeAsync();
+}

@@ -1,0 +1,295 @@
+@page "/checkout"
+@page "/checkout/return"
+@attribute [Authorize(Roles = RoleNames.Customer)]
+@using MediatR
+@using ToyStore.Application.Cart
+@using ToyStore.Application.Cart.GetCart
+@using ToyStore.Application.Checkout.BeginInStockCheckout
+@using ToyStore.Application.Checkout.GetInStockCheckoutStatus
+@inject ISender Sender
+@inject IJSRuntime JsRuntime
+@inject ILogger<Checkout> Logger
+@inject CartDrawerCoordinator CartCoordinator
+@implements IAsyncDisposable
+
+<PageTitle>ชำระเงิน | SY TOY</PageTitle>
+
+<main class="checkout-page store-container">
+    @if (isLoading)
+    {
+        <div class="checkout-page__state" role="status"><h1>กำลังเตรียมหน้าชำระเงิน</h1><p>กรุณารอสักครู่</p></div>
+    }
+    else if (completedStatus is not null)
+    {
+        <section class="checkout-page__result" aria-labelledby="checkout-success-title">
+            <p class="checkout-page__eyebrow">ชำระเงินสำเร็จ</p>
+            <h1 id="checkout-success-title">รับคำสั่งซื้อแล้ว</h1>
+            <StoreAlert Tone="StoreAlertTone.Success" Title="Stripe ยืนยันการชำระเงินแล้ว"
+                        Message="ระบบตัด stock และสร้างคำสั่งซื้อเพียงครั้งเดียวเรียบร้อย" />
+            <dl class="checkout-page__summary">
+                <div><dt>เลขคำสั่งซื้อ</dt><dd>@completedStatus.OrderNumber</dd></div>
+                <div><dt>ยอดชำระ</dt><dd>฿@completedStatus.PaymentAmount.ToString("N2")</dd></div>
+                <div><dt>การจัดส่ง</dt><dd>ฟรี</dd></div>
+            </dl>
+            <div class="checkout-page__result-actions">
+                <a class="store-action store-action--primary" href="@OrderUrl(completedStatus.OrderNumber!)">ดูรายละเอียดคำสั่งซื้อ</a>
+                <a class="store-action" href="/products">เลือกดูสินค้าเพิ่มเติม</a>
+            </div>
+        </section>
+    }
+    else if (isProcessingPayment)
+    {
+        <div class="checkout-page__state" role="status" aria-live="polite">
+            <h1>กำลังยืนยันการชำระเงิน</h1>
+            <p>ระบบกำลังรอหลักฐานจาก Stripe กรุณาอย่าปิดหน้านี้</p>
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <StoreAlert Tone="StoreAlertTone.Warning" Title="ยังรอการยืนยัน" Message="@errorMessage" />
+                <StoreButton OnClick="CheckPaymentStatusAsync">ตรวจสอบอีกครั้ง</StoreButton>
+            }
+        </div>
+    }
+    else if (checkout is not null)
+    {
+        <header class="checkout-page__header">
+            <p class="checkout-page__eyebrow">ขั้นตอนที่ 2 จาก 2</p>
+            <h1>ชำระเงินอย่างปลอดภัย</h1>
+            <p>สินค้าถูกจองไว้ชั่วคราวถึง @checkout.ExpiresAtUtc.ToLocalTime().ToString("HH:mm น.")</p>
+        </header>
+        <div class="checkout-page__payment-layout">
+            <section class="checkout-page__panel" aria-labelledby="payment-title">
+                <h2 id="payment-title">ช่องทางชำระเงิน</h2>
+                <div id="stripe-instock-checkout" class="checkout-page__stripe" aria-live="polite"></div>
+            </section>
+            <aside class="checkout-page__panel checkout-page__order-summary" aria-label="สรุปรายการ">
+                <h2>สรุปรายการ</h2>
+                <CheckoutItems Items="@checkout.Items" />
+                <dl class="checkout-page__summary">
+                    <div><dt>จัดส่ง</dt><dd>ฟรี</dd></div>
+                    <div class="checkout-page__total"><dt>ชำระทั้งหมด</dt><dd>฿@checkout.PaymentAmount.ToString("N2")</dd></div>
+                </dl>
+            </aside>
+        </div>
+    }
+    else if (cart is not null && cart.Items.Count != 0)
+    {
+        <header class="checkout-page__header">
+            <p class="checkout-page__eyebrow">ขั้นตอนที่ 1 จาก 2</p>
+            <h1>ที่อยู่จัดส่ง</h1>
+            <p>ระบบจะตรวจราคาและ stock ปัจจุบันอีกครั้งก่อนเปิดหน้าชำระเงิน</p>
+        </header>
+        <div class="checkout-page__layout">
+            <section class="checkout-page__panel">
+                <EditForm id="instock-address-form" EditContext="@editContext" FormName="instock-address" OnSubmit="BeginCheckoutAsync">
+                    <StoreValidationSummary />
+                    @if (errorMessages.Count != 0)
+                    {
+                        <StoreAlert Tone="StoreAlertTone.Error" Title="ยังเริ่มชำระเงินไม่ได้">
+                            <ul>@foreach (var message in errorMessages) { <li>@message</li> }</ul>
+                        </StoreAlert>
+                    }
+                    <div class="checkout-page__fields">
+                        <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
+                        <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
+                        <div class="checkout-page__field-wide">
+                            <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
+                        </div>
+                        <ThaiAddressFields Model="address" Disabled="@isSubmitting" />
+                    </div>
+                </EditForm>
+            </section>
+            <aside class="checkout-page__panel checkout-page__order-summary" aria-label="สรุปรายการ">
+                <h2>สรุปรายการ</h2>
+                <ul class="checkout-page__items">
+                    @foreach (var item in cart.Items)
+                    {
+                        <li>
+                            @if (!string.IsNullOrWhiteSpace(item.PrimaryImageUrl))
+                            {
+                                <img src="@item.PrimaryImageUrl" alt="@item.DisplayName" />
+                            }
+                            <span><strong>@item.DisplayName</strong><small>@item.Quantity ชิ้น × ฿@item.CurrentUnitPrice.ToString("N2")</small></span>
+                            <b>฿@((item.CurrentUnitPrice * item.Quantity).ToString("N2"))</b>
+                        </li>
+                    }
+                </ul>
+                <dl class="checkout-page__summary">
+                    <div><dt>จัดส่ง</dt><dd>ฟรี</dd></div>
+                    <div class="checkout-page__total"><dt>ยอดปัจจุบัน</dt><dd>฿@cart.DisplayTotal.ToString("N2")</dd></div>
+                </dl>
+                <StoreButton ButtonType="submit" Form="instock-address-form" FullWidth="true"
+                             IsBusy="@isSubmitting" LoadingText="กำลังจองสินค้า…">
+                    จองสินค้าและไปชำระเงิน
+                </StoreButton>
+            </aside>
+        </div>
+    }
+    else
+    {
+        <div class="checkout-page__state" role="alert">
+            <h1>เริ่มชำระเงินไม่ได้</h1>
+            <p>@errorMessage</p>
+            <a href="/products">กลับไปดูสินค้า</a>
+        </div>
+    }
+</main>
+
+@code {
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly ShippingAddressFormModel address = new();
+    private readonly EditContext editContext;
+    private CustomerCartView? cart;
+    private BeginInStockCheckoutResult? checkout;
+    private ToyStore.Application.Checkout.InStockCheckoutStatusResult? completedStatus;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<Checkout>? dotNetReference;
+    private IReadOnlyList<string> errorMessages = [];
+    private readonly Guid clientRequestId = Guid.NewGuid();
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private bool isProcessingPayment;
+    private bool stripeMounted;
+    private string errorMessage = "ไม่มีสินค้าในตะกร้าสำหรับชำระเงิน";
+
+    private static string OrderUrl(string orderNumber) =>
+        $"/account/orders/{Uri.EscapeDataString(orderNumber)}";
+
+    public Checkout() => editContext = new EditContext(address);
+
+    [SupplyParameterFromQuery(Name = "attempt")] public Guid? AttemptId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AttemptId.HasValue)
+        {
+            isLoading = false;
+            isProcessingPayment = true;
+            await PollPaymentStatusAsync();
+            return;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !AttemptId.HasValue)
+        {
+            try
+            {
+                // The anonymous browser cart is merged by StoreCartDrawer after Login.
+                // Do not read the server cart until that one-time merge has finished.
+                await CartCoordinator.WaitUntilReadyAsync(disposalTokenSource.Token);
+                await LoadCartAsync();
+            }
+            catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested) { }
+            finally
+            {
+                isLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+
+        if (checkout is null || stripeMounted) return;
+        stripeMounted = true;
+        module ??= await JsRuntime.InvokeAsync<IJSObjectReference>("import", disposalTokenSource.Token,
+            "./Components/Pages/Checkout.razor.js");
+        dotNetReference ??= DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("mount", disposalTokenSource.Token, "#stripe-instock-checkout",
+            checkout.PublishableKey, checkout.ClientSecret, dotNetReference);
+    }
+
+    private async Task LoadCartAsync()
+    {
+        try
+        {
+            var result = await Sender.Send(new GetCartQuery(), disposalTokenSource.Token);
+            if (result.IsSuccess)
+            {
+                cart = result.Value;
+                if (cart.Items.Any(item => !item.IsCurrentlyAvailable))
+                    errorMessage = "สินค้าบางรายการไม่พร้อมขายแล้ว กรุณาตรวจสอบตะกร้า";
+            }
+            else errorMessage = result.Error.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Loading In-stock checkout cart failed.");
+            errorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง";
+        }
+    }
+
+    private async Task BeginCheckoutAsync(EditContext _)
+    {
+        if (cart is null || cart.Items.Count == 0 || isSubmitting) return;
+        isSubmitting = true;
+        errorMessages = [];
+        try
+        {
+            var result = await Sender.Send(new BeginInStockCheckoutCommand(clientRequestId,
+                address.RecipientName ?? "", address.PhoneNumber ?? "", address.AddressLine ?? "",
+                address.SubDistrict ?? "", address.District ?? "", address.Province ?? "",
+                address.PostalCode ?? ""), disposalTokenSource.Token);
+            if (result.IsSuccess) checkout = result.Value;
+            else errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
+                .DefaultIfEmpty(result.Error.Message).ToArray();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Beginning In-stock checkout failed.");
+            errorMessages = ["เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง"];
+        }
+        finally { isSubmitting = false; }
+    }
+
+    [JSInvokable]
+    public async Task HandleStripeCompletedAsync()
+    {
+        isProcessingPayment = true;
+        await InvokeAsync(StateHasChanged);
+        await PollPaymentStatusAsync();
+    }
+
+    private Task CheckPaymentStatusAsync() => PollPaymentStatusAsync();
+
+    private async Task PollPaymentStatusAsync()
+    {
+        var id = checkout?.CheckoutAttemptId ?? AttemptId;
+        if (!id.HasValue) { errorMessage = "ไม่พบรายการชำระเงิน"; return; }
+        errorMessage = "";
+        for (var attempt = 0; attempt < 12 && !disposalTokenSource.IsCancellationRequested; attempt++)
+        {
+            var result = await Sender.Send(new GetInStockCheckoutStatusQuery(id.Value), disposalTokenSource.Token);
+            if (result.IsSuccess && result.Value.Status == "Completed" && result.Value.OrderNumber is not null)
+            {
+                completedStatus = result.Value;
+                isProcessingPayment = false;
+                var cartResult = await Sender.Send(new GetCartQuery(), disposalTokenSource.Token);
+                if (cartResult.IsSuccess) CartCoordinator.SetTotalQuantity(cartResult.Value.TotalQuantity);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            if (result.IsSuccess && result.Value.Status == "Expired")
+            {
+                isProcessingPayment = false;
+                errorMessage = "หมดเวลาชำระเงินแล้ว ระบบคืน stock ที่จองไว้เรียบร้อย กรุณากลับไปเริ่มใหม่";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2), disposalTokenSource.Token);
+        }
+        errorMessage = "Stripe อาจยังส่งผลการชำระเงินไม่ถึงระบบ กรุณาตรวจสอบอีกครั้ง";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await disposalTokenSource.CancelAsync();
+        if (module is not null)
+        {
+            try { await module.InvokeVoidAsync("dispose"); await module.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+        dotNetReference?.Dispose();
+        disposalTokenSource.Dispose();
+    }
+
+}

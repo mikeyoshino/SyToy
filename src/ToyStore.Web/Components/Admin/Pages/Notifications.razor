@@ -1,0 +1,8 @@
+@page "/admin/notifications"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+
+<PageTitle>การแจ้งเตือน</PageTitle>
+<AdminPageHeader Title="การแจ้งเตือน"
+                 Description="ติดตามสถานะการส่งข้อความถึงลูกค้าและร้าน" />
+<AdminPhasePlaceholder Message="การติดตามการแจ้งเตือนจะพร้อมใช้งานในระยะถัดไป" />

@@ -1,0 +1,164 @@
+@page "/products"
+@page "/search"
+@page "/brands/{BrandSlug}"
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.Storefront.Catalog
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject NavigationManager NavigationManager
+@inject ILogger<Catalog> Logger
+
+<PageTitle>@PageTitleText</PageTitle>
+<HeadContent>
+    <meta name="description" content="@MetaDescription" />
+    <link rel="canonical" href="@CanonicalAbsoluteUrl" />
+</HeadContent>
+
+<div class="catalog-page store-container">
+    <header class="catalog-page__header">
+        <p class="catalog-page__eyebrow">// สินค้าและพรีออเดอร์</p>
+        <h1>@Heading</h1>
+        <p>@Intro</p>
+    </header>
+
+    <div class="catalog-page__body">
+        <aside class="catalog-page__sidebar" aria-label="ตัวกรองสินค้า">
+            <StorefrontCatalogFilterBar State="@queryState" BasePath="@BasePath" LockBrand="@IsBrandRoute"
+                                        Categories="@categories" Brands="@brands" Characters="@characters" Universes="@universes"
+                                        IsSidebar="true" />
+
+            @if (validationMessages.Count != 0)
+            {
+                <div class="catalog-page__validation" role="alert" tabindex="-1">
+                    <h2>ตรวจสอบตัวกรองอีกครั้ง</h2>
+                    <ul>@foreach (var message in validationMessages) { <li>@message</li> }</ul>
+                </div>
+            }
+        </aside>
+
+        <section class="catalog-page__results" aria-labelledby="catalog-results-heading">
+            <div class="catalog-page__result-heading">
+                <h2 id="catalog-results-heading">@ResultHeading</h2>
+                @if (contentState == StorefrontContentState.Normal)
+                { <span>พบ @totalCount.ToString("N0", ThaiCulture) รายการ</span> }
+            </div>
+            <ProductGallery Products="@products" State="@contentState" OnRetry="ReloadAsync"
+                            LoadingCardCount="8" LargeCards="true" />
+            @if (contentState == StorefrontContentState.Normal && totalPages > 1)
+            { <StorefrontPagination CurrentPage="@currentPage" TotalPages="@totalPages" PageUrl="BuildPageUrl" /> }
+        </section>
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private CancellationTokenSource? loadTokenSource;
+    private long loadGeneration;
+    private StorefrontCatalogQueryState queryState = new();
+    private StorefrontContentState contentState = StorefrontContentState.Loading;
+    private IReadOnlyList<ProductCardModel> products = [];
+    private IReadOnlyList<StorefrontFilterOption> categories = [];
+    private IReadOnlyList<StorefrontFilterOption> brands = [];
+    private IReadOnlyList<StorefrontFilterOption> characters = [];
+    private IReadOnlyList<StorefrontFilterOption> universes = [];
+    private IReadOnlyList<string> validationMessages = [];
+    private string? brandDisplayName;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalCount;
+
+    [Parameter] public string? BrandSlug { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? Type { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public string? Category { get; set; }
+    [SupplyParameterFromQuery(Name = "brand")] public string? Brand { get; set; }
+    [SupplyParameterFromQuery(Name = "character")] public string? Character { get; set; }
+    [SupplyParameterFromQuery(Name = "universe")] public string? Universe { get; set; }
+    [SupplyParameterFromQuery(Name = "min")] public string? MinimumPrice { get; set; }
+    [SupplyParameterFromQuery(Name = "max")] public string? MaximumPrice { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public string? Page { get; set; }
+
+    private bool IsBrandRoute => !string.IsNullOrWhiteSpace(BrandSlug);
+    private bool IsSearchRoute => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).StartsWith("search", StringComparison.OrdinalIgnoreCase);
+    private string BasePath => IsBrandRoute ? $"/brands/{BrandSlug}" : IsSearchRoute ? "/search" : "/products";
+    private string Heading => IsBrandRoute ? brandDisplayName ?? "สินค้าตามแบรนด์" : IsSearchRoute ? "ค้นหาสินค้า" : "สินค้าทั้งหมด";
+    private string ResultHeading => string.IsNullOrWhiteSpace(queryState.Search) ? "รายการสินค้า" : $"ผลการค้นหา “{queryState.Search}”";
+    private string Intro => IsBrandRoute ? "เลือกดูสินค้าพร้อมส่งและพรีออเดอร์จากแบรนด์นี้" : "ค้นหาและกรองอาร์ตทอยกับกันดั้มทั้งสินค้าพร้อมส่งและพรีออเดอร์";
+    private string PageTitleText => $"{Heading} | SY TOY";
+    private string MetaDescription => $"{Heading} สินค้าพร้อมส่งและพรีออเดอร์จาก SY TOY พร้อมราคาและสถานะล่าสุด";
+    private string CanonicalAbsoluteUrl => NavigationManager.ToAbsoluteUri(BasePath).ToString();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var requested = new StorefrontCatalogQueryState(
+            Search, NormalizeType(Type), ParseId(Category), IsBrandRoute ? null : ParseId(Brand),
+            ParseId(Character), ParseId(Universe), ParseDecimal(MinimumPrice), ParseDecimal(MaximumPrice), ParsePage(Page));
+        var canonical = StorefrontCatalogFilterBar.BuildCanonicalUrl(BasePath, requested);
+        if (!CurrentRelativeUrl().Equals(canonical, StringComparison.Ordinal))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(canonical, replace: true);
+            return;
+        }
+        queryState = requested;
+        await LoadAsync(requested);
+    }
+
+    private Task ReloadAsync() => LoadAsync(queryState);
+    private async Task LoadAsync(StorefrontCatalogQueryState requested)
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var next = CancellationTokenSource.CreateLinkedTokenSource(disposalTokenSource.Token);
+        var previous = Interlocked.Exchange(ref loadTokenSource, next);
+        if (previous is not null) { await previous.CancelAsync(); previous.Dispose(); }
+        contentState = StorefrontContentState.Loading;
+        validationMessages = [];
+        try
+        {
+            var result = await Sender.Send(new ListStorefrontProductsQuery(
+                requested.Search, ParseType(requested.SaleType), requested.CategoryId, requested.BrandId,
+                BrandSlug, requested.CharacterId, requested.UniverseId, requested.MinimumPrice,
+                requested.MaximumPrice, requested.Page, 24), next.Token);
+            if (generation != Volatile.Read(ref loadGeneration) || next.IsCancellationRequested) return;
+            if (result.IsFailure)
+            {
+                validationMessages = result.ValidationFailures.Select(failure => failure.ErrorMessage)
+                    .DefaultIfEmpty(result.Error.Message).ToArray();
+                contentState = StorefrontContentState.Error;
+                return;
+            }
+            var page = result.Value;
+            if (page.PageNumber != requested.Page)
+            {
+                await CancelCurrentLoadAsync();
+                NavigationManager.NavigateTo(StorefrontCatalogFilterBar.BuildCanonicalUrl(
+                    BasePath, requested with { Page = page.PageNumber }), replace: true);
+                return;
+            }
+            categories = page.Categories; brands = page.Brands; characters = page.Characters; universes = page.Universes;
+            brandDisplayName = page.BrandDisplayName;
+            products = page.Items.Select(item => ProductCardModel.From(item, ThaiCulture)).ToArray();
+            currentPage = page.PageNumber; totalPages = Math.Max(1, page.TotalPages); totalCount = page.TotalCount;
+            contentState = products.Count == 0 ? StorefrontContentState.Empty : StorefrontContentState.Normal;
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Storefront catalog query failed.");
+            if (generation == Volatile.Read(ref loadGeneration)) contentState = StorefrontContentState.Error;
+        }
+    }
+
+    private string BuildPageUrl(int page) => StorefrontCatalogFilterBar.BuildCanonicalUrl(BasePath, queryState with { Page = page });
+    private static Guid? ParseId(string? value) => Guid.TryParse(value, out var id) && id != Guid.Empty ? id : null;
+    private static decimal? ParseDecimal(string? value) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) && number >= 0 ? number : null;
+    private static int ParsePage(string? value) => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var page) && page > 0 ? page : 1;
+    private static string NormalizeType(string? value) => value?.Trim().ToLowerInvariant() switch { "in-stock" => "in-stock", "pre-order" => "pre-order", _ => "all" };
+    private static StorefrontSaleTypeFilter ParseType(string value) => value switch { "in-stock" => StorefrontSaleTypeFilter.InStock, "pre-order" => StorefrontSaleTypeFilter.PreOrder, _ => StorefrontSaleTypeFilter.All };
+    private string CurrentRelativeUrl() { var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri); return relative.Length == 0 ? "/" : $"/{relative}"; }
+    private async Task CancelCurrentLoadAsync() { Interlocked.Increment(ref loadGeneration); var current = Interlocked.Exchange(ref loadTokenSource, null); if (current is not null) { await current.CancelAsync(); current.Dispose(); } }
+    public async ValueTask DisposeAsync() { await CancelCurrentLoadAsync(); await disposalTokenSource.CancelAsync(); disposalTokenSource.Dispose(); }
+}

@@ -1,0 +1,87 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="admin-shell">
+    <a class="admin-skip-link" href="#admin-main">ข้ามไปยังเนื้อหาหลัก</a>
+    <div class="admin-shell__rail" aria-label="แถบเมนูผู้ดูแล">
+        <AdminRail CurrentUrl="@currentUrl"
+                   IsPinned="@isPinned"
+                   TogglePinned="TogglePinned" />
+    </div>
+    <div class="admin-shell__content">
+        <header class="admin-shell__mobile-header">
+            <a href="/admin" class="admin-shell__mobile-brand" aria-label="SY TOYS ภาพรวมผู้ดูแล">
+                <BrandLogo />
+            </a>
+            <AdminMobileNavigation @ref="mobileNavigation" CurrentUrl="@currentUrl" />
+        </header>
+        <main id="admin-main" tabindex="-1">
+            @Body
+        </main>
+    </div>
+</div>
+<StoreToastHost />
+
+@code {
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private AdminMobileNavigation? mobileNavigation;
+    private string currentUrl = "/admin";
+    private bool isPinned;
+    private bool disposed;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.Uri;
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void TogglePinned()
+    {
+        isPinned = !isPinned;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs eventArgs)
+    {
+        _ = HandleLocationChangedAsync(eventArgs.Location);
+    }
+
+    private async Task HandleLocationChangedAsync(string location)
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                if (disposed || disposalTokenSource.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                currentUrl = location;
+                if (mobileNavigation is not null)
+                {
+                    await mobileNavigation.CloseForNavigationAsync();
+                }
+
+                if (!disposed)
+                {
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException) when (disposed)
+        {
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        disposalTokenSource.Cancel();
+        disposalTokenSource.Dispose();
+    }
+}

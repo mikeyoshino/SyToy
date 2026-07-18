@@ -1,0 +1,89 @@
+<section class="admin-content-state" aria-label="สถานะเนื้อหา">
+    @switch (State)
+    {
+        case AdminContentState.Loading:
+            <div class="admin-content-state__loading" role="status" aria-live="polite">
+                <span>@LoadingMessage</span>
+                <StoreSkeleton />
+                <StoreSkeleton />
+                <StoreSkeleton />
+            </div>
+            break;
+        case AdminContentState.Empty:
+            <div class="admin-content-state__message">
+                <strong>@EmptyTitle</strong>
+                <p>@EmptyMessage</p>
+                @if (EmptyAction is not null)
+                {
+                    <div class="admin-content-state__custom-action">@EmptyAction</div>
+                }
+                else if (!string.IsNullOrWhiteSpace(EmptyActionLabel)
+                    && EmptyActionClicked.HasDelegate)
+                {
+                    <StoreButton OnClick="EmptyActionClicked">
+                        @EmptyActionLabel
+                    </StoreButton>
+                }
+                else if (!string.IsNullOrWhiteSpace(EmptyActionLabel)
+                    && !string.IsNullOrWhiteSpace(EmptyActionHref))
+                {
+                    <a class="admin-content-state__action" href="@EmptyActionHref">@EmptyActionLabel</a>
+                }
+            </div>
+            break;
+        case AdminContentState.Error:
+            <div class="admin-content-state__message">
+                <StoreAlert Tone="StoreAlertTone.Error"
+                            Title="@ErrorTitle"
+                            Message="@ErrorMessage" />
+                @if (Retry.HasDelegate)
+                {
+                    <StoreButton OnClick="Retry">
+                        ลองอีกครั้ง
+                    </StoreButton>
+                }
+            </div>
+            break;
+        case AdminContentState.Ready:
+            @ReadyContent
+            break;
+    }
+</section>
+
+@code {
+    [Parameter]
+    public AdminContentState State { get; set; }
+
+    [Parameter]
+    public string LoadingMessage { get; set; } = "กำลังโหลดข้อมูล";
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "ยังไม่มีข้อมูล";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "เริ่มเพิ่มข้อมูลรายการแรกเพื่อใช้งานส่วนนี้";
+
+    [Parameter]
+    public string? EmptyActionLabel { get; set; }
+
+    [Parameter]
+    public string? EmptyActionHref { get; set; }
+
+    [Parameter]
+    public EventCallback EmptyActionClicked { get; set; }
+
+    [Parameter]
+    public RenderFragment? EmptyAction { get; set; }
+
+    [Parameter]
+    public EventCallback Retry { get; set; }
+
+    [Parameter]
+    public string ErrorTitle { get; set; } = "ไม่สามารถโหลดข้อมูลได้";
+
+    [Parameter]
+    public string ErrorMessage { get; set; } = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+
+    [Parameter]
+    public RenderFragment? ReadyContent { get; set; }
+}

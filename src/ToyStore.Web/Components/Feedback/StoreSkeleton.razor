@@ -1,0 +1,13 @@
+<div class="store-skeleton @CssClass" aria-hidden="true"></div>
+@if (!string.IsNullOrWhiteSpace(StatusText))
+{
+    <span class="visually-hidden" role="status">@StatusText</span>
+}
+
+@code {
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    [Parameter]
+    public string? StatusText { get; set; }
+}

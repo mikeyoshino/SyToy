@@ -1,0 +1,152 @@
+@using ToyStore.Application.Common.Models
+@implements IDisposable
+
+<EditForm id="@FormId"
+          EditContext="@editContext"
+          FormName="@FormName"
+          class="admin-catalog-editor"
+          OnSubmit="HandleSubmitAsync">
+    <StoreValidationSummary @ref="validationSummary" />
+
+    <StoreTextField @bind-Value="Model.DisplayName"
+                    Label="ชื่อภาษาไทย"
+                    Required="true"
+                    Disabled="@IsBusy"
+                    Autocomplete="off" />
+    <StoreTextField @bind-Value="Model.EnglishName"
+                    Label="ชื่อภาษาอังกฤษ"
+                    HelpText="ใช้สร้างส่วน URL อัตโนมัติ"
+                    Required="true"
+                    Disabled="@IsBusy"
+                    Autocomplete="off" />
+
+    @if (!string.IsNullOrWhiteSpace(Model.Slug))
+    {
+        <div class="admin-catalog-editor__slug">
+            <span>ส่วน URL (slug)</span>
+            <output dir="ltr">@Model.Slug</output>
+        </div>
+    }
+
+    <StoreSingleImageField @key="Model"
+                           @bind-Value="Model.Image"
+                           Label="@ImageLabel"
+                           Required="@ImageRequired"
+                           Disabled="@IsBusy"
+                           CurrentImageUrl="@CurrentImageUrl"
+                           CurrentImageAlt="@CurrentImageAlt"
+                           PreviewAlt="@PreviewAlt" />
+</EditForm>
+
+@code {
+    private EditContext editContext = default!;
+    private AdminCatalogReferenceEditorModel? editContextModel;
+    private FormValidationStore? validationStore;
+    private StoreValidationSummary? validationSummary;
+
+    [Parameter, EditorRequired]
+    public required AdminCatalogReferenceEditorModel Model { get; set; }
+
+    [Parameter]
+    public string FormId { get; set; } = "admin-catalog-reference-form";
+
+    [Parameter]
+    public string FormName { get; set; } = "admin-catalog-reference-editor";
+
+    [Parameter]
+    public string ImageLabel { get; set; } = "รูปภาพ";
+
+    [Parameter]
+    public bool ImageRequired { get; set; } = true;
+
+    [Parameter]
+    public string? CurrentImageUrl { get; set; }
+
+    [Parameter]
+    public string CurrentImageAlt { get; set; } = "ภาพที่บันทึกไว้";
+
+    [Parameter]
+    public string PreviewAlt { get; set; } = "ตัวอย่างภาพที่เลือก";
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<AdminCatalogReferenceEditorModel> Submitted { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(editContextModel, Model))
+        {
+            return;
+        }
+
+        validationStore?.Dispose();
+        editContextModel = Model;
+        editContext = new EditContext(Model);
+        validationStore = new FormValidationStore(editContext);
+    }
+
+    private Task HandleSubmitAsync(EditContext _)
+    {
+        if (IsBusy)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Submitted.InvokeAsync(Model);
+    }
+
+    public async Task DisplayFailureAsync(Result result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (result.IsSuccess)
+        {
+            return;
+        }
+
+        validationStore!.Display(MapFailures(result, FieldAliases));
+        await InvokeAsync(StateHasChanged);
+        if (validationSummary is not null)
+        {
+            await validationSummary.FocusAsync();
+        }
+    }
+
+    public void ClearValidation() => validationStore?.Clear();
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string>? FieldAliases { get; set; }
+
+    internal static IReadOnlyList<FieldValidationFailure> MapFailures(Result result) =>
+        MapFailures(result, aliases: null);
+
+    internal static IReadOnlyList<FieldValidationFailure> MapFailures(
+        Result result,
+        IReadOnlyDictionary<string, string>? aliases)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (result.ValidationFailures.Count != 0)
+        {
+            return result.ValidationFailures
+                .Select(failure => new FieldValidationFailure(
+                    ResolveAlias(failure.PropertyName, aliases),
+                    failure.ErrorMessage))
+                .ToArray();
+        }
+
+        var propertyName = result.Error.Code.StartsWith("Media.", StringComparison.Ordinal)
+            ? nameof(AdminCatalogReferenceEditorModel.Image)
+            : string.Empty;
+        return [new FieldValidationFailure(propertyName, result.Error.Message)];
+    }
+
+    private static string ResolveAlias(
+        string propertyName,
+        IReadOnlyDictionary<string, string>? aliases) =>
+        aliases is not null && aliases.TryGetValue(propertyName, out var alias)
+            ? alias
+            : propertyName;
+
+    public void Dispose() => validationStore?.Dispose();
+}

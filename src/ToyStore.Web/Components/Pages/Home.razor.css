@@ -1,0 +1,17 @@
+.home {
+  overflow: hidden;
+  padding-top: var(--space-4);
+  padding-bottom: var(--section-space-max);
+}
+
+.home__section { margin-top: clamp(var(--section-space-min), 7vw, var(--section-space-max)); }
+.home__collections { display: grid; grid-template-columns: 1fr; gap: var(--space-3); }
+.home__section--trust { margin-top: var(--section-space-min); }
+
+@media (min-width: 35rem) {
+  .home__collections { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 65.625rem) {
+  .home__collections { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

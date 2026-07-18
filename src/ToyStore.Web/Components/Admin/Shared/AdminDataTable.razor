@@ -1,0 +1,30 @@
+<div class="admin-data-table__scroller" tabindex="0" role="region" aria-label="@Caption">
+    <table class="admin-data-table">
+        <caption>@Caption</caption>
+        <thead>@Header</thead>
+        <tbody>
+            @if (Rows is not null)
+            {
+                @Rows
+            }
+            else
+            {
+                @EmptyContent
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Caption { get; set; }
+
+    [Parameter, EditorRequired]
+    public required RenderFragment Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Rows { get; set; }
+
+    [Parameter]
+    public RenderFragment? EmptyContent { get; set; }
+}

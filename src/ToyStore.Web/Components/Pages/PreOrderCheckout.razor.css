@@ -1,0 +1,25 @@
+.preorder-checkout { padding-block: var(--space-8) var(--space-16); }
+.preorder-checkout__header { max-width: 48rem; margin-bottom: var(--space-8); }
+.preorder-checkout__header h1, .preorder-checkout__result h1, .preorder-checkout__state h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+.preorder-checkout__header p:last-child { margin-top: var(--space-3); color: var(--color-muted); }
+.preorder-checkout__eyebrow { display: inline-flex; margin-bottom: var(--space-3); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--color-accent); font-weight: var(--font-weight-extrabold); }
+.preorder-checkout__layout, .preorder-checkout__payment-layout { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(18rem,.8fr); gap: var(--space-6); align-items: start; }
+.preorder-checkout__panel { padding: clamp(var(--space-5),4vw,var(--space-8)); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.preorder-checkout__panel h2 { margin-bottom: var(--space-5); font-size: 1.35rem; }
+.preorder-checkout__fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-5); }
+.preorder-checkout__field-wide { grid-column: 1 / -1; }
+.preorder-checkout__order-summary { position: sticky; top: var(--space-6); display: grid; gap: var(--space-5); }
+.preorder-checkout__summary { display: grid; gap: var(--space-3); }
+.preorder-checkout__summary div { display: flex; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-line); }
+.preorder-checkout__summary dt { color: var(--color-muted); }
+.preorder-checkout__summary dd { margin: 0; text-align: right; font-weight: var(--font-weight-bold); }
+.preorder-checkout__stripe { min-height: 28rem; }
+.preorder-checkout__state, .preorder-checkout__result { display: grid; gap: var(--space-5); max-width: 48rem; min-height: 55vh; align-content: center; margin-inline: auto; }
+.preorder-checkout__result .store-action { justify-self: start; text-decoration: none; }
+.preorder-checkout__result-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+@media (max-width: 47.999rem) {
+  .preorder-checkout__layout, .preorder-checkout__payment-layout { grid-template-columns: 1fr; }
+  .preorder-checkout__fields { grid-template-columns: 1fr; }
+  .preorder-checkout__field-wide { grid-column: auto; }
+  .preorder-checkout__order-summary { position: static; }
+}

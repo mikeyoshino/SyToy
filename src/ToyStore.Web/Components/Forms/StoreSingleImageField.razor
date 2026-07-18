@@ -1,0 +1,327 @@
+@using System.Globalization
+@using System.Linq.Expressions
+@implements IAsyncDisposable
+
+<StoreFieldShell FieldId="@FieldId"
+                 Label="@Label"
+                 HelpText="@HelpText"
+                 Required="@Required">
+    <ChildContent>
+        <div @ref="fieldRoot" class="store-image-field" data-store-image-field>
+            <InputFile id="@NativeInputId"
+                       class="store-image-field__input"
+                       accept="image/jpeg,image/png,image/webp"
+                       tabindex="-1"
+                       aria-hidden="true"
+                       disabled="@Disabled"
+                       OnChange="HandleFileChangedAsync" />
+            <button type="button"
+                    id="@FieldId"
+                    class="store-image-field__picker"
+                    disabled="@Disabled"
+                    aria-controls="@NativeInputId"
+                    aria-labelledby="@PickerLabelledBy"
+                    aria-describedby="@DescribedBy"
+                    aria-invalid="@IsInvalid"
+                    @onclick="OpenPickerAsync">
+                <span class="store-image-field__upload-icon" aria-hidden="true">↑</span>
+                <span class="store-image-field__upload-copy">
+                    <strong id="@(FieldId)-picker-text">@(Value is null ? "เพิ่มรูปภาพ" : "เปลี่ยนรูปภาพ")</strong>
+                    <span>JPEG, PNG หรือ WebP ขนาดไม่เกิน 5 MB</span>
+                </span>
+                <span class="store-image-field__upload-action">@(Value is null ? "เลือกไฟล์" : "เลือกไฟล์ใหม่")</span>
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(DisplayUrl))
+            {
+                <figure class="store-image-field__preview">
+                    <img src="@DisplayUrl" alt="@DisplayAlt" />
+                    @if (Value is not null)
+                    {
+                        <figcaption>@Value.Name · @FormatFileSize(Value.Size)</figcaption>
+                    }
+                </figure>
+            }
+
+            @if (Value is not null)
+            {
+                <button type="button"
+                        class="store-image-field__clear"
+                        disabled="@Disabled"
+                        @onclick="ClearAsync">
+                    ยกเลิกไฟล์ที่เลือก
+                </button>
+            }
+        </div>
+    </ChildContent>
+    <ErrorContent>
+        <ValidationMessage For="@ValueExpression" />
+    </ErrorContent>
+</StoreFieldShell>
+
+@code {
+    private const string DefaultHelp = "JPEG, PNG หรือ WebP ไม่เกิน 5 MB";
+    private readonly string generatedId = $"store-image-{Guid.NewGuid():N}";
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly SingleImagePreviewState previewState = new();
+    private ElementReference fieldRoot;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<StoreSingleImageField>? dotNetReference;
+    private bool pendingParentReset;
+    private bool disposed;
+
+    [CascadingParameter]
+    private EditContext? EditContext { get; set; }
+
+    [Inject]
+    internal IJSRuntime JsRuntime { get; set; } = default!;
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Label { get; set; }
+
+    [Parameter]
+    public string HelpText { get; set; } = DefaultHelp;
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public IBrowserFile? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<IBrowserFile?> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Expression<Func<IBrowserFile?>> ValueExpression { get; set; } = default!;
+
+    [Parameter]
+    public string? CurrentImageUrl { get; set; }
+
+    [Parameter]
+    public string CurrentImageAlt { get; set; } = "ภาพที่บันทึกไว้";
+
+    [Parameter]
+    public string PreviewAlt { get; set; } = "ตัวอย่างภาพที่เลือก";
+
+    private string FieldId => Id ?? generatedId;
+
+    private string NativeInputId => $"{FieldId}-native";
+
+    private string? DisplayUrl => previewState.PreviewUrl ?? CurrentImageUrl;
+
+    private string DisplayAlt => previewState.PreviewUrl is null ? CurrentImageAlt : PreviewAlt;
+
+    private bool IsInvalid => EditContext is not null
+        && ValueExpression is not null
+        && EditContext.GetValidationMessages(FieldIdentifier.Create(ValueExpression)).Any();
+
+    private string DescribedBy => $"{FieldId}-help {FieldId}-error";
+
+    private string PickerLabelledBy => $"{FieldId}-label {FieldId}-picker-text";
+
+    protected override void OnParametersSet()
+    {
+        pendingParentReset |= previewState.ObserveValue(Value);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if ((!firstRender && !pendingParentReset) || disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await EnsureModuleAsync();
+            if (pendingParentReset)
+            {
+                await module!.InvokeVoidAsync(
+                    "clear",
+                    disposalTokenSource.Token,
+                    fieldRoot);
+                pendingParentReset = false;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task HandleFileChangedAsync(InputFileChangeEventArgs args)
+    {
+        var selected = args.File;
+        previewState.ObserveValue(selected);
+        await ValueChanged.InvokeAsync(selected);
+        NotifyFieldChanged();
+
+        try
+        {
+            await EnsureModuleAsync();
+            var previewUrl = await module!.InvokeAsync<string?>(
+                "replacePreview",
+                disposalTokenSource.Token,
+                fieldRoot);
+            previewState.SetPreview(previewUrl);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task OpenPickerAsync()
+    {
+        if (Disabled)
+        {
+            return;
+        }
+
+        try
+        {
+            await EnsureModuleAsync();
+            await module!.InvokeVoidAsync("openPicker", disposalTokenSource.Token, fieldRoot);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+        {
+        }
+    }
+
+    public async Task ClearAsync()
+    {
+        previewState.Clear();
+        pendingParentReset = false;
+        await ValueChanged.InvokeAsync(null);
+        NotifyFieldChanged();
+
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("clear", disposalTokenSource.Token, fieldRoot);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested)
+            {
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleDialogClosedAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        previewState.Clear();
+        pendingParentReset = false;
+        await ValueChanged.InvokeAsync(null);
+        NotifyFieldChanged();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void NotifyFieldChanged()
+    {
+        if (EditContext is not null && ValueExpression is not null)
+        {
+            EditContext.NotifyFieldChanged(FieldIdentifier.Create(ValueExpression));
+        }
+    }
+
+    private async Task EnsureModuleAsync()
+    {
+        if (module is not null)
+        {
+            return;
+        }
+
+        module = await JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import",
+            disposalTokenSource.Token,
+            "./Components/Forms/StoreSingleImageField.razor.js");
+        dotNetReference = DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync(
+            "initialize",
+            disposalTokenSource.Token,
+            fieldRoot,
+            dotNetReference);
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes.ToString(CultureInfo.InvariantCulture)} ไบต์";
+        }
+
+        var size = bytes < 1024 * 1024
+            ? $"{(bytes / 1024d).ToString("0.#", CultureInfo.InvariantCulture)} KB"
+            : $"{(bytes / (1024d * 1024d)).ToString("0.#", CultureInfo.InvariantCulture)} MB";
+        return size;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("dispose", CancellationToken.None, fieldRoot);
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        disposalTokenSource.Cancel();
+        disposalTokenSource.Dispose();
+        dotNetReference?.Dispose();
+    }
+}
