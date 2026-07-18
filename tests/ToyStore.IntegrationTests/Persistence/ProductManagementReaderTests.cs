@@ -60,6 +60,7 @@ public sealed class ProductManagementReaderTests(PostgreSqlFixture postgreSql)
         Assert.False(projected.Images[1].IsPrimary);
         Assert.Equal(7, projected.OnHandQuantity);
         Assert.Equal(7, projected.ReservableQuantity);
+        Assert.Equal("1/12", projected.ModelScale);
         Assert.Equal(4, clamped.Value.PageNumber);
         Assert.Equal(4, clamped.Value.TotalPages);
     }
@@ -86,7 +87,7 @@ public sealed class ProductManagementReaderTests(PostgreSqlFixture postgreSql)
             InStockOffer.Create(Money.Create(1200)),
             [new ProductImageDefinition(firstImageId, "products/one.webp", "/media/products/one.webp", "ภาพหลัก"),
              new ProductImageDefinition(secondImageId, "products/two.webp", "/media/products/two.webp", "ภาพรอง")],
-            [], now, "test");
+            [], now, "test", "1/12");
         primary.Publish(primary.Version, now.AddMinutes(1), "test");
         var second = Product.CreateInStock(
             secondId, "สินค้าสอง", "Second Product", "รายละเอียด", "second-product",

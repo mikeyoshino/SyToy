@@ -48,7 +48,8 @@ public sealed class CreatePreOrderProductHandler(
                     var product = Product.CreatePreOrder(
                         productId, request.DisplayName, request.EnglishName, request.Description,
                         slug.Value, request.ProductCategoryId, request.BrandId, request.UniverseId,
-                        offer, images.Value, request.CharacterIds, now, actor);
+                        offer, images.Value, request.CharacterIds, now, actor,
+                        request.ModelScale);
                     session.Add(product);
                     evidence = ProductMutationEvidence.Capture(product);
                     mediaState = ProductMediaMutationState.Capture(ProductMediaSnapshot.Capture([]), product.Images);

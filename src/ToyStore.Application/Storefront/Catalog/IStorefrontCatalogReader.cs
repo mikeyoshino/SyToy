@@ -63,7 +63,8 @@ public sealed record StorefrontProductCard(
     decimal? DepositAmount,
     int AvailableQuantity,
     string PrimaryImageUrl,
-    string PrimaryImageAltText)
+    string PrimaryImageAltText,
+    string? ModelScale = null)
 {
     public bool IsAvailable => OfferState is StorefrontOfferState.InStockAvailable
         or StorefrontOfferState.PreOrderOpen;
@@ -91,7 +92,8 @@ public sealed record StorefrontProductDetail(
     int? EstimatedArrivalYear,
     int? MaxPerCustomer,
     int? BalancePaymentDays,
-    IReadOnlyList<StorefrontProductImage> Images);
+    IReadOnlyList<StorefrontProductImage> Images,
+    string? ModelScale = null);
 
 public sealed record StorefrontProductImage(string Url, string AltText, int SortOrder, bool IsPrimary);
 

@@ -17,6 +17,7 @@ public enum ProductRule
     PreOrderBalancePaymentDaysMustBePositive,
     ProductIdentityRequired,
     ProductTextRequired,
+    ProductModelScaleInvalid,
     ProductRelationRequired,
     ProductSlugInvalid,
     ProductActorRequired,

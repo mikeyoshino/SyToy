@@ -12,6 +12,7 @@ public sealed class UpdateDraftPreOrderProductValidator
         RuleFor(x => x.DisplayName).Custom(InStockProductValidationRules.ValidateDisplayName);
         RuleFor(x => x.EnglishName).Custom(InStockProductValidationRules.ValidateEnglishName);
         RuleFor(x => x.Description).NotEmpty().WithMessage("กรุณากรอกคำอธิบายสินค้า");
+        RuleFor(x => x.ModelScale).Custom(InStockProductValidationRules.ValidateModelScale);
         RuleFor(x => x.ProductCategoryId).Must(InStockProductValidationRules.IsAllowedCategory)
             .WithMessage("กรุณาเลือกหมวดหมู่ Art Toy หรือ Gundam");
         RuleFor(x => x.BrandId).NotEmpty().WithMessage("กรุณาเลือกแบรนด์");

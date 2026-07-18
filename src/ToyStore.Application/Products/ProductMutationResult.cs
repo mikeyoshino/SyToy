@@ -33,6 +33,7 @@ public sealed record ProductMutationResult(
     public int? TotalCapacity { get; init; }
     public int? MaxPerCustomer { get; init; }
     public int? BalancePaymentDays { get; init; }
+    public string? ModelScale { get; init; }
 
     public static ProductMutationResult From(Product product)
     {
@@ -69,6 +70,7 @@ public sealed record ProductMutationResult(
             TotalCapacity = product.PreOrderOffer?.TotalCapacity,
             MaxPerCustomer = product.PreOrderOffer?.MaxPerCustomer,
             BalancePaymentDays = product.PreOrderOffer?.BalancePaymentDays,
+            ModelScale = product.ModelScale,
         };
     }
 
@@ -107,6 +109,7 @@ public sealed record ProductMutationResult(
             TotalCapacity = evidence.PreOrderTotalCapacity,
             MaxPerCustomer = evidence.PreOrderMaxPerCustomer,
             BalancePaymentDays = evidence.PreOrderBalancePaymentDays,
+            ModelScale = evidence.ModelScale,
         };
     }
 }

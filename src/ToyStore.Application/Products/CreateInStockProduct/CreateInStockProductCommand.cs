@@ -12,7 +12,8 @@ public sealed record CreateInStockProductCommand(
     IReadOnlyList<Guid> CharacterIds,
     decimal Price,
     int InitialStock,
-    IReadOnlyList<ProductMediaPlanSlot> Images)
+    IReadOnlyList<ProductMediaPlanSlot> Images,
+    string? ModelScale = null)
     : AuthorizedProductMutationRequest<Result<ProductMutationResult>>
 {
     public override Result<ProductMutationResult> CreateFailure(

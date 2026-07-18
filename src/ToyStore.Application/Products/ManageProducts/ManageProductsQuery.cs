@@ -70,4 +70,5 @@ public sealed record ProductManagementItem(
     public int? TotalCapacity { get; init; }
     public int? MaxPerCustomer { get; init; }
     public int? BalancePaymentDays { get; init; }
+    public string? ModelScale { get; init; }
 }

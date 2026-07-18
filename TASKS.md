@@ -13,6 +13,8 @@
 
 ## Current focus
 
+- 2026-07-18: แก้ cart drawer บน mobile Safari/Chrome ที่หดเหลือแถบแคบและอยู่ผิดด้าน ด้วย fixed logical inset + full viewport width ใต้ 35rem และซ่อน focus outline ของ programmatic cart section
+- 2026-07-18: เพิ่ม optional Product model scale ใน Admin create/edit (เช่น 1/12, 1/100), persist ผ่าน EF Core, แสดง scale badge บน thumbnail ของ shared ProductCard และใน Product Detail
 - 2026-07-18: ทำ Catalog filter แบบ collapsible ใต้ 64rem เพื่อลดความยาวหน้า mobile/tablet โดย default ย่อ, แสดงจำนวน filter ที่ใช้อยู่, รองรับ keyboard/ARIA และคง desktop sticky sidebar เปิดเต็มตลอด
 - 2026-07-18: เพิ่ม Product image derivative สำหรับ storefront: ทุกภาพที่อัปโหลดใหม่สร้าง WebP thumbnail สูงสุด 960px quality 84 ใน staging/commit/compensation เดียวกับต้นฉบับ, persist key/url แยก, list/search/home/cart ใช้ thumbnail พร้อม fallback รูปเดิมสำหรับ legacy product และ lazy decode ใน shared ProductCard
 - 2026-07-18: เปลี่ยน M10-04 เป็น full production Docker Compose: manual GitHub Actions รับ branch (default `main`) → Release build/migration review → build/push non-root Web image ไป GHCR → pinned SSH ส่ง immutable image digest → root-owned backup/Compose activation/readiness/image rollback; นำ test suite ออกจาก deployment workflow ตาม operational choice โดย local validation ล่าสุดยังผ่าน 1,296/1,296 เหลือ clean Ubuntu VPS deploy/restore verification ก่อนปิด task

@@ -124,7 +124,8 @@ public sealed class UpdateDraftInStockProductHandler(
                         characterIds,
                         request.ExpectedVersion,
                         timeProvider.GetUtcNow().ToUniversalTime(),
-                        actor);
+                        actor,
+                        request.ModelScale);
                     intendedEvidence = ProductMutationEvidence.Capture(product);
                     mediaState = ProductMediaMutationState.Capture(beforeMedia, product.Images);
                     return Result<ProductMutationResult>.Success(

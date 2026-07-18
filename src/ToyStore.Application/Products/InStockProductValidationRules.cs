@@ -45,6 +45,28 @@ internal static class InStockProductValidationRules
         }
     }
 
+    internal static void ValidateModelScale<T>(
+        string? value,
+        ValidationContext<T> context)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var prepared = value.Trim();
+        if (prepared.Length > Product.MaximumModelScaleLength)
+        {
+            context.AddFailure(
+                $"สเกลโมเดลต้องไม่เกิน {Product.MaximumModelScaleLength} ตัวอักษร");
+        }
+
+        if (prepared.Any(char.IsControl))
+        {
+            context.AddFailure("สเกลโมเดลมีอักขระที่ไม่รองรับ");
+        }
+    }
+
     internal static void ValidateMedia<T>(
         IReadOnlyList<ProductMediaPlanSlot>? slots,
         ValidationContext<T> context,

@@ -12,6 +12,9 @@
                             Disabled="@IsBusy" Autocomplete="off" />
             <StoreTextField @bind-Value="Model.EnglishName" Label="ชื่อภาษาอังกฤษ" Required="true"
                             HelpText="ระบบใช้สร้าง slug อัตโนมัติ" Disabled="@IsBusy" Autocomplete="off" />
+            <StoreTextField @bind-Value="Model.ModelScale" Label="สเกลโมเดล"
+                            HelpText="เว้นว่างได้ เช่น 1/12, 1/6 หรือ 1/100"
+                            Disabled="@IsBusy" Autocomplete="off" />
         </div>
         @if (!string.IsNullOrWhiteSpace(Model.EnglishName))
         {

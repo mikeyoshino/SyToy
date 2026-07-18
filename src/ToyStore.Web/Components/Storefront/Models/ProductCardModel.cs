@@ -12,7 +12,8 @@ public sealed record ProductCardModel(
     string? ImageUrl,
     string ProductUrl,
     StorefrontSaleType SaleType,
-    StorefrontOfferState OfferState)
+    StorefrontOfferState OfferState,
+    string? ModelScale = null)
 {
     public static ProductCardModel From(StorefrontProductCard item, CultureInfo culture)
     {
@@ -31,6 +32,7 @@ public sealed record ProductCardModel(
             item.PrimaryImageUrl,
             $"/products/{item.Slug}",
             item.SaleType,
-            item.OfferState);
+            item.OfferState,
+            item.ModelScale);
     }
 }

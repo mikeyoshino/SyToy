@@ -53,6 +53,7 @@
                     <dl class="product-detail__facts" aria-label="ข้อมูลสินค้า">
                         <div><dt>แบรนด์</dt><dd><a href="/brands/@product.BrandSlug">@product.BrandName</a></dd></div>
                         <div><dt>หมวดหมู่</dt><dd>@product.CategoryName</dd></div>
+                        @if (!string.IsNullOrWhiteSpace(product.ModelScale)) { <div><dt>สเกลโมเดล</dt><dd>@product.ModelScale</dd></div> }
                         <div><dt>จักรวาล</dt><dd>@product.UniverseName</dd></div>
                         @if (product.Characters.Count != 0) { <div><dt>ตัวละคร</dt><dd>@string.Join(", ", product.Characters)</dd></div> }
                     </dl>

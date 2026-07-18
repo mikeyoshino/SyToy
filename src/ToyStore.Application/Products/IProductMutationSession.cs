@@ -121,6 +121,7 @@ public sealed class ProductMutationEvidence
         EnglishName = product.EnglishName;
         NormalizedEnglishName = product.NormalizedEnglishName;
         Description = product.Description;
+        ModelScale = product.ModelScale;
         Slug = product.Slug;
         ProductCategoryId = product.ProductCategoryId;
         BrandId = product.BrandId;
@@ -180,6 +181,7 @@ public sealed class ProductMutationEvidence
     public string EnglishName { get; }
     public string NormalizedEnglishName { get; }
     public string Description { get; }
+    public string? ModelScale { get; }
     public string Slug { get; }
     public Guid ProductCategoryId { get; }
     public Guid BrandId { get; }
@@ -318,6 +320,7 @@ public sealed class ProductMutationEvidence
             && EnglishName == other.EnglishName
             && NormalizedEnglishName == other.NormalizedEnglishName
             && Description == other.Description
+            && ModelScale == other.ModelScale
             && Slug == other.Slug
             && ProductCategoryId == other.ProductCategoryId
             && BrandId == other.BrandId

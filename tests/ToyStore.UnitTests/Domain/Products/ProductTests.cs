@@ -35,6 +35,23 @@ public sealed class ProductTests
         Assert.Equal(ProductRule.ProductTextRequired, exception.Rule);
     }
 
+    [Fact]
+    public void FactoryTrimsOptionalModelScale()
+    {
+        var product = CreateInStock(modelScale: " 1/12 ");
+
+        Assert.Equal("1/12", product.ModelScale);
+    }
+
+    [Fact]
+    public void FactoryRejectsModelScaleThatIsTooLong()
+    {
+        var exception = Assert.Throws<ProductRuleException>(() => CreateInStock(
+            modelScale: new string('x', Product.MaximumModelScaleLength + 1)));
+
+        Assert.Equal(ProductRule.ProductModelScaleInvalid, exception.Rule);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("Gundam-Exia")]
@@ -347,7 +364,8 @@ public sealed class ProductTests
         Guid? universeId = null,
         DateTimeOffset? createdAtUtc = null,
         string actor = "admin-1",
-        IReadOnlyCollection<ProductImageDefinition>? images = null) =>
+        IReadOnlyCollection<ProductImageDefinition>? images = null,
+        string? modelScale = null) =>
         Product.CreateInStock(
             id ?? ProductId,
             displayName,
@@ -361,7 +379,8 @@ public sealed class ProductTests
             images ?? [],
             [],
             createdAtUtc ?? CreatedAtUtc,
-            actor);
+            actor,
+            modelScale);
 
     private static Product CreatePreOrder() =>
         Product.CreatePreOrder(

@@ -20,7 +20,8 @@ public sealed record UpdateDraftPreOrderProductCommand(
     int TotalCapacity,
     int MaxPerCustomer,
     int BalancePaymentDays,
-    IReadOnlyList<ProductMediaPlanSlot> Images)
+    IReadOnlyList<ProductMediaPlanSlot> Images,
+    string? ModelScale = null)
     : AuthorizedProductMutationRequest<Result<ProductMutationResult>>
 {
     public override Result<ProductMutationResult> CreateFailure(

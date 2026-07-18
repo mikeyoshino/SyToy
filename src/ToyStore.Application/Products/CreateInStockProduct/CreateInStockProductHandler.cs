@@ -108,7 +108,8 @@ public sealed class CreateInStockProductHandler(
                         images.Value,
                         characterIds,
                         now,
-                        actor);
+                        actor,
+                        request.ModelScale);
                     var inventory = InventoryItem.Create(
                         inventoryItemId,
                         product.Id,

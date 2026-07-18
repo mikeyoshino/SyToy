@@ -234,6 +234,7 @@
         editorModel = new AdminProductEditorModel
         {
             DisplayName = item.DisplayName, EnglishName = item.EnglishName, Description = item.Description,
+            ModelScale = item.ModelScale,
             ProductCategoryId = item.ProductCategoryId, BrandId = item.BrandId, UniverseId = item.UniverseId,
             SaleType = item.SaleType,
             Price = item.SaleType == ProductManagementSaleType.InStock ? item.Price : null,
@@ -343,7 +344,8 @@
                         model.Characters.Select(x => x.Id).ToArray(), model.FullPrice ?? 0,
                         model.DepositAmount ?? 0, closeDate, model.EstimatedArrivalMonth ?? 0,
                         model.EstimatedArrivalYear ?? 0, model.TotalCapacity ?? 0,
-                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans), token);
+                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans,
+                        model.ModelScale), token);
                 }
                 if (editingItem is not null && model.SaleType == ProductManagementSaleType.PreOrder)
                 {
@@ -356,17 +358,20 @@
                         model.Characters.Select(x => x.Id).ToArray(), model.FullPrice ?? 0,
                         model.DepositAmount ?? 0, closeDate, model.EstimatedArrivalMonth ?? 0,
                         model.EstimatedArrivalYear ?? 0, model.TotalCapacity ?? 0,
-                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans), token);
+                        model.MaxPerCustomer ?? 0, model.BalancePaymentDays ?? 0, plans,
+                        model.ModelScale), token);
                 }
                 return editingItem is null
                     ? await Sender.Send(new CreateInStockProductCommand(
                         model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
                         model.ProductCategoryId, model.BrandId, model.UniverseId,
-                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, model.InitialStock ?? 0, plans), token)
+                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, model.InitialStock ?? 0, plans,
+                        model.ModelScale), token)
                     : await Sender.Send(new UpdateDraftInStockProductCommand(
                         editingItem.Id, editingItem.Version, model.DisplayName ?? "", model.EnglishName ?? "", model.Description ?? "",
                         model.ProductCategoryId, model.BrandId, model.UniverseId,
-                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, plans), token);
+                        model.Characters.Select(x => x.Id).ToArray(), model.Price ?? 0, plans,
+                        model.ModelScale), token);
             }
             finally { foreach (var stream in streams) await stream.DisposeAsync(); }
         }, disposalTokenSource.Token);

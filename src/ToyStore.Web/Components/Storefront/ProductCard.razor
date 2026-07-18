@@ -27,7 +27,13 @@ else
                 {
                     <span class="product-card__placeholder" aria-hidden="true"><i></i></span>
                 }
-                <span class="product-card__badge">@Model.TypeLabel</span>
+                <div class="product-card__badges">
+                    <span class="product-card__badge">@Model.TypeLabel</span>
+                    @if (!string.IsNullOrWhiteSpace(Model.ModelScale))
+                    {
+                        <span class="product-card__badge product-card__badge--scale">สเกล @Model.ModelScale</span>
+                    }
+                </div>
             </div>
             <div class="product-card__body">
                 <h3>@Model.Name</h3>

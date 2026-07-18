@@ -56,6 +56,8 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.EnglishName).HasMaxLength(CatalogConfiguration.NameLength).IsRequired();
         builder.Property(product => product.NormalizedEnglishName).HasMaxLength(CatalogConfiguration.NameLength).IsRequired();
         builder.Property(product => product.Description).IsRequired();
+        builder.Property(product => product.ModelScale)
+            .HasMaxLength(Product.MaximumModelScaleLength);
         builder.Property(product => product.Slug).HasMaxLength(CatalogConfiguration.SlugLength).IsRequired();
         builder.Property(product => product.SaleType).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(product => product.Status).HasConversion<string>().HasMaxLength(20).IsRequired();

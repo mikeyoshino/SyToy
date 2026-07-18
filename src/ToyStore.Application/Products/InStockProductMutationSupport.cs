@@ -118,6 +118,7 @@ internal static class InStockProductMutationSupport
             ProductRule.MoneyCannotBeNegative
                 or ProductRule.InStockPriceMustBePositive
                 or ProductRule.ProductTextRequired
+                or ProductRule.ProductModelScaleInvalid
                 or ProductRule.ProductRelationRequired
                 or ProductRule.ProductSlugInvalid
                 or ProductRule.ProductCharacterIdentityRequired => ProductErrors.InvalidInput,

@@ -130,6 +130,7 @@ internal sealed class ProductManagementReader(
                 TotalCapacity = product.PreOrderOffer?.TotalCapacity,
                 MaxPerCustomer = product.PreOrderOffer?.MaxPerCustomer,
                 BalancePaymentDays = product.PreOrderOffer?.BalancePaymentDays,
+                ModelScale = product.ModelScale,
             };
         }).ToArray();
 

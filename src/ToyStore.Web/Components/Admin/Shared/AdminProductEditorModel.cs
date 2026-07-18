@@ -9,6 +9,7 @@ public sealed class AdminProductEditorModel
     public string? DisplayName { get; set; }
     public string? EnglishName { get; set; }
     public string? Description { get; set; }
+    public string? ModelScale { get; set; }
     public Guid ProductCategoryId { get; set; }
     public Guid BrandId { get; set; }
     public Guid UniverseId { get; set; }

@@ -46,15 +46,27 @@
 .product-card__placeholder::before { top: 22%; width: 42%; aspect-ratio: 1; border-radius: 50%; }
 .product-card__placeholder i { top: 44%; width: 52%; height: 48%; }
 
-.product-card__badge {
+.product-card__badges {
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.product-card__badge {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-extrabold);
+}
+
+.product-card__badge--scale {
+  background: var(--color-ink);
+  color: var(--color-surface);
 }
 
 .product-card__body { display: grid; grid-template-rows: auto auto minmax(var(--space-6), 1fr); align-content: start; padding: var(--space-3) var(--space-1) var(--space-2); }

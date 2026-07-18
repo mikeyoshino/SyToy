@@ -50,6 +50,7 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         Assert.True(card.IsAvailable);
         Assert.Equal(seeded.ThumbnailImageUrl, card.PrimaryImageUrl);
         Assert.Equal("ภาพหลักสำหรับหน้าร้าน", card.PrimaryImageAltText);
+        Assert.Equal("1/12", card.ModelScale);
         Assert.Equal("แบรนด์หน้าร้าน", brandRoute.Value.BrandDisplayName);
         Assert.Equal(2, brandRoute.Value.TotalCount);
         Assert.Empty(preOrder.Value.Items);
@@ -79,6 +80,7 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         Assert.True(detail.IsSuccess);
         Assert.Equal(4, detail.Value.AvailableQuantity); // expired hold is excluded; live hold remains.
         Assert.Equal([seeded.PrimaryImageUrl, seeded.SecondaryImageUrl], detail.Value.Images.Select(image => image.Url));
+        Assert.Equal("1/12", detail.Value.ModelScale);
         Assert.True(detail.Value.Images[0].IsPrimary);
         Assert.Equal(StorefrontCatalogErrors.ProductNotFound, draft.Error);
         Assert.Equal(StorefrontCatalogErrors.ProductNotFound, archived.Error);
@@ -193,7 +195,8 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
                 [new ProductImageDefinition(Guid.NewGuid(), $"{slug}/primary.webp", primaryUrl, "ภาพหลักสำหรับหน้าร้าน",
                     $"{slug}/thumbnail.webp", thumbnailUrl),
                  new ProductImageDefinition(Guid.NewGuid(), $"{slug}/secondary.webp", secondaryUrl, "ภาพด้านข้างสินค้า")],
-                slug == "published-product" ? [characterId] : [], created, "test");
+                slug == "published-product" ? [characterId] : [], created, "test",
+                slug == "published-product" ? "1/12" : null);
         var published = Create(publishedId, "สินค้าเผยแพร่", "published-product", 1000,
             CatalogSeedIds.ArtToyCategory, CatalogSeedIds.MarvelUniverse, Now.AddDays(-1));
         published.Publish(published.Version, Now.AddHours(-4), "test");

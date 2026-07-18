@@ -58,6 +58,7 @@ public sealed record ProductManagementReadItem(
     public int? TotalCapacity { get; init; }
     public int? MaxPerCustomer { get; init; }
     public int? BalancePaymentDays { get; init; }
+    public string? ModelScale { get; init; }
 }
 
 public sealed record ProductManagementImage(

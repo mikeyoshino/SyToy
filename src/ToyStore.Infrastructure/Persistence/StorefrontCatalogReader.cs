@@ -85,7 +85,8 @@ internal sealed class StorefrontCatalogReader(
                 product.PreOrderOffer?.DepositAmount.Amount,
                 availability.Quantity,
                 primary.CardImageUrl,
-                primary.AltText);
+                primary.AltText,
+                product.ModelScale);
         }).ToArray();
         await transaction.CommitAsync(cancellationToken);
         return new StorefrontCatalogReadPage(
@@ -150,7 +151,8 @@ internal sealed class StorefrontCatalogReader(
                     image.PublicRelativeUrl,
                     image.AltText,
                     image.SortOrder,
-                    image.IsPrimary)).ToArray());
+                    image.IsPrimary)).ToArray(),
+            product.ModelScale);
         await transaction.CommitAsync(cancellationToken);
         return result;
     }

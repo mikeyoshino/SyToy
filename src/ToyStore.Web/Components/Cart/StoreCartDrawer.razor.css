@@ -5,6 +5,8 @@
   gap: var(--space-5);
 }
 
+.store-cart:focus { outline: none; }
+
 .store-cart__title-count {
   margin-inline-start: var(--space-2);
   color: var(--color-muted);
@@ -101,7 +103,6 @@
 .store-cart__footer { display: grid; width: 100%; grid-template-columns: 1fr 1.2fr; gap: var(--space-3); }
 
 @media (max-width: 35rem) {
-  .store-cart-host ::deep .store-drawer { width: 100vw; }
   .store-cart__footer { grid-template-columns: 1fr; }
   .store-cart__quantity { grid-template-columns: 2.75rem 2.25rem 2.75rem; }
   .store-cart__quantity button,

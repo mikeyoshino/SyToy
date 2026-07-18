@@ -13,7 +13,8 @@ public sealed record UpdateDraftInStockProductCommand(
     Guid UniverseId,
     IReadOnlyList<Guid> CharacterIds,
     decimal Price,
-    IReadOnlyList<ProductMediaPlanSlot> Images)
+    IReadOnlyList<ProductMediaPlanSlot> Images,
+    string? ModelScale = null)
     : AuthorizedProductMutationRequest<Result<ProductMutationResult>>
 {
     public override Result<ProductMutationResult> CreateFailure(

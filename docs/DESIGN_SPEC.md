@@ -117,6 +117,8 @@ StoreShell
 └── StoreFooter
 ```
 
+- Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
+
 Production routes อย่างน้อย:
 
 ```text

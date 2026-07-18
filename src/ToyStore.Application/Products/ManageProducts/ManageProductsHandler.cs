@@ -55,6 +55,7 @@ public sealed class ManageProductsHandler(IProductManagementReader reader)
             TotalCapacity = item.TotalCapacity,
             MaxPerCustomer = item.MaxPerCustomer,
             BalancePaymentDays = item.BalancePaymentDays,
+            ModelScale = item.ModelScale,
         }).ToArray();
         return Result<ProductManagementPage>.Success(new ProductManagementPage(
             items,

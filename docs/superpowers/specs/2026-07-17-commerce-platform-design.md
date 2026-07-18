@@ -80,6 +80,7 @@ Common fields:
 - `EnglishName` — required; ใช้สร้าง URL
 - `Slug` — generated; ไม่มีช่องแก้ slug โดยตรง
 - `Description` — required
+- `ModelScale` — optional; trim ก่อน persist, ไม่เกิน 30 ตัวอักษร (เช่น `1/12`, `1/6`, `1/100`)
 - `SaleType` — required: `InStock` หรือ `PreOrder`
 - `ProductCategoryId` — required
 - `BrandId` — required

@@ -46,11 +46,16 @@ public sealed class CartDrawerSourceContractTests
     public void DrawerStylesAreResponsiveAnimatedAndRespectReducedMotion()
     {
         var source = Read("src", "ToyStore.Web", "Components", "Cart", "StoreCartDrawer.razor.css");
+        var feedback = Read("src", "ToyStore.Web", "wwwroot", "css", "feedback.css");
 
         Assert.Contains("@media (max-width: 35rem)", source, StringComparison.Ordinal);
         Assert.Contains("transition", source, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", source, StringComparison.Ordinal);
         Assert.Contains("min-height: 2.75rem", source, StringComparison.Ordinal);
+        Assert.Contains("position: fixed", feedback, StringComparison.Ordinal);
+        Assert.Contains("inset-inline: auto 0", feedback, StringComparison.Ordinal);
+        Assert.Contains("width: 100vw", feedback, StringComparison.Ordinal);
+        Assert.Contains(".store-cart:focus { outline: none; }", source, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] path) =>

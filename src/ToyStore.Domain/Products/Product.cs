@@ -5,6 +5,7 @@ namespace ToyStore.Domain.Products;
 public sealed class Product
 {
     public const int MaximumImageCount = 8;
+    public const int MaximumModelScaleLength = 30;
 
     private readonly List<ProductImage> _images = [];
     private readonly List<ProductCharacter> _characters = [];
@@ -29,6 +30,7 @@ public sealed class Product
         string displayName,
         string englishName,
         string description,
+        string? modelScale,
         string slug,
         Guid productCategoryId,
         Guid brandId,
@@ -46,6 +48,7 @@ public sealed class Product
             displayName,
             englishName,
             description,
+            modelScale,
             slug,
             productCategoryId,
             brandId,
@@ -63,6 +66,7 @@ public sealed class Product
         EnglishName = englishName.Trim();
         NormalizedEnglishName = CatalogNameNormalizer.Normalize(englishName);
         Description = description.Trim();
+        ModelScale = PrepareModelScale(modelScale);
         Slug = slug;
         ProductCategoryId = productCategoryId;
         BrandId = brandId;
@@ -92,6 +96,8 @@ public sealed class Product
     public string NormalizedEnglishName { get; private set; }
 
     public string Description { get; private set; }
+
+    public string? ModelScale { get; private set; }
 
     public string Slug { get; private set; }
 
@@ -142,7 +148,8 @@ public sealed class Product
         Guid universeId,
         InStockOffer offer,
         DateTimeOffset createdAtUtc,
-        string actor) => CreateInStock(
+        string actor,
+        string? modelScale = null) => CreateInStock(
             id,
             displayName,
             englishName,
@@ -155,7 +162,8 @@ public sealed class Product
             [],
             [],
             createdAtUtc,
-            actor);
+            actor,
+            modelScale);
 
     public static Product CreateInStock(
         Guid id,
@@ -170,12 +178,14 @@ public sealed class Product
         IReadOnlyCollection<ProductImageDefinition> images,
         IReadOnlyCollection<Guid> characterIds,
         DateTimeOffset createdAtUtc,
-        string actor) =>
+        string actor,
+        string? modelScale = null) =>
         new(
             id,
             displayName,
             englishName,
             description,
+            modelScale,
             slug,
             productCategoryId,
             brandId,
@@ -199,7 +209,8 @@ public sealed class Product
         Guid universeId,
         PreOrderOffer offer,
         DateTimeOffset createdAtUtc,
-        string actor) => CreatePreOrder(
+        string actor,
+        string? modelScale = null) => CreatePreOrder(
             id,
             displayName,
             englishName,
@@ -212,7 +223,8 @@ public sealed class Product
             [],
             [],
             createdAtUtc,
-            actor);
+            actor,
+            modelScale);
 
     public static Product CreatePreOrder(
         Guid id,
@@ -227,12 +239,14 @@ public sealed class Product
         IReadOnlyCollection<ProductImageDefinition> images,
         IReadOnlyCollection<Guid> characterIds,
         DateTimeOffset createdAtUtc,
-        string actor) =>
+        string actor,
+        string? modelScale = null) =>
         new(
             id,
             displayName,
             englishName,
             description,
+            modelScale,
             slug,
             productCategoryId,
             brandId,
@@ -258,7 +272,8 @@ public sealed class Product
         IReadOnlyCollection<Guid> characterIds,
         long expectedVersion,
         DateTimeOffset changedAtUtc,
-        string actor)
+        string actor,
+        string? modelScale = null)
     {
         EnsureDraftInStockEdit();
         EnsureExpectedVersion(expectedVersion);
@@ -266,6 +281,7 @@ public sealed class Product
             displayName,
             englishName,
             description,
+            modelScale,
             slug,
             productCategoryId,
             brandId,
@@ -280,12 +296,14 @@ public sealed class Product
         var preparedEnglishName = englishName.Trim();
         var normalizedEnglishName = CatalogNameNormalizer.Normalize(englishName);
         var preparedDescription = description.Trim();
+        var preparedModelScale = PrepareModelScale(modelScale);
         if (HasSameDraftInStockContent(
             preparedDisplayName,
             normalizedDisplayName,
             preparedEnglishName,
             normalizedEnglishName,
             preparedDescription,
+            preparedModelScale,
             slug,
             productCategoryId,
             brandId,
@@ -302,6 +320,7 @@ public sealed class Product
         EnglishName = preparedEnglishName;
         NormalizedEnglishName = normalizedEnglishName;
         Description = preparedDescription;
+        ModelScale = preparedModelScale;
         Slug = slug;
         ProductCategoryId = productCategoryId;
         BrandId = brandId;
@@ -332,7 +351,8 @@ public sealed class Product
         IReadOnlyCollection<Guid> characterIds,
         long expectedVersion,
         DateTimeOffset changedAtUtc,
-        string actor)
+        string actor,
+        string? modelScale = null)
     {
         if (Status != ProductStatus.Draft)
         {
@@ -346,7 +366,7 @@ public sealed class Product
 
         EnsureExpectedVersion(expectedVersion);
         ValidateEditableFields(
-            displayName, englishName, description, slug,
+            displayName, englishName, description, modelScale, slug,
             productCategoryId, brandId, universeId, offer);
         if (offer.CloseAtUtc <= changedAtUtc)
         {
@@ -362,6 +382,7 @@ public sealed class Product
         EnglishName = englishName.Trim();
         NormalizedEnglishName = CatalogNameNormalizer.Normalize(englishName);
         Description = description.Trim();
+        ModelScale = PrepareModelScale(modelScale);
         Slug = slug;
         ProductCategoryId = productCategoryId;
         BrandId = brandId;
@@ -430,6 +451,7 @@ public sealed class Product
         string displayName,
         string englishName,
         string description,
+        string? modelScale,
         string slug,
         Guid productCategoryId,
         Guid brandId,
@@ -451,6 +473,8 @@ public sealed class Product
         {
             throw new ProductRuleException(ProductRule.ProductTextRequired);
         }
+
+        _ = PrepareModelScale(modelScale);
 
         if (!CatalogSlug.IsValid(slug))
         {
@@ -486,6 +510,7 @@ public sealed class Product
         string displayName,
         string englishName,
         string description,
+        string? modelScale,
         string slug,
         Guid productCategoryId,
         Guid brandId,
@@ -498,6 +523,8 @@ public sealed class Product
         {
             throw new ProductRuleException(ProductRule.ProductTextRequired);
         }
+
+        _ = PrepareModelScale(modelScale);
 
         if (!CatalogSlug.IsValid(slug))
         {
@@ -519,6 +546,7 @@ public sealed class Product
         string displayName,
         string englishName,
         string description,
+        string? modelScale,
         string slug,
         Guid productCategoryId,
         Guid brandId,
@@ -531,6 +559,8 @@ public sealed class Product
         {
             throw new ProductRuleException(ProductRule.ProductTextRequired);
         }
+
+        _ = PrepareModelScale(modelScale);
 
         if (!CatalogSlug.IsValid(slug))
         {
@@ -660,6 +690,23 @@ public sealed class Product
         }
     }
 
+    private static string? PrepareModelScale(string? modelScale)
+    {
+        if (string.IsNullOrWhiteSpace(modelScale))
+        {
+            return null;
+        }
+
+        var prepared = modelScale.Trim();
+        if (prepared.Length > MaximumModelScaleLength
+            || prepared.Any(char.IsControl))
+        {
+            throw new ProductRuleException(ProductRule.ProductModelScaleInvalid);
+        }
+
+        return prepared;
+    }
+
     private static void EnsureActor(string actor)
     {
         if (string.IsNullOrWhiteSpace(actor))
@@ -735,6 +782,7 @@ public sealed class Product
         string englishName,
         string normalizedEnglishName,
         string description,
+        string? modelScale,
         string slug,
         Guid productCategoryId,
         Guid brandId,
@@ -746,6 +794,7 @@ public sealed class Product
         && EnglishName == englishName
         && NormalizedEnglishName == normalizedEnglishName
         && Description == description
+        && ModelScale == modelScale
         && Slug == slug
         && ProductCategoryId == productCategoryId
         && BrandId == brandId

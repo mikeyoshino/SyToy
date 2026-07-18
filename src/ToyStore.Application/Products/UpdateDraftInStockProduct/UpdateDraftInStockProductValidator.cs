@@ -20,6 +20,8 @@ public sealed class UpdateDraftInStockProductValidator
         RuleFor(command => command.Description)
             .NotEmpty()
             .WithMessage("กรุณากรอกคำอธิบายสินค้า");
+        RuleFor(command => command.ModelScale)
+            .Custom(InStockProductValidationRules.ValidateModelScale);
         RuleFor(command => command.ProductCategoryId)
             .Must(InStockProductValidationRules.IsAllowedCategory)
             .WithMessage("กรุณาเลือกหมวดหมู่ Art Toy หรือ Gundam");

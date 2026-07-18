@@ -67,7 +67,8 @@ public sealed class UpdateDraftPreOrderProductHandler(
                     product.UpdateDraftPreOrder(
                         request.DisplayName, request.EnglishName, request.Description, slug.Value,
                         request.ProductCategoryId, request.BrandId, request.UniverseId, offer,
-                        images.Value, characterIds, request.ExpectedVersion, now, actor);
+                        images.Value, characterIds, request.ExpectedVersion, now, actor,
+                        request.ModelScale);
                     evidence = ProductMutationEvidence.Capture(product);
                     mediaState = ProductMediaMutationState.Capture(beforeMedia, product.Images);
                     return Result<ProductMutationResult>.Success(ProductMutationResult.From(product));
