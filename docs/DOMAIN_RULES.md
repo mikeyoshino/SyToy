@@ -20,7 +20,7 @@
 - Brand/Universe archive เป็น terminal ไม่มี hard delete/unarchive และทำได้แม้ Product/Character ยังอ้างอิงอยู่ โดยต้องคง media, foreign keys และ history แต่ห้ามเลือก archived reference กับ Product ใหม่หรือใช้ publish
 - Brand/Universe มี persisted `long Version`: create เริ่ม 1, update/archive ที่เปลี่ยน state สำเร็จเพิ่มหนึ่งครั้ง และ rejected/stale/no-op work ไม่เพิ่ม version
 - Product มี ordered images สูงสุด 8 รูป รูปแรกเป็น primary; Published ต้องมีอย่างน้อยหนึ่งรูป
-- Product มี persisted positive `Version` เริ่มที่ 1; การ Update/Publish/Archive ที่สำเร็จเพิ่มครั้งเดียวต่อ logical command ส่วน stale, rejected และ no-op ไม่เพิ่ม version. Lifecycle ที่อนุญาตคือ `Draft -> Published -> Archived`; M5-03 รองรับเฉพาะ In-stock และ Archived เป็น terminal
+- Product มี persisted positive `Version` เริ่มที่ 1; การ Update/Publish/Archive ที่สำเร็จเพิ่มครั้งเดียวต่อ logical command ส่วน stale, rejected และ no-op ไม่เพิ่ม version. Lifecycle ที่อนุญาตคือ `Draft -> Published -> Archived`; Draft และ Published แก้ข้อมูลสินค้าได้โดยคง lifecycle status เดิม ส่วน Archived เป็น terminal และแก้ไม่ได้ ทั้งนี้ Published Pre-order ล็อกวันปิดรอบกับจำนวนรับทั้งหมดเพื่อให้ตรงกับ capacity/reservation ที่เปิดใช้งาน
 - Product model scale เป็นข้อมูล optional สำหรับสินค้าโมเดล (เช่น `1/12`, `1/6`, `1/100`); trim ก่อน persist, ค่าว่างเป็น `null`, ยาวไม่เกิน 30 ตัวอักษร และห้าม control characters
 - การสร้าง In-stock Product ต้อง persist Product, ordered media references, characters, InventoryItem และ InitialStock movement ใน transaction เดียว; InitialStock แก้ได้เฉพาะตอนสร้าง
 - Publish ต้องตรวจ Brand active พร้อม image, Universe active พร้อม logo และ relation/category/character จากฐานข้อมูลภายใต้ lock เดียวกัน; Archive ต้องคง media, stock และ movement history โดยไม่ลบข้อมูล

@@ -39,6 +39,8 @@
                         }
                         else if (item.Status == ProductManagementStatus.Published)
                         {
+                            <StoreButton Tone="StoreButtonTone.Secondary" Compact="true"
+                                         OnClick="() => EditRequested.InvokeAsync(item)">แก้ไขสินค้า</StoreButton>
                             @if (item.SaleType == ProductManagementSaleType.PreOrder)
                             {
                                 <span class="admin-product-list__unavailable">ยังไม่รองรับการเก็บพรีออเดอร์</span>

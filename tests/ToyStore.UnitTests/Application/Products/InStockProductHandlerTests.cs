@@ -347,15 +347,16 @@ public sealed class InStockProductHandlerTests
     [Theory]
     [InlineData("missing", "Product.NotFound")]
     [InlineData("stale", "Product.StaleVersion")]
-    [InlineData("published", "Product.DraftInStockRequired")]
+    [InlineData("archived", "Product.EditableInStockRequired")]
     public async Task UpdateReturnsTypedTargetFailuresBeforeReferences(
         string scenario,
         string expectedCode)
     {
         var existing = scenario == "missing" ? null : CreateExistingProduct();
-        if (scenario == "published")
+        if (scenario == "archived")
         {
             existing!.Publish(existing.Version, UtcNow.AddMinutes(1), "publisher");
+            existing.Archive(existing.Version, UtcNow.AddMinutes(2), "archiver");
         }
 
         var harness = new Harness(existing);
@@ -373,6 +374,26 @@ public sealed class InStockProductHandlerTests
 
         Assert.Equal(expectedCode, result.Error.Code);
         Assert.DoesNotContain("references", harness.Session.Events);
+    }
+
+    [Fact]
+    public async Task PublishedUpdateKeepsPublishedStatusAndUsesCurrentVersion()
+    {
+        var existing = CreateExistingProduct();
+        existing.Publish(existing.Version, UtcNow.AddMinutes(1), "publisher");
+        var harness = new Harness(existing);
+        var command = harness.UpdateCommand(
+            existing,
+            existing.Images.OrderBy(image => image.SortOrder)
+                .Select(image => (ProductMediaPlanSlot)new RetainedProductMediaSlot(image.Id))
+                .ToArray());
+
+        var result = await harness.AuthorizeUpdateAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ProductStatus.Published, existing.Status);
+        Assert.Equal("สินค้าแก้ไข", existing.DisplayName);
+        Assert.Equal(3, existing.Version);
     }
 
     [Fact]

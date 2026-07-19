@@ -52,6 +52,7 @@
     <ChildContent>
         <AdminProductEditor @ref="editor" @key="editorModel" Model="@editorModel"
                             IsCreate="@(editingItem is null)" IsBusy="@isEditorBusy"
+                            IsPublished="@(editingItem?.Status == ProductManagementStatus.Published)"
                             Categories="@categories" Brands="@editorBrands" Universes="@editorUniverses"
                             Submitted="SaveEditorAsync" />
     </ChildContent>
@@ -60,7 +61,7 @@
             <StoreButton Tone="StoreButtonTone.Secondary" OnClick="CloseEditorAsync">ยกเลิก</StoreButton>
             <StoreButton ButtonType="submit" Form="admin-product-editor-form"
                          IsBusy="@isEditorBusy" LoadingText="กำลังบันทึก…">
-                บันทึกฉบับร่าง
+                @(editingItem?.Status == ProductManagementStatus.Published ? "บันทึกการแก้ไข" : "บันทึกฉบับร่าง")
             </StoreButton>
         </StoreButtonGroup>
     </Actions>
@@ -220,6 +221,7 @@
 
     private Task OpenEditAsync(ProductManagementItem item)
     {
+        if (item.Status == ProductManagementStatus.Archived) return Task.CompletedTask;
         editingItem = item;
         editorBrands = IncludeCurrentReference(
             activeEditorBrands,
@@ -274,7 +276,9 @@
                 : "อัปเดตสำเร็จ";
             var successMessage = editingItem is null
                 ? $"เพิ่มสินค้า {result.Value.DisplayName} เป็นฉบับร่างแล้ว กด “เผยแพร่หน้าร้าน” ในคอลัมน์จัดการเพื่อให้ลูกค้าเห็นสินค้า"
-                : $"บันทึกสินค้า {result.Value.DisplayName} แล้ว";
+                : editingItem.Status == ProductManagementStatus.Published
+                    ? $"บันทึกสินค้า {result.Value.DisplayName} แล้ว ข้อมูลหน้าร้านอัปเดตทันที"
+                    : $"บันทึกสินค้า {result.Value.DisplayName} แล้ว";
             ToastService.ShowSuccess(successMessage, title);
             isEditorOpen = false;
             await ReloadAsync();

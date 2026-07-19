@@ -24,14 +24,19 @@ public static class ProductErrors
         "ข้อมูลสินค้ามีการเปลี่ยนแปลง กรุณารีเฟรชแล้วลองอีกครั้ง",
         ErrorType.Conflict);
 
-    public static readonly Error DraftInStockRequired = new(
-        "Product.DraftInStockRequired",
-        "แก้ไขได้เฉพาะสินค้า In-stock ที่ยังเป็นฉบับร่าง",
+    public static readonly Error EditableInStockRequired = new(
+        "Product.EditableInStockRequired",
+        "แก้ไขได้เฉพาะสินค้า In-stock ที่เป็นฉบับร่างหรือเผยแพร่แล้ว",
         ErrorType.Conflict);
 
-    public static readonly Error DraftPreOrderRequired = new(
-        "Product.DraftPreOrderRequired",
-        "แก้ไขได้เฉพาะสินค้าพรีออเดอร์ที่ยังเป็นฉบับร่าง",
+    public static readonly Error EditablePreOrderRequired = new(
+        "Product.EditablePreOrderRequired",
+        "แก้ไขได้เฉพาะสินค้าพรีออเดอร์ที่เป็นฉบับร่างหรือเผยแพร่แล้ว",
+        ErrorType.Conflict);
+
+    public static readonly Error PublishedPreOrderCapacityLocked = new(
+        "Product.PublishedPreOrderCapacityLocked",
+        "หลังเผยแพร่แล้วไม่สามารถเปลี่ยนวันปิดรอบหรือจำนวนรับพรีออเดอร์ทั้งหมดได้",
         ErrorType.Conflict);
 
     public static readonly Error CategoryUnavailable = new(

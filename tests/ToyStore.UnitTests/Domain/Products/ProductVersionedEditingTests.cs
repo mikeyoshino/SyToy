@@ -245,16 +245,38 @@ public sealed class ProductVersionedEditingTests
     }
 
     [Fact]
-    public void PublishedAndPreOrderProductsCannotUseInStockUpdateAndNoBypassExists()
+    public void PublishedInStockCanBeEditedButArchivedAndPreOrderCannotUseInStockUpdate()
     {
         var published = CreateInStock([Image(Guid.NewGuid(), "front.webp")]);
         published.Publish(expectedVersion: 1, CreatedAtUtc, "admin-1");
-        var publishedBefore = Snapshot(published);
+        UpdatePrice(published, expectedVersion: 2);
+        Assert.Equal(ProductStatus.Published, published.Status);
+        Assert.Equal(1990, published.InStockOffer!.Price.Amount);
+        Assert.Equal(3, published.Version);
 
+        var publishedBeforeInvalidMedia = Snapshot(published);
         AssertRule(
-            ProductRule.ProductEditsLocked,
-            () => UpdatePrice(published, expectedVersion: 2));
-        Assert.Equal(publishedBefore, Snapshot(published));
+            ProductRule.ProductPublishRequiresImage,
+            () => published.UpdateDraftInStock(
+                published.DisplayName,
+                published.EnglishName,
+                published.Description,
+                published.Slug,
+                published.ProductCategoryId,
+                published.BrandId,
+                published.UniverseId,
+                published.InStockOffer!,
+                [],
+                published.Characters.Select(link => link.CharacterId).ToArray(),
+                published.Version,
+                CreatedAtUtc.AddMinutes(4),
+                "admin-4"));
+        Assert.Equal(publishedBeforeInvalidMedia, Snapshot(published));
+
+        published.Archive(expectedVersion: 3, CreatedAtUtc.AddMinutes(5), "admin-4");
+        var archivedBefore = Snapshot(published);
+        AssertRule(ProductRule.ProductEditsLocked, () => UpdatePrice(published, expectedVersion: 4));
+        Assert.Equal(archivedBefore, Snapshot(published));
 
         var preOrder = CreatePreOrder();
         var preOrderBefore = Snapshot(preOrder);
@@ -272,6 +294,70 @@ public sealed class ProductVersionedEditingTests
         Assert.Equal(["Archive", "Publish", "UpdateDraftInStock", "UpdateDraftPreOrder"], mutationNames);
         Assert.False(
             typeof(Product).GetProperty(nameof(Product.SaleType))!.SetMethod?.IsPublic ?? false);
+    }
+
+    [Fact]
+    public void PublishedPreOrderCanBeEditedWithoutChangingLifecycleStatus()
+    {
+        var image = Image(Guid.NewGuid(), "preorder.webp");
+        var product = CreatePreOrder([image]);
+        product.Publish(product.Version, CreatedAtUtc.AddMinutes(1), "publisher");
+        var currentOffer = product.PreOrderOffer!;
+
+        product.UpdateDraftPreOrder(
+            "พรีออเดอร์แก้ไข",
+            "Updated Pre Order",
+            "รายละเอียดใหม่",
+            "updated-pre-order",
+            product.ProductCategoryId,
+            product.BrandId,
+            product.UniverseId,
+            PreOrderOffer.Create(
+                Money.Create(2590),
+                Money.Create(550),
+                DateOnly.FromDateTime(currentOffer.CloseAtUtc.UtcDateTime),
+                currentOffer.EstimatedArrival,
+                currentOffer.TotalCapacity,
+                currentOffer.MaxPerCustomer,
+                CreatedAtUtc.AddMinutes(2),
+                currentOffer.BalancePaymentDays),
+            [image],
+            [],
+            product.Version,
+            CreatedAtUtc.AddMinutes(2),
+            "admin-2");
+
+        Assert.Equal(ProductStatus.Published, product.Status);
+        Assert.Equal("พรีออเดอร์แก้ไข", product.DisplayName);
+        Assert.Equal(2590, product.PreOrderOffer!.FullPrice.Amount);
+        Assert.Equal(3, product.Version);
+
+        var beforeCapacityChange = Snapshot(product);
+        AssertRule(
+            ProductRule.ProductPublishedPreOrderCapacityLocked,
+            () => product.UpdateDraftPreOrder(
+                product.DisplayName,
+                product.EnglishName,
+                product.Description,
+                product.Slug,
+                product.ProductCategoryId,
+                product.BrandId,
+                product.UniverseId,
+                PreOrderOffer.Create(
+                    product.PreOrderOffer.FullPrice,
+                    product.PreOrderOffer.DepositAmount,
+                    DateOnly.FromDateTime(product.PreOrderOffer.CloseAtUtc.UtcDateTime),
+                    product.PreOrderOffer.EstimatedArrival,
+                    product.PreOrderOffer.TotalCapacity + 1,
+                    product.PreOrderOffer.MaxPerCustomer,
+                    CreatedAtUtc.AddMinutes(3),
+                    product.PreOrderOffer.BalancePaymentDays),
+                [image],
+                [],
+                product.Version,
+                CreatedAtUtc.AddMinutes(3),
+                "admin-3"));
+        Assert.Equal(beforeCapacityChange, Snapshot(product));
     }
 
     [Fact]

@@ -63,10 +63,14 @@
             {
                 <StoreNumberField TValue="decimal?" @bind-Value="Model.FullPrice" Label="ราคาเต็ม (บาท)" Required="true" Min="0.01" Step="0.01" InputMode="decimal" Disabled="@IsBusy" />
                 <StoreNumberField TValue="decimal?" @bind-Value="Model.DepositAmount" Label="เงินมัดจำ (บาท)" Required="true" Min="0.01" Step="0.01" InputMode="decimal" Disabled="@IsBusy" />
-                <StoreTextField @bind-Value="Model.CloseDate" Label="วันที่ปิดรอบ" Type="date" Required="true" Disabled="@IsBusy" HelpText="ปิดอัตโนมัติ 23:59 เวลาไทย" />
+                <StoreTextField @bind-Value="Model.CloseDate" Label="วันที่ปิดรอบ" Type="date" Required="true"
+                                Disabled="@(IsBusy || IsPublished)"
+                                HelpText="@(IsPublished ? "ล็อกหลังเผยแพร่เพื่อให้ตรงกับรอบจองที่เปิดอยู่" : "ปิดอัตโนมัติ 23:59 เวลาไทย")" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalMonth" Label="เดือนที่คาดว่าสินค้าจะมา" Required="true" Min="1" Max="12" Step="1" InputMode="numeric" Disabled="@IsBusy" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalYear" Label="ปีที่คาดว่าสินค้าจะมา" Required="true" Min="2026" Step="1" InputMode="numeric" Disabled="@IsBusy" />
-                <StoreNumberField TValue="int?" @bind-Value="Model.TotalCapacity" Label="จำนวนรับพรีออเดอร์" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" />
+                <StoreNumberField TValue="int?" @bind-Value="Model.TotalCapacity" Label="จำนวนรับพรีออเดอร์" Required="true"
+                                  Min="1" Step="1" InputMode="numeric" Disabled="@(IsBusy || IsPublished)"
+                                  HelpText="@(IsPublished ? "ล็อกหลังเผยแพร่เพื่อรักษาจำนวนจองและการชำระเงินเดิม" : null)" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.MaxPerCustomer" Label="จำนวนสูงสุดต่อคน" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.BalancePaymentDays" Label="จำนวนวันชำระยอดคงเหลือ" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" HelpText="ค่าเริ่มต้น 7 วัน" />
                 <p class="admin-product-editor__policy">มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือตามกำหนด</p>
@@ -96,6 +100,7 @@
     [Parameter] public string FormId { get; set; } = "admin-product-editor-form";
     [Parameter] public string FormName { get; set; } = "admin-product-editor";
     [Parameter] public bool IsCreate { get; set; }
+    [Parameter] public bool IsPublished { get; set; }
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Categories { get; set; } = [];
     [Parameter] public IReadOnlyList<ProductManagementReferenceOption> Brands { get; set; } = [];

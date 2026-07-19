@@ -154,7 +154,7 @@ Infrastructure ถูกอ้างจาก Web เฉพาะ composition ro
 
 ใช้ PostgreSQL database เดียวและ `ApplicationDbContext` เดียวในระยะแรก Product ไม่มี variant และ Category เป็น seeded lookup (`ArtToy`, `Gundam`) ที่ไม่มี Admin CRUD ใน v1 ตารางหลัก:
 
-M5-03 ใช้ Product mutation session แบบ once-only เพื่อ lock namespace → Product → catalog references และยืนยันผล commit จาก fresh context เมื่อผลลัพธ์ไม่แน่นอน. Create/update/publish/archive เป็น vertical slices; media ใหม่ staged/committed ก่อน database save และมี non-cancellable compensation เมื่อ save หรือ commit acknowledgement ล้มเหลว. Product version เป็น optimistic concurrency watermark เดียวของ lifecycle และ draft editing.
+M5-03 ใช้ Product mutation session แบบ once-only เพื่อ lock namespace → Product → catalog references และยืนยันผล commit จาก fresh context เมื่อผลลัพธ์ไม่แน่นอน. Create/update/publish/archive เป็น vertical slices; media ใหม่ staged/committed ก่อน database save และมี non-cancellable compensation เมื่อ save หรือ commit acknowledgement ล้มเหลว. Product version เป็น optimistic concurrency watermark เดียวของ lifecycle และ active Product editing (Draft/Published).
 
 ```text
 Users Roles Products ProductImages ProductCharacters

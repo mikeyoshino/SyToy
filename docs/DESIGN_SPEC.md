@@ -242,7 +242,7 @@ Admin ใช้ borderless `Muted Ocean` แยกจาก Storefront:
 
 - Dashboard ใช้ cards/graphs/operational queues ตามข้อมูลจริงและ timezone `Asia/Bangkok`
 - Product, Brand และ Universe list ใช้ shared table state, filter, pagination, badge และ empty/error/loading state
-- Product Create/Edit ใช้ large modal บนหน้า list; mobile เป็น full-screen dialog; Brand/Universe ใช้ modal pattern เดียวกัน
+- Product Create/Edit ใช้ large modal บนหน้า list; mobile เป็น full-screen dialog; แถว Draft และ Published ต้องมีปุ่มแก้ไขที่มองเห็นได้ โดย Published บันทึกแล้วอัปเดตหน้าร้านทันทีและ Published Pre-order ล็อกวันปิดรอบ/จำนวนรับทั้งหมด; Brand/Universe ใช้ modal pattern เดียวกัน
 - Product form ใช้ conditional In-stock/Pre-order fields, shared upload/reorder และ searchable Character autocomplete; inline create Character ได้
 - Character autocomplete เป็น shared controlled EditContext field: เลือกหลายค่าเป็น removable chips, debounce 250 ms, รองรับ Thai/Japanese IME, keyboard/active-descendant และ mouse โดยไม่ใช้ native `<select>`; Universe เป็น owner ที่เปลี่ยนแล้วต้อง cancel request เก่าและล้าง selection ที่ไม่เข้ากัน ผล exact match และสิทธิ์ inline create มาจาก Application เท่านั้น
 - listbox/pseudo-option ต้องใช้ ARIA combobox/listbox/option ที่สัมพันธ์กัน, ประกาศ loading/result/error ผ่าน live region, ปิดและ invalidate pending search เมื่อ blur/Escape/Tab โดย Tab ห้ามถูก trap และ external FluentValidation ต้องอัปเดตทั้งข้อความกับ `aria-invalid`

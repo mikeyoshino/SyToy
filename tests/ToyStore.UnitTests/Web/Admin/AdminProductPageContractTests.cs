@@ -31,6 +31,7 @@ public sealed class AdminProductPageContractTests
         Assert.Contains("ArchiveProductCommand", source, StringComparison.Ordinal);
         Assert.Contains("เพิ่มสินค้าแบบพร้อมส่ง", source, StringComparison.Ordinal);
         Assert.Contains("บันทึกฉบับร่าง", source, StringComparison.Ordinal);
+        Assert.Contains("บันทึกการแก้ไข", source, StringComparison.Ordinal);
         Assert.Contains("<AdminProductMediaField", Source("Components/Admin/Shared/AdminProductEditor.razor"), StringComparison.Ordinal);
         Assert.Contains("<AdminProductFilterBar", source, StringComparison.Ordinal);
         Assert.Contains("[SupplyParameterFromQuery(Name = \"category\")]", source, StringComparison.Ordinal);
@@ -44,6 +45,10 @@ public sealed class AdminProductPageContractTests
         var list = Source("Components/Admin/Shared/AdminProductList.razor");
         Assert.Contains("item.SaleType == ProductManagementSaleType.PreOrder", list, StringComparison.Ordinal);
         Assert.Contains("ยังไม่รองรับการเก็บพรีออเดอร์", list, StringComparison.Ordinal);
+        Assert.Contains("แก้ไขสินค้า", list, StringComparison.Ordinal);
+        Assert.Contains("EditRequested.InvokeAsync(item)", list, StringComparison.Ordinal);
+        Assert.Contains("IsPublished", Source("Components/Admin/Shared/AdminProductEditor.razor"), StringComparison.Ordinal);
+        Assert.Contains("ล็อกหลังเผยแพร่", Source("Components/Admin/Shared/AdminProductEditor.razor"), StringComparison.Ordinal);
         Assert.DoesNotContain("ToyStore.Infrastructure", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
     }

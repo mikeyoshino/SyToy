@@ -45,11 +45,11 @@ public sealed class UpdateDraftInStockProductHandler(
                     return Result<ProductMutationResult>.Failure(ProductErrors.NotFound);
                 }
 
-                if (product.Status != ProductStatus.Draft
+                if (product.Status is not (ProductStatus.Draft or ProductStatus.Published)
                     || product.SaleType != SaleType.InStock)
                 {
                     return Result<ProductMutationResult>.Failure(
-                        ProductErrors.DraftInStockRequired);
+                        ProductErrors.EditableInStockRequired);
                 }
 
                 if (product.Version != request.ExpectedVersion)
@@ -70,6 +70,14 @@ public sealed class UpdateDraftInStockProductHandler(
                 if (referenceError is not null)
                 {
                     return Result<ProductMutationResult>.Failure(referenceError);
+                }
+                if (product.Status == ProductStatus.Published && !readiness.BrandIsReady)
+                {
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishBrandUnavailable);
+                }
+                if (product.Status == ProductStatus.Published && !readiness.UniverseIsReady)
+                {
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishUniverseUnavailable);
                 }
 
                 if (await session.DisplayNameExistsAsync(
@@ -107,6 +115,10 @@ public sealed class UpdateDraftInStockProductHandler(
                 if (images.IsFailure)
                 {
                     return Result<ProductMutationResult>.Failure(images.Error);
+                }
+                if (product.Status == ProductStatus.Published && images.Value.Count == 0)
+                {
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishRequiresImage);
                 }
 
                 try

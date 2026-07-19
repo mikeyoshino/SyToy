@@ -25,6 +25,7 @@ public enum ProductRule
     ProductOfferMismatch,
     ProductTransitionInvalid,
     ProductPublishRequiresImage,
+    ProductPublishedPreOrderCapacityLocked,
     ProductImageMetadataRequired,
     ProductImageLimitExceeded,
     ProductImageDuplicateId,

@@ -275,7 +275,7 @@ public sealed class Product
         string actor,
         string? modelScale = null)
     {
-        EnsureDraftInStockEdit();
+        EnsureEditableInStock();
         EnsureExpectedVersion(expectedVersion);
         ValidateEditableFields(
             displayName,
@@ -288,6 +288,7 @@ public sealed class Product
             universeId,
             offer);
         var preparedCollections = PrepareCollections(images, characterIds);
+        EnsurePublishedHasImage(preparedCollections.Images);
         ValidateTouch(changedAtUtc, actor);
         var reconciledCollections = ReconcileCollections(preparedCollections);
 
@@ -297,7 +298,7 @@ public sealed class Product
         var normalizedEnglishName = CatalogNameNormalizer.Normalize(englishName);
         var preparedDescription = description.Trim();
         var preparedModelScale = PrepareModelScale(modelScale);
-        if (HasSameDraftInStockContent(
+        if (HasSameInStockContent(
             preparedDisplayName,
             normalizedDisplayName,
             preparedEnglishName,
@@ -354,7 +355,7 @@ public sealed class Product
         string actor,
         string? modelScale = null)
     {
-        if (Status != ProductStatus.Draft)
+        if (Status is not (ProductStatus.Draft or ProductStatus.Published))
         {
             throw new ProductRuleException(ProductRule.ProductEditsLocked);
         }
@@ -368,12 +369,19 @@ public sealed class Product
         ValidateEditableFields(
             displayName, englishName, description, modelScale, slug,
             productCategoryId, brandId, universeId, offer);
+        if (Status == ProductStatus.Published
+            && (offer.CloseAtUtc != _preOrderOffer!.CloseAtUtc
+                || offer.TotalCapacity != _preOrderOffer.TotalCapacity))
+        {
+            throw new ProductRuleException(ProductRule.ProductPublishedPreOrderCapacityLocked);
+        }
         if (offer.CloseAtUtc <= changedAtUtc)
         {
             throw new ProductRuleException(ProductRule.PreOrderCloseMustBeFuture);
         }
 
         var preparedCollections = PrepareCollections(images, characterIds);
+        EnsurePublishedHasImage(preparedCollections.Images);
         ValidateTouch(changedAtUtc, actor);
         var reconciledCollections = ReconcileCollections(preparedCollections);
         EnsureVersionCanAdvance();
@@ -729,9 +737,17 @@ public sealed class Product
         }
     }
 
-    private void EnsureDraftInStockEdit()
+    private void EnsurePublishedHasImage(IReadOnlyCollection<ProductImageDefinition> images)
     {
-        if (Status != ProductStatus.Draft)
+        if (Status == ProductStatus.Published && images.Count == 0)
+        {
+            throw new ProductRuleException(ProductRule.ProductPublishRequiresImage);
+        }
+    }
+
+    private void EnsureEditableInStock()
+    {
+        if (Status is not (ProductStatus.Draft or ProductStatus.Published))
         {
             throw new ProductRuleException(ProductRule.ProductEditsLocked);
         }
@@ -776,7 +792,7 @@ public sealed class Product
         }
     }
 
-    private bool HasSameDraftInStockContent(
+    private bool HasSameInStockContent(
         string displayName,
         string normalizedDisplayName,
         string englishName,

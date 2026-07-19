@@ -32,8 +32,9 @@ public sealed class UpdateDraftPreOrderProductHandler(
                 await session.AcquireNamespaceLockAsync(token);
                 var product = await session.LockProductAsync(request.Id, token);
                 if (product is null) return Result<ProductMutationResult>.Failure(ProductErrors.NotFound);
-                if (product.Status != ProductStatus.Draft || product.SaleType != SaleType.PreOrder)
-                    return Result<ProductMutationResult>.Failure(ProductErrors.DraftPreOrderRequired);
+                if (product.Status is not (ProductStatus.Draft or ProductStatus.Published)
+                    || product.SaleType != SaleType.PreOrder)
+                    return Result<ProductMutationResult>.Failure(ProductErrors.EditablePreOrderRequired);
                 if (product.Version != request.ExpectedVersion)
                     return Result<ProductMutationResult>.Failure(ProductErrors.StaleVersion);
 
@@ -42,6 +43,10 @@ public sealed class UpdateDraftPreOrderProductHandler(
                     request.ProductCategoryId, request.BrandId, request.UniverseId, characterIds, token);
                 var referenceError = InStockProductMutationSupport.ValidateReferences(readiness, characterIds);
                 if (referenceError is not null) return Result<ProductMutationResult>.Failure(referenceError);
+                if (product.Status == ProductStatus.Published && !readiness.BrandIsReady)
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishBrandUnavailable);
+                if (product.Status == ProductStatus.Published && !readiness.UniverseIsReady)
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishUniverseUnavailable);
                 if (await session.DisplayNameExistsAsync(
                     CatalogNameNormalizer.Normalize(request.DisplayName), product.Id, token))
                     return Result<ProductMutationResult>.Failure(ProductErrors.DuplicateDisplayName);
@@ -56,6 +61,8 @@ public sealed class UpdateDraftPreOrderProductHandler(
                 var images = InStockProductMutationSupport.ResolveUpdateImages(
                     resolved, product.Images, request.DisplayName);
                 if (images.IsFailure) return Result<ProductMutationResult>.Failure(images.Error);
+                if (product.Status == ProductStatus.Published && images.Value.Count == 0)
+                    return Result<ProductMutationResult>.Failure(ProductErrors.PublishRequiresImage);
                 try
                 {
                     var now = timeProvider.GetUtcNow().ToUniversalTime();
@@ -64,6 +71,13 @@ public sealed class UpdateDraftPreOrderProductHandler(
                         request.CloseDate,
                         EstimatedArrival.Create(request.EstimatedArrivalMonth, request.EstimatedArrivalYear),
                         request.TotalCapacity, request.MaxPerCustomer, now, request.BalancePaymentDays);
+                    if (product.Status == ProductStatus.Published
+                        && (offer.CloseAtUtc != product.PreOrderOffer!.CloseAtUtc
+                            || offer.TotalCapacity != product.PreOrderOffer.TotalCapacity))
+                    {
+                        return Result<ProductMutationResult>.Failure(
+                            ProductErrors.PublishedPreOrderCapacityLocked);
+                    }
                     product.UpdateDraftPreOrder(
                         request.DisplayName, request.EnglishName, request.Description, slug.Value,
                         request.ProductCategoryId, request.BrandId, request.UniverseId, offer,

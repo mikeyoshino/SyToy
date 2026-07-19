@@ -52,6 +52,28 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
             updated.Value.Id, updated.Value.Version));
         Assert.True(published.IsSuccess);
 
+        var publishedUpdate = await harness.UpdatePreOrderAsync(new UpdateDraftPreOrderProductCommand(
+            published.Value.Id, published.Value.Version, "พรีออเดอร์หลังเผยแพร่", "Published Preorder Updated",
+            "รายละเอียดหลังเผยแพร่", CatalogSeedIds.GundamCategory, references.BrandId,
+            references.UniverseId, [references.CharacterId], 2500, 650,
+            new DateOnly(2026, 12, 15), 1, 2027, 12, 2, 7,
+            published.Value.Images.Select(x => (ProductMediaPlanSlot)new RetainedProductMediaSlot(x.Id)).ToArray()));
+        Assert.True(publishedUpdate.IsSuccess);
+        Assert.Equal(ProductStatus.Published, publishedUpdate.Value.Status);
+        Assert.Equal(2500, publishedUpdate.Value.FullPrice);
+
+        var capacityChange = await harness.UpdatePreOrderAsync(new UpdateDraftPreOrderProductCommand(
+            publishedUpdate.Value.Id, publishedUpdate.Value.Version, publishedUpdate.Value.DisplayName,
+            publishedUpdate.Value.EnglishName, publishedUpdate.Value.Description,
+            publishedUpdate.Value.ProductCategoryId, publishedUpdate.Value.BrandId,
+            publishedUpdate.Value.UniverseId, publishedUpdate.Value.CharacterIds,
+            publishedUpdate.Value.FullPrice!.Value, publishedUpdate.Value.DepositAmount!.Value,
+            new DateOnly(2026, 12, 15), publishedUpdate.Value.EstimatedArrivalMonth!.Value,
+            publishedUpdate.Value.EstimatedArrivalYear!.Value, 13,
+            publishedUpdate.Value.MaxPerCustomer!.Value, publishedUpdate.Value.BalancePaymentDays!.Value,
+            publishedUpdate.Value.Images.Select(x => (ProductMediaPlanSlot)new RetainedProductMediaSlot(x.Id)).ToArray()));
+        Assert.Equal(ProductErrors.PublishedPreOrderCapacityLocked, capacityChange.Error);
+
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var capacity = await db.PreOrderCapacities.AsNoTracking().SingleAsync(
@@ -238,6 +260,45 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
             .Select(link => link.CharacterId)
             .SingleAsync(TestContext.Current.CancellationToken));
         Assert.Equal(2, harness.Storage.DeletedKeys.Count);
+    }
+
+    [Fact]
+    public async Task PublishedInStockUpdatePersistsContentAndKeepsLifecycleAndInventory()
+    {
+        await using var factory = await StartAndResetAsync();
+        var references = await SeedReferencesAsync(factory, "published-update");
+        var harness = CreateHarness(factory);
+        var created = await harness.CreateAsync(new CreateInStockProductCommand(
+            "สินค้าก่อนเผยแพร่", "Before Publish", "รายละเอียดเดิม",
+            CatalogSeedIds.ArtToyCategory, references.BrandId, references.UniverseId,
+            [references.CharacterId], 100, 5, [new UploadProductMediaSlot(Upload())]));
+        Assert.True(created.IsSuccess);
+        var published = await harness.PublishAsync(new PublishProductCommand(
+            created.Value.Id, created.Value.Version));
+        Assert.True(published.IsSuccess);
+
+        var updated = await harness.UpdateAsync(new UpdateDraftInStockProductCommand(
+            published.Value.Id, published.Value.Version,
+            "สินค้าหลังเผยแพร่", "After Publish", "รายละเอียดใหม่",
+            CatalogSeedIds.ArtToyCategory, references.BrandId, references.UniverseId,
+            [references.CharacterId], 175,
+            published.Value.Images.Select(image =>
+                (ProductMediaPlanSlot)new RetainedProductMediaSlot(image.Id)).ToArray()));
+
+        Assert.True(updated.IsSuccess);
+        Assert.Equal(ProductStatus.Published, updated.Value.Status);
+        Assert.Equal(175, updated.Value.Price);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var product = await db.Products.AsNoTracking().SingleAsync(
+            item => item.Id == updated.Value.Id,
+            TestContext.Current.CancellationToken);
+        var inventory = await db.InventoryItems.AsNoTracking().SingleAsync(
+            item => item.ProductId == updated.Value.Id,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(ProductStatus.Published, product.Status);
+        Assert.Equal("สินค้าหลังเผยแพร่", product.DisplayName);
+        Assert.Equal(5, inventory.OnHandQuantity);
     }
 
     [Fact]

@@ -103,10 +103,13 @@ internal static class InStockProductMutationSupport
         error = rule switch
         {
             ProductRule.ProductConcurrencyVersionMismatch => ProductErrors.StaleVersion,
+            ProductRule.ProductPublishRequiresImage => ProductErrors.PublishRequiresImage,
+            ProductRule.ProductPublishedPreOrderCapacityLocked =>
+                ProductErrors.PublishedPreOrderCapacityLocked,
             ProductRule.ProductEditsLocked
                 or ProductRule.ProductInStockEditRequired
                 or ProductRule.ProductInStockLifecycleRequired =>
-                    ProductErrors.DraftInStockRequired,
+                    ProductErrors.EditableInStockRequired,
             ProductRule.ProductImageRetainedMetadataMismatch
                 or ProductRule.ProductImageNotFound
                 or ProductRule.ProductImageDuplicateId
