@@ -1,11 +1,15 @@
+www.{$TOYSTORE_DOMAIN} {
+	redir https://{$TOYSTORE_DOMAIN}{uri} permanent
+}
+
 {$TOYSTORE_DOMAIN} {
-    encode zstd gzip
+	encode zstd gzip
 
-    header {
-        X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
-        -Server
-    }
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
 
-    reverse_proxy web:8080
+	reverse_proxy web:8080
 }

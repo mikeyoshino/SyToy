@@ -13,6 +13,8 @@
 
 ## Current focus
 
+- 2026-07-19: ทำ M7-02 saved shipping addresses ครบ: ลูกค้าเลือก/บันทึกได้สูงสุด 5 ที่อยู่ มีค่าเริ่มต้นหนึ่งรายการ, ownership-scoped mutation, immutable Thai relation IDs, shared selector ใน In-stock/Pre-order checkout และ confirmation modal ตรวจสินค้า/ยอด/ที่อยู่ก่อนสร้าง CheckoutAttempt
+- 2026-07-19: เพิ่ม canonical `www` handling ใน production Caddy: terminate TLS สำหรับ `www.<domain>` แล้ว permanent redirect ไป apex พร้อม deployment contract test และ VPS reload runbook
 - 2026-07-19: ลดข้อความซ้ำใน Product Detail พรีออเดอร์ โดยเปลี่ยน CTA เป็น “สั่งพรีออเดอร์” และลบ availability note ใต้ปุ่มโดยคง eligibility dialog และ checkout invariant เดิม
 - 2026-07-19: ปรับ ProductCard list: thumbnail แนวตั้ง 4:5, ซ่อน model scale, แยก status badge เป็น .7rem/weight 300 และชื่อสินค้าเป็น 1rem/weight 300 แบบบรรทัดเดียวพร้อม ellipsis; ขยาย storefront container เป็น 112rem สำหรับจอ 2K โดยไม่กระทบ Product Detail typography
 - 2026-07-19: เพิ่ม Admin edit action สำหรับ Published Product และขยาย active Product update ให้แก้ Draft/Published โดยคง lifecycle status, optimistic version, media compensation และ storefront update ทันที; Published Pre-order ล็อก close/capacity ให้ตรงกับ reservation aggregate
@@ -544,10 +546,11 @@ Exit criteria: Pre-order has no cart, eligibility is server-authoritative and ca
   - Validate Province → District → Sub-district → postal-code relations at startup, load frozen/immutable Singleton and fail startup on corruption
   - Acceptance: dataset integrity/startup failure tests and Application lookup-query tests pass without runtime network access
 
-- [ ] **M7-02** Implement saved shipping addresses
+- [x] **M7-02** Implement saved shipping addresses
   - Depends on: M7-01, M2-01, M2-02
   - Customer owns at most 5 addresses and one default; cascading selectors/autofill through `ISender`
   - Acceptance: ownership, limit/default, malformed relation and Thai shared-field UI tests pass
+  - Verified: PostgreSQL customer-row lock enforces the five-address limit, ownership-scoped delete returns not-found across accounts, partial unique index permits one default, deleting the default promotes a replacement, and both checkout flows hydrate the shared Thai selectors
 
 - [x] **M7-03** Model CheckoutAttempt and authoritative snapshots
   - Depends on: M5-01, M6-02, M7-02
@@ -607,7 +610,7 @@ Exit criteria: Pre-order has no cart, eligibility is server-authoritative and ca
   - Saved/new cascading address, order/deposit summary, processing/failure/retry and limited server polling
   - Success modal shows Order number/items/price/free shipping or ETA and detail link; refresh never reopens completed payment
   - Acceptance: responsive/keyboard/focus/Thai states and server-authoritative totals pass
-  - Implemented: authenticated `/checkout` and direct Pre-order address/summary/payment/processing/expiry/success states; immutable Thai catalog, saved address selectors and Order-detail link remain
+  - Implemented: authenticated `/checkout` and direct Pre-order saved/new Thai address, pre-payment confirmation modal, summary/payment/processing/expiry/success states and Order-detail link; success-modal presentation remains
 
 Exit criteria: no Order exists before verified payment; concurrent/retried checkout cannot oversell or duplicate Payment/Order.
 

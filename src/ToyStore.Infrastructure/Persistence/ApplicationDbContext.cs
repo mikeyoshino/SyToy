@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ToyStore.Application.Common.Interfaces;
+using ToyStore.Domain.Addresses;
 using ToyStore.Domain.Carts;
 using ToyStore.Domain.Catalog;
 using ToyStore.Domain.Checkouts;
@@ -58,6 +59,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<OrderAuditEvent> OrderAuditEvents => Set<OrderAuditEvent>();
+
+    public DbSet<SavedAddress> SavedAddresses => Set<SavedAddress>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

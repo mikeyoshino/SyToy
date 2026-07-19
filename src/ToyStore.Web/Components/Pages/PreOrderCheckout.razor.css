@@ -17,6 +17,12 @@
 .preorder-checkout__state, .preorder-checkout__result { display: grid; gap: var(--space-5); max-width: 48rem; min-height: 55vh; align-content: center; margin-inline: auto; }
 .preorder-checkout__result .store-action { justify-self: start; text-decoration: none; }
 .preorder-checkout__result-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.preorder-checkout__confirmation { display: grid; gap: var(--space-6); }
+.preorder-checkout__confirmation section { display: grid; gap: var(--space-3); }
+.preorder-checkout__confirmation h3 { margin: 0; font-size: 1.05rem; }
+.preorder-checkout__confirmation address { padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-muted); font-style: normal; line-height: 1.7; }
+.preorder-checkout__confirmation-note { margin: 0; color: var(--color-muted); font-size: .9rem; }
+::deep .preorder-checkout-confirmation .store-dialog__surface { width: min(42rem, calc(100vw - 2rem)); }
 @media (max-width: 47.999rem) {
   .preorder-checkout { padding: var(--space-5) 0 var(--space-10); background: var(--color-surface); }
   .preorder-checkout__header { margin-bottom: var(--space-6); padding-inline: var(--gutter-mobile); text-align: center; }

@@ -25,6 +25,12 @@
 .checkout-page__state, .checkout-page__result { display: grid; gap: var(--space-5); max-width: 48rem; min-height: 55vh; align-content: center; margin-inline: auto; }
 .checkout-page__result .store-action { justify-self: start; text-decoration: none; }
 .checkout-page__result-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.checkout-page__confirmation { display: grid; gap: var(--space-6); }
+.checkout-page__confirmation section { display: grid; gap: var(--space-3); }
+.checkout-page__confirmation h3 { margin: 0; font-size: 1.05rem; }
+.checkout-page__confirmation address { padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-muted); font-style: normal; line-height: 1.7; }
+.checkout-page__confirmation-note { margin: 0; color: var(--color-muted); font-size: .9rem; }
+::deep .checkout-confirmation .store-dialog__surface { width: min(42rem, calc(100vw - 2rem)); }
 @media (max-width: 47.999rem) {
   .checkout-page { padding: var(--space-5) 0 var(--space-10); background: var(--color-surface); }
   .checkout-page__header { margin-bottom: var(--space-6); padding-inline: var(--gutter-mobile); text-align: center; }

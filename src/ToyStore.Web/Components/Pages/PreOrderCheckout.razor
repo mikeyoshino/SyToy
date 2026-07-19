@@ -80,7 +80,7 @@
         </header>
         <div class="preorder-checkout__layout">
             <section class="preorder-checkout__panel">
-                <EditForm id="preorder-address-form" EditContext="@editContext" FormName="preorder-address" OnSubmit="BeginCheckoutAsync">
+                <EditForm id="preorder-address-form" EditContext="@editContext" FormName="preorder-address" OnSubmit="OpenConfirmationAsync">
                     <StoreValidationSummary />
                     @if (errorMessages.Count != 0)
                     {
@@ -89,12 +89,13 @@
                         </StoreAlert>
                     }
                     <div class="preorder-checkout__fields">
+                        <SavedAddressBook Model="address" Disabled="@isSubmitting" AddressApplied="AddressAppliedAsync" />
                         <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
                         <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
                         <div class="preorder-checkout__field-wide">
                             <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
                         </div>
-                        <ThaiAddressFields Model="address" Disabled="@isSubmitting" />
+                        <ThaiAddressFields @key="addressFieldsVersion" Model="address" Disabled="@isSubmitting" />
                     </div>
                 </EditForm>
             </section>
@@ -126,6 +127,48 @@
     }
 </main>
 
+<StoreDialog @bind-IsOpen="isConfirmationOpen" Title="ตรวจสอบก่อนชำระมัดจำ"
+             CssClass="preorder-checkout-confirmation" Dismissible="@(!isSubmitting)"
+             InitialFocusSelector="#confirm-preorder-checkout">
+    <ChildContent>
+        @if (eligibility is not null)
+        {
+            <div class="preorder-checkout__confirmation">
+                <section aria-labelledby="preorder-confirm-item-title">
+                    <h3 id="preorder-confirm-item-title">รายการพรีออเดอร์</h3>
+                    <strong>@eligibility.DisplayName</strong>
+                    <dl class="preorder-checkout__summary">
+                        <div><dt>จำนวน</dt><dd>@eligibility.RequestedQuantity ชิ้น</dd></div>
+                        <div><dt>ราคาเต็มต่อชิ้น</dt><dd>฿@eligibility.FullPrice.ToString("N2")</dd></div>
+                        <div><dt>มัดจำต่อชิ้น</dt><dd>฿@eligibility.DepositAmount.ToString("N2")</dd></div>
+                        <div><dt>ชำระตอนนี้</dt><dd>฿@((eligibility.DepositAmount * eligibility.RequestedQuantity).ToString("N2"))</dd></div>
+                        <div><dt>ยอดคงเหลือต่อชิ้น</dt><dd>฿@eligibility.BalanceAmount.ToString("N2")</dd></div>
+                    </dl>
+                </section>
+                <section aria-labelledby="preorder-confirm-address-title">
+                    <h3 id="preorder-confirm-address-title">จัดส่งไปที่</h3>
+                    <address>
+                        <strong>@address.RecipientName</strong><br />
+                        @address.PhoneNumber<br />
+                        @FormattedAddress
+                    </address>
+                </section>
+                <StoreAlert Tone="StoreAlertTone.Warning" Title="เงื่อนไขมัดจำ"
+                            Message="มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือชำระยอดคงเหลือเกินกำหนด" />
+                <p class="preorder-checkout__confirmation-note">เมื่อยืนยัน ระบบจะตรวจสิทธิ์ จำนวน และราคาล่าสุดอีกครั้งก่อนกันจำนวนพรีออเดอร์และเปิดหน้าชำระเงิน</p>
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <StoreButton Tone="StoreButtonTone.Secondary" Disabled="@isSubmitting"
+                     OnClick="CloseConfirmationAsync">กลับไปแก้ไข</StoreButton>
+        <StoreButton Id="confirm-preorder-checkout" IsBusy="@isSubmitting"
+                     LoadingText="กำลังเตรียมชำระเงิน…" OnClick="ConfirmCheckoutAsync">
+            ยืนยันและชำระมัดจำ
+        </StoreButton>
+    </Actions>
+</StoreDialog>
+
 @code {
     private readonly CancellationTokenSource disposalTokenSource = new();
     private readonly ShippingAddressFormModel address = new();
@@ -141,6 +184,8 @@
     private bool isSubmitting;
     private bool isProcessingPayment;
     private bool stripeMounted;
+    private bool isConfirmationOpen;
+    private int addressFieldsVersion;
     private string errorMessage = "ไม่พบรายการพรีออเดอร์ที่ต้องการ";
 
     private static string OrderUrl(string orderNumber) =>
@@ -187,7 +232,32 @@
             checkout.PublishableKey, checkout.ClientSecret, dotNetReference);
     }
 
-    private async Task BeginCheckoutAsync(EditContext _)
+    private Task AddressAppliedAsync()
+    {
+        addressFieldsVersion++;
+        editContext.NotifyValidationStateChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OpenConfirmationAsync(EditContext _)
+    {
+        errorMessages = [];
+        if (!HasCompleteAddress())
+        {
+            errorMessages = ["กรุณากรอกชื่อผู้รับ เบอร์โทร และเลือกที่อยู่จัดส่งให้ครบถ้วน"];
+            return Task.CompletedTask;
+        }
+        isConfirmationOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseConfirmationAsync()
+    {
+        if (!isSubmitting) isConfirmationOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmCheckoutAsync()
     {
         if (eligibility is null || isSubmitting) return;
         isSubmitting = true; errorMessages = [];
@@ -197,17 +267,36 @@
                 address.RecipientName ?? "", address.PhoneNumber ?? "", address.AddressLine ?? "",
                 address.SubDistrict ?? "", address.District ?? "", address.Province ?? "",
                 address.PostalCode ?? ""), disposalTokenSource.Token);
-            if (result.IsSuccess) checkout = result.Value;
-            else errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
-                .DefaultIfEmpty(result.Error.Message).ToArray();
+            if (result.IsSuccess)
+            {
+                checkout = result.Value;
+                isConfirmationOpen = false;
+            }
+            else
+            {
+                isConfirmationOpen = false;
+                errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
+                    .DefaultIfEmpty(result.Error.Message).ToArray();
+            }
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Beginning Pre-order checkout failed for {ProductId}.", ProductId);
+            isConfirmationOpen = false;
             errorMessages = ["เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง"];
         }
         finally { isSubmitting = false; }
     }
+
+    private bool HasCompleteAddress() =>
+        !string.IsNullOrWhiteSpace(address.RecipientName)
+        && !string.IsNullOrWhiteSpace(address.PhoneNumber)
+        && !string.IsNullOrWhiteSpace(address.AddressLine)
+        && address.ProvinceId.HasValue && address.DistrictId.HasValue
+        && address.SubDistrictId.HasValue && !string.IsNullOrWhiteSpace(address.PostalCode);
+
+    private string FormattedAddress =>
+        $"{address.AddressLine} {address.SubDistrict} {address.District} {address.Province} {address.PostalCode}";
 
     [JSInvokable]
     public async Task HandleStripeCompletedAsync()

@@ -80,7 +80,7 @@
         </header>
         <div class="checkout-page__layout">
             <section class="checkout-page__panel">
-                <EditForm id="instock-address-form" EditContext="@editContext" FormName="instock-address" OnSubmit="BeginCheckoutAsync">
+                <EditForm id="instock-address-form" EditContext="@editContext" FormName="instock-address" OnSubmit="OpenConfirmationAsync">
                     <StoreValidationSummary />
                     @if (errorMessages.Count != 0)
                     {
@@ -89,12 +89,13 @@
                         </StoreAlert>
                     }
                     <div class="checkout-page__fields">
+                        <SavedAddressBook Model="address" Disabled="@isSubmitting" AddressApplied="AddressAppliedAsync" />
                         <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
                         <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
                         <div class="checkout-page__field-wide">
                             <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
                         </div>
-                        <ThaiAddressFields Model="address" Disabled="@isSubmitting" />
+                        <ThaiAddressFields @key="addressFieldsVersion" Model="address" Disabled="@isSubmitting" />
                     </div>
                 </EditForm>
             </section>
@@ -134,6 +135,55 @@
     }
 </main>
 
+<StoreDialog @bind-IsOpen="isConfirmationOpen" Title="ตรวจสอบก่อนชำระเงิน"
+             CssClass="checkout-confirmation" Dismissible="@(!isSubmitting)"
+             InitialFocusSelector="#confirm-instock-checkout">
+    <ChildContent>
+        @if (cart is not null)
+        {
+            <div class="checkout-page__confirmation">
+                <section aria-labelledby="confirm-items-title">
+                    <h3 id="confirm-items-title">รายการสินค้า</h3>
+                    <ul class="checkout-page__items">
+                        @foreach (var item in cart.Items)
+                        {
+                            <li>
+                                @if (!string.IsNullOrWhiteSpace(item.PrimaryImageUrl))
+                                {
+                                    <img src="@item.PrimaryImageUrl" alt="" />
+                                }
+                                <span><strong>@item.DisplayName</strong><small>@item.Quantity ชิ้น × ฿@item.CurrentUnitPrice.ToString("N2")</small></span>
+                                <b>฿@((item.CurrentUnitPrice * item.Quantity).ToString("N2"))</b>
+                            </li>
+                        }
+                    </ul>
+                </section>
+                <section aria-labelledby="confirm-address-title">
+                    <h3 id="confirm-address-title">จัดส่งไปที่</h3>
+                    <address>
+                        <strong>@address.RecipientName</strong><br />
+                        @address.PhoneNumber<br />
+                        @FormattedAddress
+                    </address>
+                </section>
+                <dl class="checkout-page__summary">
+                    <div><dt>จัดส่ง</dt><dd>ฟรี</dd></div>
+                    <div class="checkout-page__total"><dt>ยอดก่อนตรวจสอบล่าสุด</dt><dd>฿@cart.DisplayTotal.ToString("N2")</dd></div>
+                </dl>
+                <p class="checkout-page__confirmation-note">เมื่อยืนยัน ระบบจะตรวจราคาและ stock ล่าสุด จองสินค้า แล้วเปิดหน้าชำระเงินที่ปลอดภัย</p>
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <StoreButton Tone="StoreButtonTone.Secondary" Disabled="@isSubmitting"
+                     OnClick="CloseConfirmationAsync">กลับไปแก้ไข</StoreButton>
+        <StoreButton Id="confirm-instock-checkout" IsBusy="@isSubmitting"
+                     LoadingText="กำลังจองสินค้า…" OnClick="ConfirmCheckoutAsync">
+            ยืนยันและไปชำระเงิน
+        </StoreButton>
+    </Actions>
+</StoreDialog>
+
 @code {
     private readonly CancellationTokenSource disposalTokenSource = new();
     private readonly ShippingAddressFormModel address = new();
@@ -149,6 +199,8 @@
     private bool isSubmitting;
     private bool isProcessingPayment;
     private bool stripeMounted;
+    private bool isConfirmationOpen;
+    private int addressFieldsVersion;
     private string errorMessage = "ไม่มีสินค้าในตะกร้าสำหรับชำระเงิน";
 
     private static string OrderUrl(string orderNumber) =>
@@ -217,7 +269,32 @@
         }
     }
 
-    private async Task BeginCheckoutAsync(EditContext _)
+    private Task AddressAppliedAsync()
+    {
+        addressFieldsVersion++;
+        editContext.NotifyValidationStateChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OpenConfirmationAsync(EditContext _)
+    {
+        errorMessages = [];
+        if (!HasCompleteAddress())
+        {
+            errorMessages = ["กรุณากรอกชื่อผู้รับ เบอร์โทร และเลือกที่อยู่จัดส่งให้ครบถ้วน"];
+            return Task.CompletedTask;
+        }
+        isConfirmationOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseConfirmationAsync()
+    {
+        if (!isSubmitting) isConfirmationOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmCheckoutAsync()
     {
         if (cart is null || cart.Items.Count == 0 || isSubmitting) return;
         isSubmitting = true;
@@ -228,17 +305,36 @@
                 address.RecipientName ?? "", address.PhoneNumber ?? "", address.AddressLine ?? "",
                 address.SubDistrict ?? "", address.District ?? "", address.Province ?? "",
                 address.PostalCode ?? ""), disposalTokenSource.Token);
-            if (result.IsSuccess) checkout = result.Value;
-            else errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
-                .DefaultIfEmpty(result.Error.Message).ToArray();
+            if (result.IsSuccess)
+            {
+                checkout = result.Value;
+                isConfirmationOpen = false;
+            }
+            else
+            {
+                isConfirmationOpen = false;
+                errorMessages = result.ValidationFailures.Select(x => x.ErrorMessage)
+                    .DefaultIfEmpty(result.Error.Message).ToArray();
+            }
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Beginning In-stock checkout failed.");
+            isConfirmationOpen = false;
             errorMessages = ["เกิดข้อผิดพลาดชั่วคราว กรุณาลองใหม่อีกครั้ง"];
         }
         finally { isSubmitting = false; }
     }
+
+    private bool HasCompleteAddress() =>
+        !string.IsNullOrWhiteSpace(address.RecipientName)
+        && !string.IsNullOrWhiteSpace(address.PhoneNumber)
+        && !string.IsNullOrWhiteSpace(address.AddressLine)
+        && address.ProvinceId.HasValue && address.DistrictId.HasValue
+        && address.SubDistrictId.HasValue && !string.IsNullOrWhiteSpace(address.PostalCode);
+
+    private string FormattedAddress =>
+        $"{address.AddressLine} {address.SubDistrict} {address.District} {address.Province} {address.PostalCode}";
 
     [JSInvokable]
     public async Task HandleStripeCompletedAsync()

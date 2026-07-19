@@ -72,6 +72,18 @@
         {
             var result = await Sender.Send(new GetThaiAddressOptionsQuery());
             provinces = result.Provinces;
+            if (Model.ProvinceId is not null)
+            {
+                var districtResult = await Sender.Send(
+                    new GetThaiAddressOptionsQuery(ProvinceId: Model.ProvinceId));
+                districts = districtResult.Districts;
+            }
+            if (Model.DistrictId is not null)
+            {
+                var subDistrictResult = await Sender.Send(
+                    new GetThaiAddressOptionsQuery(DistrictId: Model.DistrictId));
+                subDistricts = subDistrictResult.SubDistricts;
+            }
         }
         finally
         {

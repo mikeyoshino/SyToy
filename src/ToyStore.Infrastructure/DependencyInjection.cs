@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using ToyStore.Application.Brands;
 using ToyStore.Application.Addresses;
+using ToyStore.Application.Addresses.SavedAddresses;
 using ToyStore.Application.Cart;
 using ToyStore.Application.Checkout;
 using ToyStore.Application.Characters;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddSingleton<ThaiAddressCatalog>(_ => ThaiAddressCatalog.Load());
         services.AddSingleton<IThaiAddressCatalog>(provider =>
             provider.GetRequiredService<ThaiAddressCatalog>());
+        services.AddSingleton<ISavedAddressStore, SavedAddressStore>();
         services.AddSingleton<IBrandListReader, BrandListReader>();
         services.AddSingleton<IUniverseListReader, UniverseListReader>();
         services.AddSingleton<ICharacterSearchReader, CharacterSearchReader>();

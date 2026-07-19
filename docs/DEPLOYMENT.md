@@ -87,6 +87,8 @@ Stripe__ReturnUrlBase=https://toys.example.com
 TOYSTORE_DOMAIN=toys.example.com
 ```
 
+`TOYSTORE_DOMAIN` ต้องเป็น apex/canonical host โดยไม่ใส่ `www` เช่น `sytoys.shop` และ DNS ต้องมีทั้ง apex record กับ `www` record ที่ชี้มายัง origin/Cloudflare เดียวกัน Caddy รับ TLS สำหรับทั้งสอง host และ redirect `https://www.<domain>/<path>` ไป `https://<domain>/<path>` แบบ permanent เพื่อไม่ให้เกิด duplicate canonical URL
+
 ตั้ง permission:
 
 ```bash
@@ -222,3 +224,17 @@ curl --fail https://toys.example.com/health/ready
 ```
 
 Docker restart policies ทำให้ Caddy, Web และ PostgreSQL กลับมาหลัง Docker daemon/VPS reboot ต้องทดสอบ reboot recovery, login, media, cart, checkout, Stripe webhook และ Order smoke test บน production/test domain ก่อนเปิดใช้งานจริง
+
+เมื่อ `deploy/Caddyfile` เปลี่ยน ให้นำไฟล์เวอร์ชันใหม่ไปติดตั้งที่ `/opt/toystore/Caddyfile` แล้ว validate/reload โดยไม่ต้อง restart Web หรือ PostgreSQL:
+
+```bash
+sudo docker compose \
+  --env-file /etc/toystore/compose.env \
+  -f /opt/toystore/compose.production.yaml \
+  exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+sudo docker compose \
+  --env-file /etc/toystore/compose.env \
+  -f /opt/toystore/compose.production.yaml \
+  exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+```

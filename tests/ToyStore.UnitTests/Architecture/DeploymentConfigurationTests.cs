@@ -3,6 +3,23 @@ namespace ToyStore.UnitTests.Architecture;
 public sealed class DeploymentConfigurationTests
 {
     [Fact]
+    public void CaddyTerminatesTlsForWwwAndRedirectsToTheCanonicalApexHost()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var caddyfile = File.ReadAllText(Path.Combine(repositoryRoot, "deploy", "Caddyfile"));
+
+        Assert.Contains("www.{$TOYSTORE_DOMAIN} {", caddyfile, StringComparison.Ordinal);
+        Assert.Contains(
+            "redir https://{$TOYSTORE_DOMAIN}{uri} permanent",
+            caddyfile,
+            StringComparison.Ordinal);
+        var canonicalBlockIndex = caddyfile.IndexOf(
+            "\n{$TOYSTORE_DOMAIN} {",
+            StringComparison.Ordinal);
+        Assert.True(canonicalBlockIndex > 0, "Missing canonical apex Caddy site block.");
+    }
+
+    [Fact]
     public void ProductionImageRunsAsNonRootAndKeepsRuntimeStateOutsideTheImage()
     {
         var repositoryRoot = FindRepositoryRoot();
