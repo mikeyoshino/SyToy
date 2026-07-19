@@ -88,10 +88,9 @@ else
                 {
                     <StoreButton FullWidth="true"
                             Disabled="@(!CanRequestPreOrder || isCheckingEligibility)"
-                            OnClick="OpenPreOrderAsync" aria-describedby="preorder-availability-note">
+                            OnClick="OpenPreOrderAsync">
                         @PreOrderButtonText
                     </StoreButton>
-                    <p id="preorder-availability-note" class="product-detail__shipping">ตรวจสอบสิทธิ์และจำนวนล่าสุดอีกครั้งก่อนดำเนินการ · ยังไม่มีการกันสินค้า</p>
                 }
                 else
                 {
@@ -270,7 +269,7 @@ else
     {
         StorefrontOfferState.PreOrderFull => "พรีออเดอร์เต็มแล้ว",
         StorefrontOfferState.PreOrderClosed => "ปิดรับพรีออเดอร์แล้ว",
-        _ => "ตรวจสอบสิทธิ์พรีออเดอร์",
+        _ => "สั่งพรีออเดอร์",
     };
 
     private static string BuildMetaDescription(StorefrontProductDetail value)

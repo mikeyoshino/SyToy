@@ -89,7 +89,7 @@
   font-size: var(--font-size-caption);
 }
 
-.product-card__badge--status { font-size: 1.2rem; font-weight: 300; }
+.product-card__badge--status { font-size: .7rem; font-weight: 300; }
 
 .product-card__body { display: grid; grid-template-rows: auto auto minmax(var(--space-6), 1fr); align-content: start; padding: var(--space-3) var(--space-1) var(--space-2); }
 .product-card__body h3 {

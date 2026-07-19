@@ -117,7 +117,8 @@ StoreShell
 └── StoreFooter
 ```
 
-- Shared `ProductCard` ในหน้า list ใช้ thumbnail แนวตั้งอัตราส่วน 4:5, แสดงเฉพาะ sale-type badge โดยไม่แสดง model scale; status ใช้ class แยก ขนาด 1.2rem น้ำหนัก 300 และชื่อสินค้าใช้ 1rem น้ำหนัก 300 แสดงบรรทัดเดียวพร้อม ellipsis เฉพาะ ProductCard ส่วน Product Detail ยังคงแสดงชื่อเต็มและ model scale ใน facts เมื่อมีค่า
+- Shared `ProductCard` ในหน้า list ใช้ thumbnail แนวตั้งอัตราส่วน 4:5, แสดงเฉพาะ sale-type badge โดยไม่แสดง model scale; status ใช้ class แยก ขนาด .7rem น้ำหนัก 300 และชื่อสินค้าใช้ 1rem น้ำหนัก 300 แสดงบรรทัดเดียวพร้อม ellipsis เฉพาะ ProductCard ส่วน Product Detail ยังคงแสดงชื่อเต็มและ model scale ใน facts เมื่อมีค่า
+- Product Detail ของสินค้าพรีออเดอร์ใช้ CTA “สั่งพรีออเดอร์” โดยไม่แสดงข้อความตรวจสอบสิทธิ์/ยังไม่มีการกันสินค้าซ้ำใต้ปุ่ม; การตรวจสอบสิทธิ์ล่าสุดยังดำเนินการใน dialog ก่อนเข้าสู่ durable checkout ตามเดิม
 - Shared `ProductCard` บนหน้า Home/Catalog/Search แสดงรูปสินค้าทั้งหมดจาก list query และมีลูกศรซ้าย–ขวาแบบ icon-only ไม่มีพื้นหลัง/เส้นขอบเมื่อมีมากกว่า 1 รูป โดยยังคงพื้นที่กดอย่างน้อย 44px ใช้ได้ทั้ง touch, mouse และ keyboard; บน mobile ปัดซ้าย–ขวาบนรูปเพื่อเปลี่ยนภาพได้โดยยังเลื่อนหน้าแนวตั้งได้ และ gesture จะไม่เปิด Product Detail โดยไม่ตั้งใจ
 - ส่วนสินค้าแนะนำบน Home แสดงสูงสุด 8 รายการ และ Catalog แบ่งหน้า 8 รายการ; shared product grid เรียงตามขนาดจอเป็น mobile 2 คอลัมน์, tablet 3 คอลัมน์ และ desktop ขนาดใหญ่ 4 คอลัมน์ รวมถึง Catalog ที่ใช้ large-card mode เพื่อให้แนวการ์ดพอดีกับพื้นที่หน้าจอ
 - Storefront container รองรับความกว้างสูงสุด 112rem เพื่อใช้พื้นที่บนจอ desktop/2K โดยยังคง responsive gutters และเต็มความกว้างอย่างปลอดภัยบนจอขนาดเล็ก

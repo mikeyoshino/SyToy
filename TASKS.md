@@ -13,7 +13,8 @@
 
 ## Current focus
 
-- 2026-07-19: ปรับ ProductCard list: thumbnail แนวตั้ง 4:5, ซ่อน model scale, แยก status badge เป็น 1.2rem/weight 300 และชื่อสินค้าเป็น 1rem/weight 300 แบบบรรทัดเดียวพร้อม ellipsis; ขยาย storefront container เป็น 112rem สำหรับจอ 2K โดยไม่กระทบ Product Detail typography
+- 2026-07-19: ลดข้อความซ้ำใน Product Detail พรีออเดอร์ โดยเปลี่ยน CTA เป็น “สั่งพรีออเดอร์” และลบ availability note ใต้ปุ่มโดยคง eligibility dialog และ checkout invariant เดิม
+- 2026-07-19: ปรับ ProductCard list: thumbnail แนวตั้ง 4:5, ซ่อน model scale, แยก status badge เป็น .7rem/weight 300 และชื่อสินค้าเป็น 1rem/weight 300 แบบบรรทัดเดียวพร้อม ellipsis; ขยาย storefront container เป็น 112rem สำหรับจอ 2K โดยไม่กระทบ Product Detail typography
 - 2026-07-19: เพิ่ม Admin edit action สำหรับ Published Product และขยาย active Product update ให้แก้ Draft/Published โดยคง lifecycle status, optimistic version, media compensation และ storefront update ทันที; Published Pre-order ล็อก close/capacity ให้ตรงกับ reservation aggregate
 - 2026-07-19: เพิ่ม native touch swipe ซ้าย–ขวาให้ gallery ใน shared ProductCard บน mobile พร้อมแยก vertical scroll และป้องกันการเปิด Product Detail หลัง gesture โดยไม่เปลี่ยน arrow/keyboard behavior เดิม
 - 2026-07-19: ปรับ responsive Product Gallery ให้ Home/Catalog แสดง 8 รายการต่อชุด/หน้า และเรียง 2 คอลัมน์บน mobile, 3 บน tablet, 4 บน desktop รวมถึง Catalog large-card grid
