@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using ToyStore.Application.Storefront.Catalog;
 using ToyStore.Web.Components.Cart;
 using ToyStore.Web.Components.Storefront;
@@ -157,6 +158,7 @@ public sealed class ProductGalleryRenderingTests
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
         services.AddSingleton<CartDrawerCoordinator>();
+        services.AddSingleton<IJSRuntime, StaticHtmlJsRuntime>();
 
         await using var serviceProvider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(
@@ -172,4 +174,16 @@ public sealed class ProductGalleryRenderingTests
 
     private static int CountOccurrences(string source, string value) =>
         Regex.Count(source, Regex.Escape(value), RegexOptions.CultureInvariant);
+
+    private sealed class StaticHtmlJsRuntime : IJSRuntime
+    {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+            ValueTask.FromException<TValue>(new InvalidOperationException("JavaScript is unavailable during static HTML rendering."));
+
+        public ValueTask<TValue> InvokeAsync<TValue>(
+            string identifier,
+            CancellationToken cancellationToken,
+            object?[]? args) =>
+            ValueTask.FromException<TValue>(new InvalidOperationException("JavaScript is unavailable during static HTML rendering."));
+    }
 }

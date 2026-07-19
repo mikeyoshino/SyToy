@@ -168,6 +168,7 @@ public sealed class StorefrontCatalogPageContractTests
     {
         var source = WebSource("Components/Storefront/ProductCard.razor");
         var styles = WebSource("Components/Storefront/ProductCard.razor.css");
+        var script = WebSource("Components/Storefront/ProductCard.razor.js");
         var model = WebSource("Components/Storefront/Models/ProductCardModel.cs");
 
         Assert.Contains("Model.GalleryImages", source, StringComparison.Ordinal);
@@ -179,7 +180,15 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("product-card__media-link", source, StringComparison.Ordinal);
         Assert.Contains("ProductCardImageModel", model, StringComparison.Ordinal);
         Assert.Contains("product-card__gallery-button", styles, StringComparison.Ordinal);
+        Assert.Contains("touch-action: pan-y", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", styles, StringComparison.Ordinal);
+        Assert.Contains("ShowPreviousImageFromSwipeAsync", source, StringComparison.Ordinal);
+        Assert.Contains("ShowNextImageFromSwipeAsync", source, StringComparison.Ordinal);
+        Assert.Contains("pointerdown", script, StringComparison.Ordinal);
+        Assert.Contains("pointerup", script, StringComparison.Ordinal);
+        Assert.Contains("minimumSwipeDistance = 40", script, StringComparison.Ordinal);
+        Assert.Contains("event.preventDefault()", script, StringComparison.Ordinal);
+        Assert.Contains("event.stopImmediatePropagation()", script, StringComparison.Ordinal);
     }
 
     [Fact]

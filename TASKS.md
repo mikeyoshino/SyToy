@@ -13,6 +13,7 @@
 
 ## Current focus
 
+- 2026-07-19: เพิ่ม native touch swipe ซ้าย–ขวาให้ gallery ใน shared ProductCard บน mobile พร้อมแยก vertical scroll และป้องกันการเปิด Product Detail หลัง gesture โดยไม่เปลี่ยน arrow/keyboard behavior เดิม
 - 2026-07-19: ปรับ responsive Product Gallery ให้ Home/Catalog แสดง 8 รายการต่อชุด/หน้า และเรียง 2 คอลัมน์บน mobile, 3 บน tablet, 4 บน desktop รวมถึง Catalog large-card grid
 - 2026-07-19: redesign Product Detail ตาม app-like reference ทั้ง mobile/desktop ด้วย portrait gallery/dots, centered purchase hierarchy, black pill CTA, verified trust facts และ native disclosure sections โดยไม่สร้าง variant/review/wishlist flow ปลอม
 - 2026-07-19: ลบ warning card นโยบายมัดจำจาก Pre-order Product Detail และจัด mobile flow ใหม่เป็น gallery → purchase → description → facts พร้อม section spacing/เส้นแบ่ง โดยคง policy acceptance ใน pre-order dialog

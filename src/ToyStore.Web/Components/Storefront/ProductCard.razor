@@ -1,5 +1,7 @@
 @using ToyStore.Application.Storefront.Catalog
+@implements IAsyncDisposable
 @inject CartDrawerCoordinator CartDrawer
+@inject IJSRuntime JsRuntime
 
 @if (IsLoading)
 {
@@ -16,7 +18,7 @@
 else
 {
     <article class="product-card @(SingleColumn ? "product-card--single" : null)">
-        <div class="product-card__media">
+        <div @ref="mediaElement" class="product-card__media">
             <a class="product-card__media-link" href="@Model.ProductUrl" aria-label="ดูรายละเอียด @Model.Name โดย @Model.Brand">
                 @if (CurrentImage is not null)
                 {
@@ -106,8 +108,13 @@ else
     public bool SingleColumn { get; set; }
 
     private bool isAdding;
+    private bool swipeInitialized;
+    private bool disposed;
     private Guid currentProductId;
     private int currentImageIndex;
+    private ElementReference mediaElement;
+    private IJSObjectReference? swipeModule;
+    private DotNetObjectReference<ProductCard>? dotNetReference;
     private IReadOnlyList<ProductCardImageModel> GalleryImages => Model.GalleryImages;
     private int ImageCount => GalleryImages.Count;
     private ProductCardImageModel? CurrentImage => ImageCount == 0
@@ -121,6 +128,32 @@ else
         currentImageIndex = 0;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed || IsLoading || ImageCount <= 1 || swipeInitialized)
+        {
+            return;
+        }
+
+        try
+        {
+            swipeModule ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./Components/Storefront/ProductCard.razor.js");
+            dotNetReference ??= DotNetObjectReference.Create(this);
+            await swipeModule.InvokeVoidAsync("initialize", mediaElement, dotNetReference);
+            swipeInitialized = true;
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit can disconnect while the card is hydrating.
+        }
+    }
+
     private void PreviousImage() => currentImageIndex = ImageCount == 0
         ? 0
         : (currentImageIndex - 1 + ImageCount) % ImageCount;
@@ -129,6 +162,20 @@ else
         ? 0
         : (currentImageIndex + 1) % ImageCount;
 
+    [JSInvokable]
+    public Task ShowPreviousImageFromSwipeAsync()
+    {
+        PreviousImage();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task ShowNextImageFromSwipeAsync()
+    {
+        NextImage();
+        return InvokeAsync(StateHasChanged);
+    }
+
     private async Task AddAsync()
     {
         if (isAdding || Model.ProductId == Guid.Empty || Model.SaleType != StorefrontSaleType.InStock
@@ -136,5 +183,30 @@ else
         isAdding = true;
         try { await CartDrawer.AddProductAsync(Model.ProductId); }
         finally { isAdding = false; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        dotNetReference?.Dispose();
+        if (swipeModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (swipeInitialized)
+            {
+                await swipeModule.InvokeVoidAsync("dispose", mediaElement);
+            }
+            await swipeModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 }

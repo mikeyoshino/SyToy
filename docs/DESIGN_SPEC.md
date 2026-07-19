@@ -118,7 +118,7 @@ StoreShell
 ```
 
 - Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
-- Shared `ProductCard` บนหน้า Home/Catalog/Search แสดงรูปสินค้าทั้งหมดจาก list query และมีลูกศรซ้าย–ขวาแบบ icon-only ไม่มีพื้นหลัง/เส้นขอบเมื่อมีมากกว่า 1 รูป โดยยังคงพื้นที่กดอย่างน้อย 44px ใช้ได้ทั้ง touch, mouse และ keyboard และเปลี่ยนรูปใน card โดยไม่เปิดหน้ารายละเอียด
+- Shared `ProductCard` บนหน้า Home/Catalog/Search แสดงรูปสินค้าทั้งหมดจาก list query และมีลูกศรซ้าย–ขวาแบบ icon-only ไม่มีพื้นหลัง/เส้นขอบเมื่อมีมากกว่า 1 รูป โดยยังคงพื้นที่กดอย่างน้อย 44px ใช้ได้ทั้ง touch, mouse และ keyboard; บน mobile ปัดซ้าย–ขวาบนรูปเพื่อเปลี่ยนภาพได้โดยยังเลื่อนหน้าแนวตั้งได้ และ gesture จะไม่เปิด Product Detail โดยไม่ตั้งใจ
 - ส่วนสินค้าแนะนำบน Home แสดงสูงสุด 8 รายการ และ Catalog แบ่งหน้า 8 รายการ; shared product grid เรียงตามขนาดจอเป็น mobile 2 คอลัมน์, tablet 3 คอลัมน์ และ desktop ขนาดใหญ่ 4 คอลัมน์ รวมถึง Catalog ที่ใช้ large-card mode เพื่อให้แนวการ์ดพอดีกับพื้นที่หน้าจอ
 - Home hero แสดงเฉพาะ Product ประเภท Pre-order จาก query แยก สูงสุด 5 รายการ ครั้งละ 1 ภาพ/สินค้า ใช้ editorial split layout ที่แตกต่างจาก ProductCard, auto-slide ทุก 3 วินาทีเมื่ออยู่ใน viewport และผู้ใช้ไม่ได้ hover/focus พร้อมปุ่มก่อนหน้า/ถัดไป จุดเลือกสไลด์ ปุ่มหยุด และ native touch swipe; ปิด autoplay เมื่อ `prefers-reduced-motion: reduce`
 - ภาพ Spotlight บนมือถือยังใช้ `object-fit: cover` แต่ยก focal point ขึ้นที่แนวตั้งประมาณ 20% เพื่อให้ภาพ figure แนวตั้งเห็นศีรษะและช่วงลำตัวแทนการ crop จากกึ่งกลาง; tablet/desktop คง composition เดิม

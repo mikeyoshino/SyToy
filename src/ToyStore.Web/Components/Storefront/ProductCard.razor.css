@@ -129,7 +129,8 @@
 
 @media (max-width: 34.999rem) {
   .product-card { grid-template-rows: auto minmax(0, 1fr) auto; }
-  .product-card__media { border-radius: 0; }
+  .product-card__media { border-radius: 0; touch-action: pan-y; overscroll-behavior-inline: contain; }
+  .product-card__media img { -webkit-user-drag: none; user-select: none; }
   .product-card__body { padding: .65rem .7rem .5rem; }
   .product-card__body h3 { font-size: .9375rem; line-height: 1.35; }
   .product-card__body p { margin-top: .15rem; font-size: .8125rem; }
