@@ -1,0 +1,149 @@
+<EditForm EditContext="editContext"
+          FormName="admin-order-filter"
+          class="admin-order-filter"
+          role="search"
+          aria-label="ค้นหาและกรองคำสั่งซื้อ"
+          OnSubmit="SubmitAsync">
+    <div class="admin-order-filter__fields">
+        <StoreTextField @bind-Value="model.Search"
+                        Label="ค้นหา"
+                        Placeholder="เลขคำสั่งซื้อ อีเมล ลูกค้า หรือสินค้า" />
+        <StoreSelectField TValue="string"
+                          @bind-Value="model.SaleType"
+                          Label="ประเภทคำสั่งซื้อ"
+                          Options="SaleTypeOptions" />
+        <StoreSelectField TValue="string"
+                          @bind-Value="model.PaymentStatus"
+                          Label="สถานะการชำระเงิน"
+                          Options="PaymentOptions" />
+        <StoreSelectField TValue="string"
+                          @bind-Value="model.FulfillmentStatus"
+                          Label="สถานะการจัดส่ง"
+                          Options="FulfillmentOptions" />
+        <StoreTextField @bind-Value="model.CreatedFrom"
+                        Type="date"
+                        Label="ตั้งแต่วันที่" />
+        <StoreTextField @bind-Value="model.CreatedTo"
+                        Type="date"
+                        Label="ถึงวันที่" />
+    </div>
+    <div class="admin-order-filter__actions">
+        <StoreButton ButtonType="submit">ใช้ตัวกรอง</StoreButton>
+        <a href="@BasePath">ล้างตัวกรอง</a>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<string>> SaleTypeOptions =
+    [
+        new("all", "ทุกประเภท"),
+        new("in-stock", "สินค้าพร้อมส่ง"),
+        new("pre-order", "พรีออเดอร์"),
+    ];
+    private static readonly IReadOnlyList<SelectOption<string>> PaymentOptions =
+    [
+        new("all", "ทุกสถานะการชำระเงิน"),
+        new("deposit-paid", "ชำระมัดจำแล้ว"),
+        new("paid", "ชำระเงินแล้ว"),
+        new("partially-refunded", "คืนเงินบางส่วน"),
+        new("refunded", "คืนเงินแล้ว"),
+    ];
+    private static readonly IReadOnlyList<SelectOption<string>> FulfillmentOptions =
+    [
+        new("all", "ทุกสถานะการจัดส่ง"),
+        new("awaiting-pre-order-arrival", "รอสินค้าพรีออเดอร์เข้า"),
+        new("awaiting-balance-payment", "รอชำระยอดคงเหลือ"),
+        new("ready-to-ship", "พร้อมจัดส่ง"),
+        new("shipped", "จัดส่งแล้ว"),
+        new("cancelled", "ยกเลิกแล้ว"),
+    ];
+
+    private readonly AdminOrderFilterModel model = new();
+    private EditContext editContext = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public required AdminOrderFilterQueryState State { get; set; }
+
+    [Parameter]
+    public string BasePath { get; set; } = "/admin/orders";
+
+    protected override void OnParametersSet()
+    {
+        model.Restore(State);
+        editContext = new EditContext(model);
+    }
+
+    private Task SubmitAsync(EditContext _)
+    {
+        NavigationManager.NavigateTo(BuildCanonicalUrl(BasePath, model.ToState() with { Page = 1 }));
+        return Task.CompletedTask;
+    }
+
+    internal static string BuildCanonicalUrl(string basePath, AdminOrderFilterQueryState state)
+    {
+        var values = new List<string>();
+        Add(values, "q", NormalizeSearch(state.Search));
+        AddIfNotDefault(values, "type", state.SaleType, "all");
+        AddIfNotDefault(values, "payment", state.PaymentStatus, "all");
+        AddIfNotDefault(values, "status", state.FulfillmentStatus, "all");
+        Add(values, "from", NormalizeDate(state.CreatedFrom));
+        Add(values, "to", NormalizeDate(state.CreatedTo));
+        if (state.Page > 1) Add(values, "page", state.Page.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return values.Count == 0 ? basePath : $"{basePath}?{string.Join('&', values)}";
+    }
+
+    private static void Add(List<string> values, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value)) values.Add($"{key}={Uri.EscapeDataString(value)}");
+    }
+
+    private static void AddIfNotDefault(List<string> values, string key, string? value, string defaultValue)
+    {
+        var normalized = value?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(normalized) && normalized != defaultValue) Add(values, key, normalized);
+    }
+
+    private static string? NormalizeSearch(string? value) => string.IsNullOrWhiteSpace(value)
+        ? null
+        : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static string? NormalizeDate(string? value) => DateOnly.TryParseExact(
+        value,
+        "yyyy-MM-dd",
+        System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None,
+        out var date)
+            ? date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+
+    private sealed class AdminOrderFilterModel
+    {
+        public string? Search { get; set; }
+        public string SaleType { get; set; } = "all";
+        public string PaymentStatus { get; set; } = "all";
+        public string FulfillmentStatus { get; set; } = "all";
+        public string? CreatedFrom { get; set; }
+        public string? CreatedTo { get; set; }
+
+        public void Restore(AdminOrderFilterQueryState state)
+        {
+            Search = state.Search;
+            SaleType = state.SaleType;
+            PaymentStatus = state.PaymentStatus;
+            FulfillmentStatus = state.FulfillmentStatus;
+            CreatedFrom = state.CreatedFrom;
+            CreatedTo = state.CreatedTo;
+        }
+
+        public AdminOrderFilterQueryState ToState() => new(
+            Search,
+            SaleType,
+            PaymentStatus,
+            FulfillmentStatus,
+            CreatedFrom,
+            CreatedTo);
+    }
+}

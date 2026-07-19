@@ -1,12 +1,243 @@
 @page "/admin/orders"
 @layout AdminLayout
 @attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@attribute [Authorize(Policy = PolicyNames.CanManageOrders)]
+@using MediatR
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.Orders
+@using ToyStore.Application.Orders.ListAdminOrders
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject AdminRequestExecutor RequestExecutor
 @inject NavigationManager NavigationManager
 
 <PageTitle>คำสั่งซื้อ</PageTitle>
 <AdminPageHeader Title="คำสั่งซื้อ"
-                 Description="ติดตามขั้นตอนชำระเงินและการจัดส่ง" />
+                 Description="ค้นหา ตรวจสอบสถานะการชำระเงิน และติดตามงานจัดส่งจากข้อมูลจริง" />
 <AdminContextNav Label="ตัวกรองคำสั่งซื้อ"
                  CurrentUrl="@NavigationManager.Uri"
                  Items="AdminNavigation.OrderContextItems" />
-<AdminPhasePlaceholder Message="การจัดการคำสั่งซื้อจะพร้อมใช้งานในระยะถัดไป" />
+
+<div class="admin-order-page">
+    <AdminOrderFilterBar State="filterState" />
+    <AdminContentStateView State="contentState"
+                           LoadingMessage="กำลังโหลดรายการคำสั่งซื้อ"
+                           EmptyTitle="ไม่พบคำสั่งซื้อ"
+                           EmptyMessage="@EmptyMessage"
+                           EmptyActionLabel="@(IsFiltered ? "ล้างตัวกรอง" : null)"
+                           EmptyActionHref="@(IsFiltered ? BasePath : null)"
+                           ErrorTitle="ไม่สามารถโหลดรายการคำสั่งซื้อได้"
+                           ErrorMessage="@errorMessage"
+                           Retry="ReloadAsync">
+        <ReadyContent>
+            <AdminOrderList Items="items"
+                            TotalCount="totalCount"
+                            CurrentPage="currentPage"
+                            TotalPages="totalPages"
+                            PageUrl="BuildPageUrl" />
+        </ReadyContent>
+    </AdminContentStateView>
+</div>
+
+@code {
+    private const string BasePath = "/admin/orders";
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private CancellationTokenSource? loadTokenSource;
+    private AdminOrderFilterQueryState filterState = new();
+    private IReadOnlyList<AdminOrderListItem> items = [];
+    private AdminContentState contentState = AdminContentState.Loading;
+    private string errorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalCount;
+    private long loadGeneration;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Search { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? SaleTypeFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "payment")]
+    public string? PaymentFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? FulfillmentFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public string? CreatedFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public string? CreatedTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? Page { get; set; }
+
+    private bool IsFiltered => filterState != new AdminOrderFilterQueryState();
+    private string EmptyMessage => IsFiltered
+        ? "ลองปรับคำค้นหา ช่วงวันที่ หรือสถานะ แล้วค้นหาอีกครั้ง"
+        : "คำสั่งซื้อจะปรากฏหลัง Stripe ยืนยันการชำระเงินสำเร็จ";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var requested = new AdminOrderFilterQueryState(
+            NormalizeSearch(Search),
+            NormalizeSaleType(SaleTypeFilter),
+            NormalizePayment(PaymentFilter),
+            NormalizeFulfillment(FulfillmentFilter),
+            NormalizeDate(CreatedFrom),
+            NormalizeDate(CreatedTo),
+            Page is > 0 ? Page.Value : 1);
+        var canonicalUrl = AdminOrderFilterBar.BuildCanonicalUrl(BasePath, requested);
+        if (!CurrentRelativeUrl().Equals(canonicalUrl, StringComparison.Ordinal))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(canonicalUrl, replace: true);
+            return;
+        }
+
+        filterState = requested;
+        await LoadAsync(requested);
+    }
+
+    private Task ReloadAsync() => LoadAsync(filterState);
+
+    private async Task LoadAsync(AdminOrderFilterQueryState requested)
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var next = CancellationTokenSource.CreateLinkedTokenSource(disposalTokenSource.Token);
+        var previous = Interlocked.Exchange(ref loadTokenSource, next);
+        if (previous is not null)
+        {
+            await previous.CancelAsync();
+            previous.Dispose();
+        }
+
+        contentState = AdminContentState.Loading;
+        Result<AdminOrderPage> result;
+        try
+        {
+            result = await RequestExecutor.ExecuteAsync(
+                token => Sender.Send(new ListAdminOrdersQuery(
+                    requested.Search,
+                    ParseSaleType(requested.SaleType),
+                    ParsePayment(requested.PaymentStatus),
+                    ParseFulfillment(requested.FulfillmentStatus),
+                    ParseDate(requested.CreatedFrom),
+                    ParseDate(requested.CreatedTo),
+                    requested.Page,
+                    20), token),
+                next.Token);
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (generation != Volatile.Read(ref loadGeneration) || next.IsCancellationRequested) return;
+        if (result.IsFailure)
+        {
+            errorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+            contentState = AdminContentState.Error;
+            return;
+        }
+
+        items = result.Value.Items;
+        totalCount = result.Value.TotalCount;
+        currentPage = result.Value.Page;
+        totalPages = result.Value.TotalPages;
+        if (currentPage != requested.Page)
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(BuildPageUrl(currentPage), replace: true);
+            return;
+        }
+
+        contentState = items.Count == 0 ? AdminContentState.Empty : AdminContentState.Ready;
+    }
+
+    private string BuildPageUrl(int page) =>
+        AdminOrderFilterBar.BuildCanonicalUrl(BasePath, filterState with { Page = page });
+
+    private string CurrentRelativeUrl()
+    {
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return "/" + relative.TrimStart('/');
+    }
+
+    private async Task CancelCurrentLoadAsync()
+    {
+        var current = Interlocked.Exchange(ref loadTokenSource, null);
+        if (current is null) return;
+        await current.CancelAsync();
+        current.Dispose();
+    }
+
+    private static string? NormalizeSearch(string? value) => string.IsNullOrWhiteSpace(value)
+        ? null
+        : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static string NormalizeSaleType(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "in-stock" => "in-stock",
+        "pre-order" => "pre-order",
+        _ => "all",
+    };
+
+    private static string NormalizePayment(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "deposit-paid" => "deposit-paid",
+        "paid" => "paid",
+        "partially-refunded" => "partially-refunded",
+        "refunded" => "refunded",
+        _ => "all",
+    };
+
+    private static string NormalizeFulfillment(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "awaiting-pre-order-arrival" => "awaiting-pre-order-arrival",
+        "awaiting-balance-payment" => "awaiting-balance-payment",
+        "ready-to-ship" => "ready-to-ship",
+        "shipped" => "shipped",
+        "cancelled" => "cancelled",
+        _ => "all",
+    };
+
+    private static string? NormalizeDate(string? value) => ParseDate(value)?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    private static DateOnly? ParseDate(string? value) => DateOnly.TryParseExact(
+        value,
+        "yyyy-MM-dd",
+        System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None,
+        out var date) ? date : null;
+    private static AdminOrderSaleType? ParseSaleType(string value) => value switch
+    {
+        "in-stock" => AdminOrderSaleType.InStock,
+        "pre-order" => AdminOrderSaleType.PreOrder,
+        _ => null,
+    };
+    private static AdminOrderPaymentStatus? ParsePayment(string value) => value switch
+    {
+        "deposit-paid" => AdminOrderPaymentStatus.DepositPaid,
+        "paid" => AdminOrderPaymentStatus.Paid,
+        "partially-refunded" => AdminOrderPaymentStatus.PartiallyRefunded,
+        "refunded" => AdminOrderPaymentStatus.Refunded,
+        _ => null,
+    };
+    private static AdminOrderFulfillmentStatus? ParseFulfillment(string value) => value switch
+    {
+        "awaiting-pre-order-arrival" => AdminOrderFulfillmentStatus.AwaitingPreOrderArrival,
+        "awaiting-balance-payment" => AdminOrderFulfillmentStatus.AwaitingBalancePayment,
+        "ready-to-ship" => AdminOrderFulfillmentStatus.ReadyToShip,
+        "shipped" => AdminOrderFulfillmentStatus.Shipped,
+        "cancelled" => AdminOrderFulfillmentStatus.Cancelled,
+        _ => null,
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        await disposalTokenSource.CancelAsync();
+        await CancelCurrentLoadAsync();
+        disposalTokenSource.Dispose();
+    }
+}

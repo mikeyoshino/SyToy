@@ -77,6 +77,8 @@ public static class DependencyInjection
         services.AddSingleton<ICartMutationSessionFactory, CartMutationSessionFactory>();
         services.AddSingleton<ICartReader, CartReader>();
         services.AddSingleton<ICustomerOrderReader, CustomerOrderReader>();
+        services.AddSingleton<IAdminOrderReader, AdminOrderReader>();
+        services.AddSingleton<IShipmentMutationStore, ShipmentMutationStore>();
         services.AddSingleton<IInventoryReadStore, InventoryReadStore>();
         services.AddSingleton<IMediaReferenceVerifier, MediaReferenceVerifier>();
         services.AddSingleton<IMediaCleanupRegistry, MediaCleanupRegistry>();

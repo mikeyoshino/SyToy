@@ -32,6 +32,7 @@ public sealed class Order
         TotalPaid = checkout.PaymentAmount;
         _items.AddRange(checkout.Items.Select(item => OrderItem.From(Guid.NewGuid(), item)));
         CreatedAtUtc = createdAtUtc;
+        Version = 1;
     }
 
     public Guid Id { get; private set; }
@@ -48,6 +49,8 @@ public sealed class Order
     public OrderItem Item => _items.Count == 1 ? _items[0]
         : throw new InvalidOperationException("Order contains more than one item.");
     public DateTimeOffset CreatedAtUtc { get; private set; }
+    public DateTimeOffset? ShippedAtUtc { get; private set; }
+    public long Version { get; private set; }
 
     public static Order CreatePreOrder(Guid id, string number, CheckoutAttempt checkout, DateTimeOffset createdAtUtc)
     {
@@ -59,6 +62,19 @@ public sealed class Order
     {
         EnsureCanCreate(id, number, checkout, SaleType.InStock, createdAtUtc);
         return new(id, number.Trim(), checkout, createdAtUtc);
+    }
+
+    public void MarkShipped(long expectedVersion, DateTimeOffset shippedAtUtc)
+    {
+        if (expectedVersion != Version)
+            throw new InvalidOperationException("Order version is stale.");
+        if (PaymentStatus != PaymentStatus.Paid || FulfillmentStatus != FulfillmentStatus.ReadyToShip)
+            throw new InvalidOperationException("Only a paid ready-to-ship Order can be shipped.");
+        if (shippedAtUtc.Offset != TimeSpan.Zero || shippedAtUtc < CreatedAtUtc)
+            throw new ArgumentException("Shipment timestamp must be valid UTC.", nameof(shippedAtUtc));
+        FulfillmentStatus = FulfillmentStatus.Shipped;
+        ShippedAtUtc = shippedAtUtc;
+        Version++;
     }
 
     private static void EnsureCanCreate(Guid id, string number, CheckoutAttempt checkout,

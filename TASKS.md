@@ -13,6 +13,8 @@
 
 ## Current focus
 
+- 2026-07-19: ทำ M8-07 Shipment/tracking ครบ: Admin confirmation flow สำหรับ Thailand Post/Flash/Kerry-J&T/Other HTTPS, atomic `Paid + ReadyToShip → Paid + Shipped`, durable Shipment/audit, Order version lock, operation retry idempotency, tracking search และ customer tracking link พร้อม migration ที่ review SQL แล้ว
+- 2026-07-19: ทำ M8-02 Combined Admin Order management ครบ list/filter URL state และ full-route detail: กรอง SaleType/payment/fulfillment/ช่วงวัน Bangkok, ค้นหา Order/ลูกค้า/สินค้า, pagination, immutable snapshots และ payment history ด้วย `CanManageOrders`; section balance/shipment/audit/notification พร้อมแสดง empty state จน slice ถัดไป persist ข้อมูล
 - 2026-07-18: เพิ่ม reusable `StoreExpandableText` ใน Product Detail: ย่อคำอธิบายเหลือ 3 บรรทัด, fade 0→50%, แสดงปุ่มเฉพาะเมื่อข้อความล้น, ขยายได้เต็มโดยไม่มี fade และย่อกลับได้
 - 2026-07-18: ปรับ shared drawer ใต้ 35rem ให้เป็น fullscreen physical inset โดยไม่ใช้ horizontal transform เพื่อหลีกเลี่ยง iOS visual/layout viewport mismatch และให้ cart โฟกัสปุ่มปิดแทน section ขนาดใหญ่
 - 2026-07-18: แก้ iOS WebKit cart drawer ที่ backdrop เปิดแต่ surface ค้าง off-canvas: ลบ CSS-transition/WAAPI collision, ให้ CSS open state เป็น authoritative visible fallback และเพิ่ม animation timeout ที่ cancel/clear transform เสมอ
@@ -602,11 +604,12 @@ Exit criteria: no Order exists before verified payment; concurrent/retried check
   - Acceptance: cross-customer access fails and historical display survives catalog/settings changes
   - Implemented: authenticated history/detail routes, server-side pagination, account/checkout navigation, snapshot-only presentation and PostgreSQL ownership integration coverage
 
-- [ ] **M8-02** Implement combined Admin Order management
+- [x] **M8-02** Implement combined Admin Order management
   - Depends on: M8-01, M4-05
   - Combined list filters SaleType, payment/fulfillment status, date and order/customer/tracking search
   - Full-route detail shows snapshots, payment history, balance request, shipment, audit and notification history
   - Enforce actor/current-state rules for both status axes; Acceptance: authorization/filter/invalid-transition and Thai responsive tests pass
+  - Verified: Application-authorized combined reader, canonical URL filters/pagination, Bangkok inclusive date boundaries, escaped PostgreSQL search, immutable item/address snapshots, payment history and responsive Thai list/detail states; 1,035 unit and 268 integration tests pass
 
 - [ ] **M8-03** Implement Admin In-stock cancellation and refund
   - Depends on: M8-02, M7-06
@@ -633,11 +636,12 @@ Exit criteria: no Order exists before verified payment; concurrent/retried check
   - Cancellation after close date does not reopen the original round; refund/compensation is idempotent
   - Acceptance: customer/Admin/overdue/provider retry and compensation rollback tests pass
 
-- [ ] **M8-07** Implement shipment and tracking
+- [x] **M8-07** Implement shipment and tracking
   - Depends on: M8-02
   - Thailand Post, Flash, Kerry, J&T or Other; required tracking and carrier templates, validated HTTPS URL for Other
   - Confirmation summary then durable Shipment/audit and `Shipped` transition
   - Acceptance: carrier/format/transition/idempotency tests and customer tracking UI pass
+  - Verified: Domain carrier/HTTPS validation, authorized Application command, PostgreSQL row lock + expected Order version + unique operation/order/tracking evidence, Admin confirm-before-commit, full detail audit, customer tracking link and escaped tracking search; build clean, 1,041 unit + 268 integration tests pass, idempotent migration SQL reviewed
 
 - [ ] **M8-08** Persist NotificationDelivery idempotency foundation
   - Depends on: M7-09, M8-02

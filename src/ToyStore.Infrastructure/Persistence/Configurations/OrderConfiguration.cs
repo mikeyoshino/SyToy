@@ -10,7 +10,11 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
     {
-        builder.ToTable("Orders");
+        builder.ToTable("Orders", table =>
+        {
+            table.HasCheckConstraint("CK_Orders_Version_Positive", "\"Version\" > 0");
+            table.HasCheckConstraint("CK_Orders_Shipped_Timestamp", "(\"FulfillmentStatus\" = 'Shipped' AND \"ShippedAtUtc\" IS NOT NULL) OR (\"FulfillmentStatus\" <> 'Shipped' AND \"ShippedAtUtc\" IS NULL)");
+        });
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Number).HasMaxLength(40).IsRequired();
         builder.HasIndex(x => x.Number).IsUnique();
@@ -24,6 +28,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(x => x.ShippingAmount).HasPrecision(18, 2);
         builder.Property(x => x.TotalPaid).HasPrecision(18, 2);
         builder.Property(x => x.CreatedAtUtc).HasColumnType("timestamp with time zone");
+        builder.Property(x => x.ShippedAtUtc).HasColumnType("timestamp with time zone");
+        builder.Property(x => x.Version).HasDefaultValue(1L).IsConcurrencyToken();
         ConfigureAddress(builder.OwnsOne(x => x.Address));
         builder.HasMany(x => x.Items).WithOne().HasForeignKey("OrderId").OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(x => x.Items).HasField("_items").UsePropertyAccessMode(PropertyAccessMode.Field);

@@ -1,0 +1,77 @@
+@using System.Globalization
+@using ToyStore.Application.Orders
+
+<div class="admin-order-list">
+    <p class="admin-order-list__count" role="status">พบ @TotalCount.ToString("N0", ThaiCulture) คำสั่งซื้อ</p>
+    <AdminDataTable Caption="รายการคำสั่งซื้อ">
+        <Header>
+            <tr>
+                <th scope="col">คำสั่งซื้อ</th>
+                <th scope="col">ลูกค้า</th>
+                <th scope="col">ประเภท</th>
+                <th scope="col">การชำระเงิน</th>
+                <th scope="col">การจัดส่ง</th>
+                <th scope="col">ยอดชำระ</th>
+                <th scope="col"><span class="visually-hidden">การทำงาน</span></th>
+            </tr>
+        </Header>
+        <Rows>
+            @foreach (var item in Items)
+            {
+                <tr>
+                    <td data-label="คำสั่งซื้อ">
+                        <a class="admin-order-list__number" href="/admin/orders/@item.Number">@item.Number</a>
+                        <time datetime="@item.CreatedAtUtc.ToString("O")">@FormatBangkok(item.CreatedAtUtc)</time>
+                    </td>
+                    <td data-label="ลูกค้า">
+                        <strong>@item.RecipientName</strong>
+                        <span>@item.CustomerEmail</span>
+                    </td>
+                    <td data-label="ประเภท">
+                        <span>@AdminOrderPresentation.SaleTypeLabel(item.SaleType)</span>
+                        <small>@item.ItemCount.ToString("N0", ThaiCulture) ชิ้น</small>
+                    </td>
+                    <td data-label="การชำระเงิน">
+                        <AdminStatusBadge Text="@AdminOrderPresentation.PaymentLabel(item.PaymentStatus)"
+                                          Tone="@AdminOrderPresentation.PaymentTone(item.PaymentStatus)"
+                                          AccessiblePrefix="สถานะการชำระเงิน" />
+                    </td>
+                    <td data-label="การจัดส่ง">
+                        <AdminStatusBadge Text="@AdminOrderPresentation.FulfillmentLabel(item.FulfillmentStatus)"
+                                          Tone="@AdminOrderPresentation.FulfillmentTone(item.FulfillmentStatus)"
+                                          AccessiblePrefix="สถานะการจัดส่ง" />
+                    </td>
+                    <td data-label="ยอดชำระ"><strong>฿@item.TotalPaid.ToString("N2", ThaiCulture)</strong></td>
+                    <td><a class="admin-order-list__detail" href="/admin/orders/@item.Number">ดูรายละเอียด</a></td>
+                </tr>
+            }
+        </Rows>
+    </AdminDataTable>
+    @if (TotalPages > 1)
+    {
+        <AdminPagination CurrentPage="CurrentPage" TotalPages="TotalPages" PageUrl="PageUrl" />
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<AdminOrderListItem> Items { get; set; }
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int TotalPages { get; set; } = 1;
+
+    [Parameter, EditorRequired]
+    public required Func<int, string> PageUrl { get; set; }
+
+    private static string FormatBangkok(DateTimeOffset value) =>
+        TimeZoneInfo.ConvertTime(value, BangkokTimeZone).ToString("d MMM yyyy HH:mm น.", ThaiCulture);
+}

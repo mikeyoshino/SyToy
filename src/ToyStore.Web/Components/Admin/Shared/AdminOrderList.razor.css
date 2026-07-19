@@ -1,0 +1,25 @@
+.admin-order-list { display: grid; gap: var(--space-5); min-width: 0; }
+.admin-order-list__count { margin: 0; color: var(--admin-muted); }
+.admin-order-list ::deep td { vertical-align: middle; }
+.admin-order-list ::deep td > :is(strong, span, small, time) { display: block; }
+.admin-order-list ::deep td span,
+.admin-order-list ::deep td small,
+.admin-order-list ::deep td time { margin-top: .2rem; color: var(--admin-muted); font-size: .8125rem; }
+.admin-order-list__number { color: var(--admin-ink); font-weight: var(--font-weight-extrabold); text-decoration: none; }
+.admin-order-list__number:hover,
+.admin-order-list__detail:hover { text-decoration: underline; text-underline-offset: .2rem; }
+.admin-order-list__number:focus-visible,
+.admin-order-list__detail:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 3px; border-radius: var(--radius-sm); }
+.admin-order-list__detail { display: inline-flex; min-height: 2.75rem; align-items: center; color: var(--admin-accent-strong); font-weight: var(--font-weight-bold); text-decoration: none; white-space: nowrap; }
+
+@media (max-width: 47.999rem) {
+  .admin-order-list ::deep .admin-data-table__scroller { overflow: visible; background: transparent; box-shadow: none; }
+  .admin-order-list ::deep .admin-data-table { display: block; min-width: 0; }
+  .admin-order-list ::deep :is(thead, caption) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .admin-order-list ::deep tbody { display: grid; gap: var(--space-4); }
+  .admin-order-list ::deep tr { display: grid; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-lg); background: var(--admin-surface); box-shadow: var(--shadow-sm); }
+  .admin-order-list ::deep td { display: grid; grid-template-columns: minmax(7.5rem, .65fr) minmax(0, 1fr); gap: var(--space-3); padding: 0; box-shadow: none; }
+  .admin-order-list ::deep td::before { content: attr(data-label); color: var(--admin-muted); font-size: .8125rem; font-weight: var(--font-weight-bold); }
+  .admin-order-list ::deep td:last-child { display: block; }
+  .admin-order-list__detail { width: 100%; justify-content: center; border-radius: var(--radius-md); background: var(--admin-accent-soft); }
+}

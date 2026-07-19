@@ -61,4 +61,8 @@ public sealed record CustomerOrderDetailView(
     decimal ShippingAmount,
     decimal TotalPaid,
     DateTimeOffset CreatedAtUtc,
-    IReadOnlyList<CustomerOrderItemView> Items);
+    IReadOnlyList<CustomerOrderItemView> Items,
+    CustomerShipmentView? Shipment = null);
+
+public sealed record CustomerShipmentView(string Carrier, string TrackingNumber,
+    string TrackingUrl, DateTimeOffset ShippedAtUtc);

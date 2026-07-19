@@ -62,6 +62,8 @@ internal sealed class CustomerOrderReader(
             return null;
         }
 
+        var shipment = await db.Shipments.AsNoTracking().SingleOrDefaultAsync(x => x.OrderId == order.Id, cancellationToken);
+
         return new CustomerOrderDetailView(
             order.Number,
             order.SaleType,
@@ -78,7 +80,9 @@ internal sealed class CustomerOrderReader(
             order.ShippingAmount,
             order.TotalPaid,
             order.CreatedAtUtc,
-            order.Items.Select(ToItem).ToArray());
+            order.Items.Select(ToItem).ToArray(),
+            shipment is null ? null : new CustomerShipmentView(shipment.Carrier.ToString(), shipment.TrackingNumber,
+                shipment.TrackingUrl, shipment.ShippedAtUtc));
     }
 
     private static CustomerOrderSummaryView ToSummary(Order order) => new(

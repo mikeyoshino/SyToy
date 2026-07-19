@@ -56,6 +56,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Order> Orders => Set<Order>();
 
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<OrderAuditEvent> OrderAuditEvents => Set<OrderAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

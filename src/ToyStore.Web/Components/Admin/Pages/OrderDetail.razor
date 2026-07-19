@@ -1,0 +1,258 @@
+@page "/admin/orders/{OrderNumber}"
+@layout AdminLayout
+@attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@attribute [Authorize(Policy = PolicyNames.CanManageOrders)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Orders
+@using ToyStore.Application.Orders.GetAdminOrder
+@using ToyStore.Application.Orders.CreateShipment
+@inject ISender Sender
+@inject AdminRequestExecutor RequestExecutor
+@inject IStoreToastService ToastService
+
+<PageTitle>รายละเอียดคำสั่งซื้อ | ผู้ดูแล</PageTitle>
+
+<a class="admin-order-detail__back" href="/admin/orders">← กลับไปรายการคำสั่งซื้อ</a>
+
+@if (isLoading)
+{
+    <AdminContentStateView State="AdminContentState.Loading" LoadingMessage="กำลังโหลดรายละเอียดคำสั่งซื้อ" />
+}
+else if (order is null)
+{
+    <AdminContentStateView State="AdminContentState.Error"
+                           ErrorTitle="ไม่พบคำสั่งซื้อ"
+                           ErrorMessage="@errorMessage" />
+}
+else
+{
+    <article class="admin-order-detail">
+        <header class="admin-order-detail__header">
+            <div>
+                <p>เลขคำสั่งซื้อ</p>
+                <h1>@order.Number</h1>
+                <time datetime="@order.CreatedAtUtc.ToString("O")">สร้างเมื่อ @FormatBangkok(order.CreatedAtUtc)</time>
+            </div>
+            <div class="admin-order-detail__statuses" aria-label="สถานะคำสั่งซื้อ">
+                <AdminStatusBadge Text="@AdminOrderPresentation.PaymentLabel(order.PaymentStatus)"
+                                  Tone="@AdminOrderPresentation.PaymentTone(order.PaymentStatus)"
+                                  AccessiblePrefix="สถานะการชำระเงิน" />
+                <AdminStatusBadge Text="@AdminOrderPresentation.FulfillmentLabel(order.FulfillmentStatus)"
+                                  Tone="@AdminOrderPresentation.FulfillmentTone(order.FulfillmentStatus)"
+                                  AccessiblePrefix="สถานะการจัดส่ง" />
+            </div>
+            @if (order.FulfillmentStatus == AdminOrderFulfillmentStatus.ReadyToShip
+                && order.PaymentStatus == AdminOrderPaymentStatus.Paid)
+            {
+                <StoreButton OnClick="OpenShipmentAsync">เพิ่มข้อมูลจัดส่ง</StoreButton>
+            }
+        </header>
+
+        <div class="admin-order-detail__layout">
+            <div class="admin-order-detail__main">
+                <section class="admin-order-detail__panel" aria-labelledby="admin-order-items-title">
+                    <h2 id="admin-order-items-title">รายการสินค้า Snapshot</h2>
+                    <ul class="admin-order-detail__items">
+                        @foreach (var item in order.Items)
+                        {
+                            <li>
+                                <img src="@item.PrimaryImageUrl" alt="รูปสินค้า @item.DisplayName" />
+                                <div>
+                                    <strong>@item.DisplayName</strong>
+                                    <span>@item.EnglishName</span>
+                                    <span>@item.BrandName · @item.CategoryName · @item.UniverseName</span>
+                                    <span>@AdminOrderPresentation.SaleTypeLabel(item.SaleType) · @item.Quantity.ToString("N0", ThaiCulture) ชิ้น</span>
+                                    <dl>
+                                        <div><dt>ราคาเต็ม/ชิ้น</dt><dd>฿@item.FullPrice.ToString("N2", ThaiCulture)</dd></div>
+                                        @if (item.SaleType.ToString() == "PreOrder")
+                                        {
+                                            <div><dt>มัดจำ/ชิ้น</dt><dd>฿@item.DepositAmount.ToString("N2", ThaiCulture)</dd></div>
+                                            <div><dt>คงเหลือ/ชิ้น</dt><dd>฿@item.BalanceAmount.ToString("N2", ThaiCulture)</dd></div>
+                                            <div><dt>กำหนดชำระคงเหลือ</dt><dd>@item.BalancePaymentDays วันหลังของเข้า</dd></div>
+                                        }
+                                    </dl>
+                                    @if (!string.IsNullOrWhiteSpace(item.DepositPolicy))
+                                    {
+                                        <p class="admin-order-detail__policy">นโยบายมัดจำ: @item.DepositPolicy</p>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="admin-order-detail__panel" aria-labelledby="admin-order-payment-title">
+                    <h2 id="admin-order-payment-title">ประวัติการชำระเงิน</h2>
+                    <ol class="admin-order-detail__timeline">
+                        @foreach (var payment in order.Payments)
+                        {
+                            <li>
+                                <div>
+                                    <strong>@AdminOrderPresentation.PaymentPurposeLabel(payment.Purpose)</strong>
+                                    <span>฿@payment.Amount.ToString("N2", ThaiCulture) @payment.Currency</span>
+                                </div>
+                                <div>
+                                    <time datetime="@payment.PaidAtUtc.ToString("O")">@FormatBangkok(payment.PaidAtUtc)</time>
+                                    <code>@payment.ProviderPaymentReference</code>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                </section>
+
+                <section class="admin-order-detail__panel admin-order-detail__history-grid" aria-label="ประวัติการดำเนินงาน">
+                    <div><h2>ยอดคงเหลือ</h2><p>@(order.SaleType == AdminOrderSaleType.PreOrder ? "ยังไม่มีคำขอชำระยอดคงเหลือ" : "ไม่ใช้กับสินค้าพร้อมส่ง")</p></div>
+                    <div><h2>การจัดส่ง</h2>@if (order.Shipment is null) { <p>ยังไม่มีรายการจัดส่ง</p> } else { <p>@CarrierLabel(order.Shipment.Carrier) · <a href="@order.Shipment.TrackingUrl" target="_blank" rel="noopener noreferrer">@order.Shipment.TrackingNumber</a></p> }</div>
+                    <div><h2>Audit</h2>@if (order.AuditEvents.Count == 0) { <p>สร้างคำสั่งซื้อจากการชำระเงินที่ Stripe ยืนยันแล้ว · @FormatBangkok(order.CreatedAtUtc)</p> } else { @foreach (var audit in order.AuditEvents) { <p>@AuditLabel(audit.Action) · @FormatBangkok(audit.OccurredAtUtc)</p> } }</div>
+                    <div><h2>การแจ้งเตือน</h2><p>ยังไม่มีประวัติการส่งการแจ้งเตือน</p></div>
+                </section>
+            </div>
+
+            <aside class="admin-order-detail__side">
+                <section class="admin-order-detail__panel">
+                    <h2>ข้อมูลลูกค้า</h2>
+                    <dl class="admin-order-detail__summary">
+                        <div><dt>อีเมล</dt><dd>@order.CustomerEmail</dd></div>
+                        <div><dt>ประเภท</dt><dd>@AdminOrderPresentation.SaleTypeLabel(order.SaleType)</dd></div>
+                        <div><dt>ค่าจัดส่ง</dt><dd>@(order.ShippingAmount == 0 ? "ฟรี" : $"฿{order.ShippingAmount.ToString("N2", ThaiCulture)}")</dd></div>
+                        <div><dt>ชำระแล้ว</dt><dd>฿@order.TotalPaid.ToString("N2", ThaiCulture)</dd></div>
+                    </dl>
+                </section>
+                <section class="admin-order-detail__panel">
+                    <h2>ที่อยู่จัดส่ง Snapshot</h2>
+                    <address>
+                        <strong>@order.Address.RecipientName</strong>
+                        <span>@order.Address.PhoneNumber</span>
+                        <span>@order.Address.AddressLine</span>
+                        <span>แขวง/ตำบล @order.Address.SubDistrict เขต/อำเภอ @order.Address.District</span>
+                        <span>@order.Address.Province @order.Address.PostalCode</span>
+                    </address>
+                </section>
+            </aside>
+        </div>
+    </article>
+}
+
+<AdminModal IsOpen="isShipmentOpen" IsOpenChanged="SetShipmentOpenAsync"
+            Title="@(isConfirmingShipment ? "ยืนยันการจัดส่ง" : "เพิ่มข้อมูลจัดส่ง")"
+            IsBusy="isShipmentBusy" InitialFocusSelector=".store-select__trigger">
+    <ChildContent>
+        @if (!isConfirmingShipment)
+        {
+            <EditForm Model="shipmentModel" FormName="admin-shipment-form" OnValidSubmit="PrepareShipmentAsync">
+                <div class="admin-order-detail__shipment-form">
+                    <StoreSelectField TValue="AdminShippingCarrier" @bind-Value="shipmentModel.Carrier"
+                                      Label="บริษัทขนส่ง" Options="CarrierOptions" />
+                    <StoreTextField @bind-Value="shipmentModel.TrackingNumber" Label="เลข Tracking" Required />
+                    @if (shipmentModel.Carrier == AdminShippingCarrier.Other)
+                    {
+                        <StoreTextField @bind-Value="shipmentModel.OtherTrackingUrl" Type="url"
+                                        Label="ลิงก์ติดตาม HTTPS" Required />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(shipmentError))
+                    {
+                        <StoreAlert Tone="StoreAlertTone.Error" Title="บันทึกไม่ได้" Message="@shipmentError" />
+                    }
+                </div>
+            </EditForm>
+        }
+        else
+        {
+            <dl class="admin-order-detail__shipment-confirm">
+                <div><dt>คำสั่งซื้อ</dt><dd>@order?.Number</dd></div>
+                <div><dt>บริษัทขนส่ง</dt><dd>@CarrierLabel(shipmentModel.Carrier.ToString())</dd></div>
+                <div><dt>เลข Tracking</dt><dd>@shipmentModel.TrackingNumber</dd></div>
+                @if (shipmentModel.Carrier == AdminShippingCarrier.Other)
+                { <div><dt>ลิงก์ติดตาม</dt><dd>@shipmentModel.OtherTrackingUrl</dd></div> }
+            </dl>
+            <StoreAlert Tone="StoreAlertTone.Warning" Title="ตรวจสอบก่อนยืนยัน"
+                        Message="เมื่อยืนยัน คำสั่งซื้อจะเปลี่ยนเป็นจัดส่งแล้วทันที" />
+        }
+    </ChildContent>
+    <Actions>
+        <StoreButtonGroup IsBusy="isShipmentBusy">
+            <StoreButton Tone="StoreButtonTone.Secondary" OnClick="@(isConfirmingShipment ? BackToShipmentFormAsync : CloseShipmentAsync)">
+                @(isConfirmingShipment ? "แก้ไข" : "ยกเลิก")
+            </StoreButton>
+            @if (isConfirmingShipment)
+            { <StoreButton OnClick="ConfirmShipmentAsync" IsBusy="isShipmentBusy" LoadingText="กำลังบันทึก…">ยืนยันจัดส่ง</StoreButton> }
+            else
+            { <StoreButton ButtonType="submit" Form="admin-shipment-form">ตรวจสอบข้อมูล</StoreButton> }
+        </StoreButtonGroup>
+    </Actions>
+</AdminModal>
+
+@code {
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private AdminOrderDetailView? order;
+    private bool isLoading = true;
+    private string errorMessage = "ไม่พบคำสั่งซื้อนี้";
+    private ShipmentEditorModel shipmentModel = new();
+    private bool isShipmentOpen;
+    private bool isConfirmingShipment;
+    private bool isShipmentBusy;
+    private string? shipmentError;
+    private Guid shipmentOperationId;
+    private static readonly IReadOnlyList<SelectOption<AdminShippingCarrier>> CarrierOptions =
+    [ new(AdminShippingCarrier.ThailandPost, "ไปรษณีย์ไทย"), new(AdminShippingCarrier.Flash, "Flash Express"),
+      new(AdminShippingCarrier.Kerry, "Kerry / KEX"), new(AdminShippingCarrier.JAndT, "J&T Express"),
+      new(AdminShippingCarrier.Other, "อื่น ๆ") ];
+
+    [Parameter]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        order = null;
+        var result = await RequestExecutor.ExecuteAsync(
+            token => Sender.Send(new GetAdminOrderQuery(OrderNumber), token),
+            CancellationToken.None);
+        if (result.IsFailure) errorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+        else order = result.Value;
+        isLoading = false;
+    }
+
+    private static string FormatBangkok(DateTimeOffset value) =>
+        TimeZoneInfo.ConvertTime(value, BangkokTimeZone).ToString("d MMMM yyyy HH:mm น.", ThaiCulture);
+
+    private Task OpenShipmentAsync()
+    {
+        shipmentModel = new(); shipmentOperationId = Guid.NewGuid(); shipmentError = null;
+        isConfirmingShipment = false; isShipmentOpen = true; return Task.CompletedTask;
+    }
+    private Task PrepareShipmentAsync() { isConfirmingShipment = true; shipmentError = null; return Task.CompletedTask; }
+    private Task BackToShipmentFormAsync() { isConfirmingShipment = false; return Task.CompletedTask; }
+    private Task CloseShipmentAsync() => SetShipmentOpenAsync(false);
+    private Task SetShipmentOpenAsync(bool value) { if (isShipmentBusy) return Task.CompletedTask; isShipmentOpen = value; if (!value) isConfirmingShipment = false; return Task.CompletedTask; }
+
+    private async Task ConfirmShipmentAsync()
+    {
+        if (order is null || isShipmentBusy) return;
+        isShipmentBusy = true; shipmentError = null;
+        var result = await RequestExecutor.ExecuteAsync(token => Sender.Send(new CreateShipmentCommand(
+            order.Number, shipmentModel.Carrier, shipmentModel.TrackingNumber ?? string.Empty,
+            shipmentModel.OtherTrackingUrl, order.Version, shipmentOperationId), token), CancellationToken.None);
+        isShipmentBusy = false;
+        if (result.IsFailure)
+        {
+            shipmentError = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+            isConfirmingShipment = false; return;
+        }
+        isShipmentOpen = false; isConfirmingShipment = false;
+        ToastService.ShowSuccess("บันทึกการจัดส่งแล้ว", $"เลข Tracking {result.Value.TrackingNumber}");
+        await OnParametersSetAsync();
+    }
+
+    private static string CarrierLabel(string value) => value switch
+    { "ThailandPost" => "ไปรษณีย์ไทย", "Flash" => "Flash Express", "Kerry" => "Kerry / KEX", "JAndT" => "J&T Express", _ => "อื่น ๆ" };
+    private static string AuditLabel(string value) => value == "ShipmentCreated" ? "บันทึกการจัดส่ง" : value;
+    private sealed class ShipmentEditorModel
+    {
+        public AdminShippingCarrier Carrier { get; set; } = AdminShippingCarrier.ThailandPost;
+        public string? TrackingNumber { get; set; }
+        public string? OtherTrackingUrl { get; set; }
+    }
+}

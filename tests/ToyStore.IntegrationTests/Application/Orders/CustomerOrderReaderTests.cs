@@ -5,6 +5,7 @@ using ToyStore.Domain.Carts;
 using ToyStore.Domain.Catalog;
 using ToyStore.Domain.Checkouts;
 using ToyStore.Domain.Inventory;
+using ToyStore.Domain.Orders;
 using ToyStore.Domain.Products;
 using ToyStore.Infrastructure.Identity;
 using ToyStore.Infrastructure.Persistence;
@@ -81,6 +82,18 @@ public sealed class CustomerOrderReaderTests(PostgreSqlFixture postgreSql)
             seeded.OwnerId, summary.Number, TestContext.Current.CancellationToken);
         var strangerDetail = await reader.GetAsync(
             seeded.StrangerId, summary.Number, TestContext.Current.CancellationToken);
+        var adminReader = readScope.ServiceProvider.GetRequiredService<IAdminOrderReader>();
+        var adminPage = await adminReader.ListAsync(new AdminOrderReadRequest(
+            "Order History",
+            AdminOrderSaleType.InStock,
+            AdminOrderPaymentStatus.Paid,
+            AdminOrderFulfillmentStatus.ReadyToShip,
+            now.AddHours(-1).ToUniversalTime(),
+            now.AddHours(1).ToUniversalTime(),
+            1,
+            20), TestContext.Current.CancellationToken);
+        var adminDetail = await adminReader.GetAsync(
+            summary.Number, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, ownerHistory.TotalCount);
         Assert.Empty(strangerHistory.Items);
@@ -92,6 +105,31 @@ public sealed class CustomerOrderReaderTests(PostgreSqlFixture postgreSql)
         Assert.Null(strangerDetail);
         Assert.Equal("ผู้รับตาม Snapshot", ownerDetail.Address.RecipientName);
         Assert.Equal("สินค้า Order History", Assert.Single(ownerDetail.Items).DisplayName);
+        Assert.Single(adminPage.Items);
+        Assert.NotNull(adminDetail);
+        Assert.Equal(seeded.OwnerId + "@example.test", adminDetail.CustomerEmail);
+        Assert.Equal("pi_customer_order_reader", Assert.Single(adminDetail.Payments).ProviderPaymentReference);
+
+        var shipmentStore = readScope.ServiceProvider.GetRequiredService<IShipmentMutationStore>();
+        var operationId = Guid.NewGuid();
+        var shipmentRequest = new ShipmentMutationRequest(summary.Number, ShippingCarrier.ThailandPost,
+            "EF123456789TH", null, adminDetail.Version, operationId, "admin-test",
+            now.AddSeconds(2).ToUniversalTime());
+        var shipped = await shipmentStore.CreateAsync(shipmentRequest, TestContext.Current.CancellationToken);
+        var replay = await shipmentStore.CreateAsync(shipmentRequest, TestContext.Current.CancellationToken);
+        var conflict = await shipmentStore.CreateAsync(shipmentRequest with { OperationId = Guid.NewGuid() },
+            TestContext.Current.CancellationToken);
+        var shippedDetail = await adminReader.GetAsync(summary.Number, TestContext.Current.CancellationToken);
+        var shippedCustomerDetail = await reader.GetAsync(seeded.OwnerId, summary.Number, TestContext.Current.CancellationToken);
+        var trackingSearch = await adminReader.ListAsync(new AdminOrderReadRequest("EF123456789TH", null, null,
+            AdminOrderFulfillmentStatus.Shipped, null, null, 1, 20), TestContext.Current.CancellationToken);
+
+        Assert.True(shipped.IsSuccess); Assert.True(shipped.Value.Changed);
+        Assert.True(replay.IsSuccess); Assert.False(replay.Value.Changed);
+        Assert.True(conflict.IsFailure); Assert.Equal(AdminOrderErrors.ShipmentConflict, conflict.Error);
+        Assert.Equal(AdminOrderFulfillmentStatus.Shipped, shippedDetail!.FulfillmentStatus);
+        Assert.NotNull(shippedDetail.Shipment); Assert.Single(shippedDetail.AuditEvents);
+        Assert.NotNull(shippedCustomerDetail!.Shipment); Assert.Single(trackingSearch.Items);
     }
 
     private static async Task<(string OwnerId, string StrangerId)> SeedAsync(

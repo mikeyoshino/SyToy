@@ -9,7 +9,6 @@ public sealed class AdminPlaceholderPageContractTests
         {
             ["Dashboard.razor"] = ("/admin", "ภาพรวมร้าน"),
             ["Inventory.razor"] = ("/admin/inventory", "สินค้าคงคลัง"),
-            ["Orders.razor"] = ("/admin/orders", "คำสั่งซื้อ"),
             ["Notifications.razor"] = ("/admin/notifications", "การแจ้งเตือน"),
             ["Reports.razor"] = ("/admin/reports", "รายงานยอดขาย"),
             ["Settings.razor"] = ("/admin/settings", "ตั้งค่าร้าน"),
@@ -92,6 +91,23 @@ public sealed class AdminPlaceholderPageContractTests
         Assert.Contains("<AdminProductList", source, StringComparison.Ordinal);
         Assert.Contains("<AdminProductEditor", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<AdminPhasePlaceholder", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OrderDestinationsAreAuthorizedProductionPagesInsteadOfPlaceholders()
+    {
+        var list = File.ReadAllText(Path.Combine(PagesRoot(), "Orders.razor"));
+        var detail = File.ReadAllText(Path.Combine(PagesRoot(), "OrderDetail.razor"));
+
+        Assert.Contains("@page \"/admin/orders\"", list, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanManageOrders", list, StringComparison.Ordinal);
+        Assert.Contains("<AdminOrderFilterBar", list, StringComparison.Ordinal);
+        Assert.Contains("<AdminOrderList", list, StringComparison.Ordinal);
+        Assert.DoesNotContain("<AdminPhasePlaceholder", list, StringComparison.Ordinal);
+        Assert.Contains("@page \"/admin/orders/{OrderNumber}\"", detail, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanManageOrders", detail, StringComparison.Ordinal);
+        Assert.Contains("ประวัติการชำระเงิน", detail, StringComparison.Ordinal);
+        Assert.Contains("ที่อยู่จัดส่ง Snapshot", detail, StringComparison.Ordinal);
     }
 
     [Fact]
