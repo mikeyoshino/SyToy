@@ -1,4 +1,4 @@
-.saved-address-book { grid-column: 1 / -1; display: grid; gap: var(--space-4); padding-bottom: var(--space-5); border-bottom: 1px solid var(--color-line); }
+.saved-address-book { display: grid; gap: var(--space-5); }
 .saved-address-book__heading { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; }
 .saved-address-book__heading h2 { margin: 0; font-size: 1.1rem; }
 .saved-address-book__heading p, .saved-address-book__state { margin: var(--space-1) 0 0; color: var(--color-muted); font-size: .9rem; }
@@ -11,15 +11,15 @@
 .saved-address-book__label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }
 .saved-address-book__label small { padding: .1rem .45rem; border-radius: var(--radius-pill); background: var(--color-accent); color: var(--color-ink); font-weight: var(--font-weight-bold); }
 .saved-address-book__actions { display: flex; justify-content: flex-end; gap: var(--space-3); padding: 0 var(--space-4) var(--space-3); }
-.saved-address-book__actions button { min-height: 2.25rem; border: 0; background: transparent; color: var(--color-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: .8rem; }
-.saved-address-book__save { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--space-3); align-items: end; }
-.saved-address-book__default { grid-column: 1; display: inline-flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; font-size: .9rem; }
-.saved-address-book__save > ::deep .store-action { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
+.saved-address-book__actions button, .saved-address-book__new-heading button { min-height: 2.25rem; border: 0; background: transparent; color: var(--color-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: .8rem; }
+.saved-address-book__new { display: grid; gap: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--color-line); }
+.saved-address-book__new-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.saved-address-book__new-heading h3 { margin: 0; font-size: 1rem; }
+.saved-address-book__default { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; font-size: .9rem; }
+.saved-address-book__limit { margin: 0; color: var(--color-muted); font-size: .9rem; }
 .saved-address-book__feedback { margin: 0; color: var(--color-success); font-size: .9rem; }
 .saved-address-book__feedback--error { color: var(--color-danger); }
 .saved-address-book button:focus-visible, .saved-address-book input:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
 @media (max-width: 47.999rem) {
   .saved-address-book__list { grid-template-columns: 1fr; }
-  .saved-address-book__save { grid-template-columns: 1fr; }
-  .saved-address-book__default, .saved-address-book__save > ::deep .store-action { grid-column: 1; grid-row: auto; }
 }

@@ -5,74 +5,105 @@
 @using ToyStore.Application.Addresses.SavedAddresses.ListSavedAddresses
 @using ToyStore.Application.Addresses.SavedAddresses.SetDefaultSavedAddress
 @inject ISender Sender
+@inject ILogger<SavedAddressBook> Logger
 
 <section class="saved-address-book" aria-labelledby="saved-address-title">
     <div class="saved-address-book__heading">
         <div>
-            <h2 id="saved-address-title">ที่อยู่ที่บันทึกไว้</h2>
-            <p>เลือกใช้ได้ทันที และบันทึกได้สูงสุด 5 ที่อยู่</p>
+            <h2 id="saved-address-title">ที่อยู่จัดส่ง</h2>
+            <p>@(addresses.Count == 0 ? "กรอกที่อยู่สำหรับจัดส่งสินค้า" : "เลือกจากที่อยู่ที่บันทึกไว้ก่อน หรือเพิ่มที่อยู่ใหม่")</p>
         </div>
-        <span aria-label="บันทึกแล้ว @addresses.Count จาก 5 ที่อยู่">@addresses.Count/5</span>
+        @if (addresses.Count != 0)
+        {
+            <span aria-label="บันทึกแล้ว @addresses.Count จาก 5 ที่อยู่">@addresses.Count/5</span>
+        }
     </div>
 
     @if (isLoading)
     {
         <p class="saved-address-book__state" role="status">กำลังโหลดที่อยู่…</p>
     }
-    else if (addresses.Count != 0)
-    {
-        <div class="saved-address-book__list" role="list">
-            @foreach (var item in addresses)
-            {
-                <article class="saved-address-book__card @(selectedAddressId == item.Id ? "saved-address-book__card--selected" : null)" role="listitem">
-                    <button type="button" class="saved-address-book__select"
-                            disabled="@(Disabled || isMutating)" @onclick="() => ApplyAsync(item)"
-                            aria-pressed="@(selectedAddressId == item.Id)"
-                            aria-label="ใช้ที่อยู่ @item.Label">
-                        <span class="saved-address-book__label">
-                            <strong>@item.Label</strong>
-                            @if (item.IsDefault) { <small>ค่าเริ่มต้น</small> }
-                        </span>
-                        <span>@item.RecipientName · @item.PhoneNumber</span>
-                        <span>@FormatAddress(item)</span>
-                    </button>
-                    <div class="saved-address-book__actions">
-                        @if (!item.IsDefault)
-                        {
-                            <button type="button" disabled="@(Disabled || isMutating)"
-                                    @onclick="() => SetDefaultAsync(item.Id)">ตั้งเป็นค่าเริ่มต้น</button>
-                        }
-                        <button type="button" disabled="@(Disabled || isMutating)"
-                                @onclick="() => DeleteAsync(item.Id)" aria-label="ลบที่อยู่ @item.Label">ลบ</button>
-                    </div>
-                </article>
-            }
-        </div>
-    }
     else
     {
-        <p class="saved-address-book__state">ยังไม่มีที่อยู่ที่บันทึกไว้ กรอกแบบฟอร์มด้านล่างแล้วกดบันทึกได้เลย</p>
-    }
+        @if (addresses.Count != 0)
+        {
+            <div class="saved-address-book__list" role="list" aria-label="ที่อยู่ที่บันทึกไว้">
+                @foreach (var item in addresses)
+                {
+                    <article class="saved-address-book__card @(selectedAddressId == item.Id && !isAddingNew ? "saved-address-book__card--selected" : null)" role="listitem">
+                        <button type="button" class="saved-address-book__select"
+                                disabled="@(Disabled || isMutating)" @onclick="() => ApplyAsync(item)"
+                                aria-pressed="@(selectedAddressId == item.Id && !isAddingNew)"
+                                aria-label="ใช้ที่อยู่ @item.Label">
+                            <span class="saved-address-book__label">
+                                <strong>@item.Label</strong>
+                                @if (item.IsDefault) { <small>ค่าเริ่มต้น</small> }
+                            </span>
+                            <span>@item.RecipientName · @item.PhoneNumber</span>
+                            <span>@FormatAddress(item)</span>
+                        </button>
+                        <div class="saved-address-book__actions">
+                            @if (!item.IsDefault)
+                            {
+                                <button type="button" disabled="@(Disabled || isMutating)"
+                                        @onclick="() => SetDefaultAsync(item.Id)">ตั้งเป็นค่าเริ่มต้น</button>
+                            }
+                            <button type="button" disabled="@(Disabled || isMutating)"
+                                    @onclick="() => DeleteAsync(item.Id)" aria-label="ลบที่อยู่ @item.Label">ลบ</button>
+                        </div>
+                    </article>
+                }
+            </div>
 
-    @if (!string.IsNullOrWhiteSpace(feedback))
-    {
-        <p class="saved-address-book__feedback @(hasError ? "saved-address-book__feedback--error" : null)"
-           role="@(hasError ? "alert" : "status")">@feedback</p>
-    }
+            @if (!isAddingNew)
+            {
+                <StoreButton Tone="StoreButtonTone.Secondary" Compact="true"
+                             OnClick="BeginNewAddressAsync" Disabled="@(Disabled || isMutating)">
+                    เพิ่มที่อยู่ใหม่
+                </StoreButton>
+            }
+        }
 
-    <div class="saved-address-book__save">
-        <StoreTextField @bind-Value="label" Label="ชื่อเรียกที่อยู่นี้"
-                        Placeholder="เช่น บ้าน, ที่ทำงาน" Disabled="@(Disabled || isMutating || addresses.Count >= 5)" />
-        <label class="saved-address-book__default">
-            <input type="checkbox" @bind="makeDefault" disabled="@(Disabled || isMutating || addresses.Count >= 5)" />
-            <span>ใช้เป็นที่อยู่เริ่มต้น</span>
-        </label>
-        <StoreButton OnClick="SaveAsync" Tone="StoreButtonTone.Secondary" Compact="true"
-                     Disabled="@(Disabled || isMutating || addresses.Count >= 5)"
-                     IsBusy="@isMutating" LoadingText="กำลังบันทึก…">
-            บันทึกที่อยู่นี้
-        </StoreButton>
-    </div>
+        @if (!string.IsNullOrWhiteSpace(feedback))
+        {
+            <p class="saved-address-book__feedback @(hasError ? "saved-address-book__feedback--error" : null)"
+               role="@(hasError ? "alert" : "status")">@feedback</p>
+        }
+
+        @if (isAddingNew || addresses.Count == 0)
+        {
+            <div class="saved-address-book__new" aria-labelledby="new-address-title">
+                <div class="saved-address-book__new-heading">
+                    <h3 id="new-address-title">@(addresses.Count == 0 ? "เพิ่มที่อยู่จัดส่ง" : "ที่อยู่ใหม่")</h3>
+                    @if (addresses.Count != 0)
+                    {
+                        <button type="button" disabled="@(Disabled || isMutating)"
+                                @onclick="CancelNewAddressAsync">ยกเลิก</button>
+                    }
+                </div>
+
+                @NewAddressFields
+
+                @if (addresses.Count < 5)
+                {
+                    <label class="saved-address-book__default">
+                        <input type="checkbox" @bind="saveAsDefault" disabled="@(Disabled || isMutating)" />
+                        <span>บันทึกและใช้เป็นที่อยู่เริ่มต้น</span>
+                    </label>
+                    @if (saveAsDefault)
+                    {
+                        <StoreTextField @bind-Value="label" Label="ชื่อเรียกที่อยู่นี้"
+                                        Placeholder="เช่น บ้าน, ที่ทำงาน" Required="true"
+                                        Disabled="@(Disabled || isMutating)" />
+                    }
+                }
+                else
+                {
+                    <p class="saved-address-book__limit">บันทึกครบ 5 ที่อยู่แล้ว ที่อยู่ใหม่นี้ยังใช้สั่งซื้อได้แต่จะไม่ถูกบันทึก</p>
+                }
+            </div>
+        }
+    }
 </section>
 
 @code {
@@ -80,12 +111,14 @@
     private Guid? selectedAddressId;
     private string? label;
     private string? feedback;
-    private bool makeDefault;
+    private bool saveAsDefault;
+    private bool isAddingNew;
     private bool isLoading = true;
     private bool isMutating;
     private bool hasError;
 
     [Parameter, EditorRequired] public required ShippingAddressFormModel Model { get; set; }
+    [Parameter, EditorRequired] public required RenderFragment NewAddressFields { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback AddressApplied { get; set; }
 
@@ -93,37 +126,26 @@
     {
         await ReloadAsync();
         isLoading = false;
-        var defaultAddress = addresses.FirstOrDefault(item => item.IsDefault);
-        if (defaultAddress is not null && IsEmpty(Model)) await ApplyAsync(defaultAddress);
+        if (addresses.Count == 0)
+        {
+            isAddingNew = true;
+            return;
+        }
+
+        var preferred = addresses.FirstOrDefault(item => item.IsDefault) ?? addresses[0];
+        await ApplyAsync(preferred);
     }
 
-    private async Task ReloadAsync()
+    public async Task<bool> SaveRequestedAddressAsync()
     {
-        var result = await Sender.Send(new ListSavedAddressesQuery());
-        if (result.IsSuccess) addresses = result.Value;
-        else SetFeedback(result.Error.Message, true);
-    }
+        if (!isAddingNew || !saveAsDefault) return true;
+        if (isMutating) return false;
+        if (addresses.Count >= 5)
+        {
+            SetFeedback("บันทึกที่อยู่ได้สูงสุด 5 รายการ กรุณาลบที่อยู่เดิมก่อน", true);
+            return false;
+        }
 
-    private async Task ApplyAsync(SavedAddressView item)
-    {
-        selectedAddressId = item.Id;
-        Model.RecipientName = item.RecipientName;
-        Model.PhoneNumber = item.PhoneNumber;
-        Model.AddressLine = item.AddressLine;
-        Model.ProvinceId = item.ProvinceId;
-        Model.DistrictId = item.DistrictId;
-        Model.SubDistrictId = item.SubDistrictId;
-        Model.Province = item.Province;
-        Model.District = item.District;
-        Model.SubDistrict = item.SubDistrict;
-        Model.PostalCode = item.PostalCode;
-        SetFeedback($"เลือกที่อยู่ {item.Label} แล้ว", false);
-        await AddressApplied.InvokeAsync();
-    }
-
-    private async Task SaveAsync()
-    {
-        if (isMutating) return;
         isMutating = true;
         SetFeedback(null, false);
         try
@@ -132,20 +154,71 @@
                 Model.RecipientName ?? "", Model.PhoneNumber ?? "", Model.AddressLine ?? "",
                 Model.ProvinceId ?? 0, Model.DistrictId ?? 0, Model.SubDistrictId ?? 0,
                 Model.Province ?? "", Model.District ?? "", Model.SubDistrict ?? "",
-                Model.PostalCode ?? "", makeDefault));
+                Model.PostalCode ?? "", MakeDefault: true));
             if (!result.IsSuccess)
             {
                 SetFeedback(result.ValidationFailures.Select(x => x.ErrorMessage)
                     .FirstOrDefault() ?? result.Error.Message, true);
-                return;
+                return false;
             }
-            label = null;
-            makeDefault = false;
+
             selectedAddressId = result.Value.Id;
+            saveAsDefault = false;
+            label = null;
+            isAddingNew = false;
             await ReloadAsync();
-            SetFeedback("บันทึกที่อยู่เรียบร้อย", false);
+            SetFeedback("บันทึกที่อยู่และตั้งเป็นค่าเริ่มต้นแล้ว", false);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Saving checkout address failed.");
+            SetFeedback("บันทึกที่อยู่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
+            return false;
         }
         finally { isMutating = false; }
+    }
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            var result = await Sender.Send(new ListSavedAddressesQuery());
+            if (result.IsSuccess) addresses = result.Value;
+            else SetFeedback(result.Error.Message, true);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Loading saved checkout addresses failed.");
+            SetFeedback("โหลดที่อยู่ที่บันทึกไว้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
+        }
+    }
+
+    private async Task ApplyAsync(SavedAddressView item)
+    {
+        selectedAddressId = item.Id;
+        isAddingNew = false;
+        saveAsDefault = false;
+        CopyToModel(item);
+        SetFeedback($"เลือกที่อยู่ {item.Label} แล้ว", false);
+        await AddressApplied.InvokeAsync();
+    }
+
+    private async Task BeginNewAddressAsync()
+    {
+        selectedAddressId = null;
+        isAddingNew = true;
+        saveAsDefault = false;
+        label = null;
+        ClearModel();
+        SetFeedback(null, false);
+        await AddressApplied.InvokeAsync();
+    }
+
+    private async Task CancelNewAddressAsync()
+    {
+        var preferred = addresses.FirstOrDefault(item => item.IsDefault) ?? addresses[0];
+        await ApplyAsync(preferred);
     }
 
     private async Task DeleteAsync(Guid id)
@@ -154,11 +227,25 @@
         isMutating = true;
         try
         {
+            var deletingSelected = selectedAddressId == id;
             var result = await Sender.Send(new DeleteSavedAddressCommand(id));
             if (!result.IsSuccess) { SetFeedback(result.Error.Message, true); return; }
-            if (selectedAddressId == id) selectedAddressId = null;
             await ReloadAsync();
+            if (addresses.Count == 0)
+            {
+                await BeginNewAddressAsync();
+            }
+            else if (deletingSelected)
+            {
+                var preferred = addresses.FirstOrDefault(item => item.IsDefault) ?? addresses[0];
+                await ApplyAsync(preferred);
+            }
             SetFeedback("ลบที่อยู่ที่บันทึกแล้ว", false);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Deleting saved checkout address failed.");
+            SetFeedback("ลบที่อยู่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
         }
         finally { isMutating = false; }
     }
@@ -174,7 +261,40 @@
             await ReloadAsync();
             SetFeedback("ตั้งเป็นที่อยู่เริ่มต้นแล้ว", false);
         }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Setting default checkout address failed.");
+            SetFeedback("ตั้งที่อยู่เริ่มต้นไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
+        }
         finally { isMutating = false; }
+    }
+
+    private void CopyToModel(SavedAddressView item)
+    {
+        Model.RecipientName = item.RecipientName;
+        Model.PhoneNumber = item.PhoneNumber;
+        Model.AddressLine = item.AddressLine;
+        Model.ProvinceId = item.ProvinceId;
+        Model.DistrictId = item.DistrictId;
+        Model.SubDistrictId = item.SubDistrictId;
+        Model.Province = item.Province;
+        Model.District = item.District;
+        Model.SubDistrict = item.SubDistrict;
+        Model.PostalCode = item.PostalCode;
+    }
+
+    private void ClearModel()
+    {
+        Model.RecipientName = null;
+        Model.PhoneNumber = null;
+        Model.AddressLine = null;
+        Model.ProvinceId = null;
+        Model.DistrictId = null;
+        Model.SubDistrictId = null;
+        Model.Province = null;
+        Model.District = null;
+        Model.SubDistrict = null;
+        Model.PostalCode = null;
     }
 
     private void SetFeedback(string? message, bool error)
@@ -182,9 +302,6 @@
         feedback = message;
         hasError = error;
     }
-
-    private static bool IsEmpty(ShippingAddressFormModel model) =>
-        string.IsNullOrWhiteSpace(model.RecipientName) && string.IsNullOrWhiteSpace(model.AddressLine);
 
     private static string FormatAddress(SavedAddressView item) =>
         $"{item.AddressLine} {item.SubDistrict} {item.District} {item.Province} {item.PostalCode}";

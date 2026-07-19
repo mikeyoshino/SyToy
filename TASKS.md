@@ -13,6 +13,7 @@
 
 ## Current focus
 
+- 2026-07-19: ปรับ saved-address checkout UX ให้บัญชีที่มีที่อยู่เลือกจากรายการก่อนและซ่อนฟอร์มจนกด “เพิ่มที่อยู่ใหม่”; ลบปุ่มบันทึกแยกและเปลี่ยนเป็น “บันทึกและใช้เป็นที่อยู่เริ่มต้น” ซึ่ง persist ตอนยืนยันไปชำระเงินจริงก่อนสร้าง CheckoutAttempt
 - 2026-07-19: ทำ M7-02 saved shipping addresses ครบ: ลูกค้าเลือก/บันทึกได้สูงสุด 5 ที่อยู่ มีค่าเริ่มต้นหนึ่งรายการ, ownership-scoped mutation, immutable Thai relation IDs, shared selector ใน In-stock/Pre-order checkout และ confirmation modal ตรวจสินค้า/ยอด/ที่อยู่ก่อนสร้าง CheckoutAttempt
 - 2026-07-19: เพิ่ม canonical `www` handling ใน production Caddy: terminate TLS สำหรับ `www.<domain>` แล้ว permanent redirect ไป apex พร้อม deployment contract test และ VPS reload runbook
 - 2026-07-19: ลดข้อความซ้ำใน Product Detail พรีออเดอร์ โดยเปลี่ยน CTA เป็น “สั่งพรีออเดอร์” และลบ availability note ใต้ปุ่มโดยคง eligibility dialog และ checkout invariant เดิม

@@ -15,6 +15,10 @@ public sealed class SavedAddressCheckoutSourceContractTests
             Assert.Contains("<StoreDialog", source, StringComparison.Ordinal);
             Assert.Contains("จัดส่งไปที่", source, StringComparison.Ordinal);
             Assert.Contains("ConfirmCheckoutAsync", source, StringComparison.Ordinal);
+            var saveIndex = source.IndexOf("SaveRequestedAddressAsync", StringComparison.Ordinal);
+            var beginCheckoutIndex = source.IndexOf("new Begin", saveIndex, StringComparison.Ordinal);
+            Assert.True(saveIndex >= 0 && beginCheckoutIndex > saveIndex,
+                $"{file} must save an opted-in new address before beginning checkout.");
         }
     }
 
@@ -24,11 +28,15 @@ public sealed class SavedAddressCheckoutSourceContractTests
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "ToyStore.Web", "Components",
             "Checkout", "SavedAddressBook.razor"));
-        Assert.Contains("สูงสุด 5 ที่อยู่", source, StringComparison.Ordinal);
+        Assert.Contains("สูงสุด 5 รายการ", source, StringComparison.Ordinal);
         Assert.Contains("ListSavedAddressesQuery", source, StringComparison.Ordinal);
         Assert.Contains("CreateSavedAddressCommand", source, StringComparison.Ordinal);
         Assert.Contains("DeleteSavedAddressCommand", source, StringComparison.Ordinal);
         Assert.Contains("SetDefaultSavedAddressCommand", source, StringComparison.Ordinal);
+        Assert.Contains("เพิ่มที่อยู่ใหม่", source, StringComparison.Ordinal);
+        Assert.Contains("บันทึกและใช้เป็นที่อยู่เริ่มต้น", source, StringComparison.Ordinal);
+        Assert.Contains("SaveRequestedAddressAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("บันทึกที่อยู่นี้", source, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

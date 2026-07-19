@@ -88,15 +88,19 @@
                             <ul>@foreach (var message in errorMessages) { <li>@message</li> }</ul>
                         </StoreAlert>
                     }
-                    <div class="preorder-checkout__fields">
-                        <SavedAddressBook Model="address" Disabled="@isSubmitting" AddressApplied="AddressAppliedAsync" />
-                        <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
-                        <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
-                        <div class="preorder-checkout__field-wide">
-                            <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
-                        </div>
-                        <ThaiAddressFields @key="addressFieldsVersion" Model="address" Disabled="@isSubmitting" />
-                    </div>
+                    <SavedAddressBook @ref="savedAddressBook" Model="address" Disabled="@isSubmitting"
+                                      AddressApplied="AddressAppliedAsync">
+                        <NewAddressFields>
+                            <div class="preorder-checkout__fields">
+                                <StoreTextField @bind-Value="address.RecipientName" Label="ชื่อผู้รับ" Required="true" Autocomplete="name" Disabled="@isSubmitting" />
+                                <StoreTextField @bind-Value="address.PhoneNumber" Label="หมายเลขโทรศัพท์" Required="true" Type="tel" Autocomplete="tel" Disabled="@isSubmitting" />
+                                <div class="preorder-checkout__field-wide">
+                                    <StoreTextField @bind-Value="address.AddressLine" Label="บ้านเลขที่ อาคาร หมู่ ซอย ถนน" Required="true" Autocomplete="street-address" Disabled="@isSubmitting" />
+                                </div>
+                                <ThaiAddressFields @key="addressFieldsVersion" Model="address" Disabled="@isSubmitting" />
+                            </div>
+                        </NewAddressFields>
+                    </SavedAddressBook>
                 </EditForm>
             </section>
             <aside class="preorder-checkout__panel preorder-checkout__order-summary" aria-label="สรุปรายการ">
@@ -173,6 +177,7 @@
     private readonly CancellationTokenSource disposalTokenSource = new();
     private readonly ShippingAddressFormModel address = new();
     private readonly EditContext editContext;
+    private SavedAddressBook? savedAddressBook;
     private PreOrderCheckoutEligibilityResult? eligibility;
     private BeginPreOrderCheckoutResult? checkout;
     private ToyStore.Application.Checkout.PreOrderCheckoutStatusResult? completedStatus;
@@ -263,6 +268,12 @@
         isSubmitting = true; errorMessages = [];
         try
         {
+            if (savedAddressBook is not null
+                && !await savedAddressBook.SaveRequestedAddressAsync())
+            {
+                isConfirmationOpen = false;
+                return;
+            }
             var result = await Sender.Send(new BeginPreOrderCheckoutCommand(ProductId, Quantity, clientRequestId,
                 address.RecipientName ?? "", address.PhoneNumber ?? "", address.AddressLine ?? "",
                 address.SubDistrict ?? "", address.District ?? "", address.Province ?? "",
