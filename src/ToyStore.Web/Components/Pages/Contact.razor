@@ -1,0 +1,65 @@
+@page "/contact"
+@inject NavigationManager NavigationManager
+
+<StorefrontSeoMetadata Title="ติดต่อ SY TOYS | ร้านอาร์ตทอยและกันดั้มเชียงใหม่"
+                       Description="ติดต่อ SY TOYS ทางโทรศัพท์ อีเมล Facebook หรือเยี่ยมชมที่อำเภอสารภี จังหวัดเชียงใหม่"
+                       CanonicalUrl="@CanonicalUrl"
+                       ImageUrl="@LogoUrl"
+                       ImageAlt="โลโก้ SY TOYS"
+                       StructuredDataJson="@StructuredData" />
+
+<div class="contact-page store-container">
+    <header class="contact-page__hero">
+        <p>CONTACT SY TOYS</p>
+        <h1>ยินดีช่วยคุณทุกเรื่องของสะสม</h1>
+        <span>สอบถามสินค้า พรีออเดอร์ การชำระเงิน หรือการจัดส่งผ่านช่องทางที่สะดวกได้เลย</span>
+    </header>
+
+    <div class="contact-page__layout">
+        <section class="contact-page__primary" aria-labelledby="contact-direct-title">
+            <div>
+                <p>คุยกับเราโดยตรง</p>
+                <h2 id="contact-direct-title">ติดต่อทีม SY TOYS</h2>
+            </div>
+            <a href="tel:+66982540399">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3h3l1.5 5-2 1.5a15 15 0 0 0 5.5 5.5l1.5-2 5 1.5v3c0 2-1.5 3.5-3.5 3.5C9.5 21 3 14.5 3 6.5 3 4.5 4.5 3 6.5 3Z" /></svg>
+                <span><small>โทรศัพท์</small><strong>098-254-0399</strong></span>
+            </a>
+            <a href="mailto:sytoys.official@gmail.com">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
+                <span><small>อีเมล</small><strong>sytoys.official@gmail.com</strong></span>
+            </a>
+            <a class="contact-page__facebook" href="https://www.facebook.com/sytoysofficial/" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v3H6v4h3v5h4v-5h3l1-4h-4V9c0-.7.3-1 1-1Z" /></svg>
+                <span><small>Facebook</small><strong>SY TOYS Official</strong></span>
+                <b aria-hidden="true">↗</b>
+            </a>
+        </section>
+
+        <section class="contact-page__address" aria-labelledby="contact-address-title">
+            <div class="contact-page__map-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+            </div>
+            <p>ที่อยู่ SY TOYS</p>
+            <h2 id="contact-address-title">สารภี เชียงใหม่</h2>
+            <address>47/27 หมู่ 1<br />อำเภอสารภี จังหวัดเชียงใหม่ 50140<br />ประเทศไทย</address>
+            <a href="https://www.google.com/maps/search/?api=1&amp;query=47%2F27%20Moo%201%20Saraphi%20Chiang%20Mai%2050140"
+               target="_blank" rel="noopener noreferrer">เปิดใน Google Maps <span aria-hidden="true">↗</span></a>
+        </section>
+    </div>
+
+    <section class="contact-page__assurance" aria-label="ข้อมูลบริการของ SY TOYS">
+        <div><strong>ชำระเงินปลอดภัย</strong><span>PromptPay และบัตรผ่าน Stripe</span></div>
+        <div><strong>จัดส่งพร้อมติดตาม</strong><span>ติดตามการจัดส่งได้หลังซื้อ</span></div>
+        <div><strong>ดูแลหลังการขาย</strong><span>ติดต่อเราได้จากข้อมูลด้านบน</span></div>
+    </section>
+</div>
+
+@code {
+    private string CanonicalUrl => NavigationManager.ToAbsoluteUri("/contact").ToString();
+    private string LogoUrl => NavigationManager.ToAbsoluteUri("/images/brand/sy-toys-mark-v2.png").ToString();
+    private string StructuredData => StorefrontStructuredData.BuildContact(
+        new Uri(CanonicalUrl),
+        new Uri(LogoUrl),
+        "https://www.facebook.com/sytoysofficial/");
+}

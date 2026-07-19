@@ -73,6 +73,69 @@
   opacity: .72;
 }
 
+.store-password {
+  position: relative;
+}
+
+.store-password .store-field__control {
+  padding-inline-end: 3.25rem;
+}
+
+.store-password .store-field__control::-ms-clear,
+.store-password .store-field__control::-ms-reveal {
+  display: none;
+}
+
+.store-password__toggle {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: .15rem;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.store-password__toggle:hover {
+  color: var(--color-ink);
+}
+
+.store-password__toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.store-password__toggle:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.store-password__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.store-password__icon--hide,
+.store-password__toggle[aria-pressed="true"] .store-password__icon--show {
+  display: none;
+}
+
+.store-password__toggle[aria-pressed="true"] .store-password__icon--hide {
+  display: block;
+}
+
 .store-field__help,
 .store-field__error,
 .store-validation-summary {
@@ -135,6 +198,14 @@
 
 .store-field__error:empty {
   display: none;
+}
+
+@media (max-width: 47.999rem) {
+  .store-password .store-field__control[type="password"] {
+    font-family: Arial, sans-serif;
+    font-size: .875rem;
+    letter-spacing: .04em;
+  }
 }
 
 .store-select {

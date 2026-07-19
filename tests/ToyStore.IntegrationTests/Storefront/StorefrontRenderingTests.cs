@@ -98,6 +98,7 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         AssertAnchor(html, "/products?type=pre-order", "พรีออเดอร์");
         AssertAnchor(html, "/products?type=in-stock", "สินค้าพร้อมส่ง");
         AssertAnchor(html, "/brands", "แบรนด์");
+        AssertAnchor(html, "/contact", "ติดต่อเรา");
         AssertAnchor(html, "/Account/Login", "เข้าสู่ระบบ");
         Assert.DoesNotContain("href=\"/cart\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("sidebar", html, StringComparison.OrdinalIgnoreCase);
@@ -151,6 +152,11 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         Assert.Contains("ชำระเงินปลอดภัย", html, StringComparison.Ordinal);
         Assert.Contains("จัดส่งพร้อมติดตาม", html, StringComparison.Ordinal);
         Assert.Contains("พร้อมดูแล", html, StringComparison.Ordinal);
+        Assert.Contains("ชำระง่าย ปลอดภัย และเลือกได้", html, StringComparison.Ordinal);
+        Assert.Contains("PromptPay", html, StringComparison.Ordinal);
+        Assert.Contains("บัตรเครดิตและเดบิต", html, StringComparison.Ordinal);
+        Assert.Contains("https://www.facebook.com/sytoysofficial/", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("เรื่องเล่าจากโลกของเล่น", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data:image", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("base64", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("fonts.googleapis.com", html, StringComparison.OrdinalIgnoreCase);
@@ -183,6 +189,7 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         Assert.Equal("application/xml", sitemapResponse.Content.Headers.ContentType?.MediaType);
         Assert.Contains("<loc>http://localhost/</loc>", sitemap, StringComparison.Ordinal);
         Assert.Contains("<loc>http://localhost/products</loc>", sitemap, StringComparison.Ordinal);
+        Assert.Contains("<loc>http://localhost/contact</loc>", sitemap, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -288,7 +295,35 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         AssertAnchor(html, "/products?type=pre-order", "เปิดพรีออเดอร์");
         AssertAnchor(html, "/products?type=in-stock", "พร้อมส่ง");
         AssertAnchor(html, "/brands", "แบรนด์ทั้งหมด");
+        AssertAnchor(html, "/contact", "ติดต่อ SY TOYS");
         AssertAnchor(html, "/Account/Login", "เข้าสู่ระบบหรือสมัครสมาชิก");
+    }
+
+    [Fact]
+    public async Task ContactRendersAccessibleContactDetailsSeoAndExternalChannels()
+    {
+        await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync(
+            "/contact",
+            TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<title>ติดต่อ SY TOYS | ร้านอาร์ตทอยและกันดั้มเชียงใหม่</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<link rel=\"canonical\" href=\"http://localhost/contact\"", html, StringComparison.Ordinal);
+        Assert.Contains("\"@type\":\"ContactPage\"", html, StringComparison.Ordinal);
+        Assert.Contains("47/27 หมู่ 1", html, StringComparison.Ordinal);
+        Assert.Contains("อำเภอสารภี จังหวัดเชียงใหม่ 50140", html, StringComparison.Ordinal);
+        AssertAnchor(html, "tel:+66982540399", "098-254-0399");
+        AssertAnchor(html, "mailto:sytoys.official@gmail.com", "sytoys.official@gmail.com");
+        AssertAnchor(html, "https://www.facebook.com/sytoysofficial/", "SY TOYS Official");
+        Assert.Contains("rel=\"noopener noreferrer\"", html, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,0 +1,30 @@
+.payment-methods {
+  display: grid;
+  overflow: hidden;
+  gap: var(--space-6);
+  padding: clamp(var(--space-6), 5vw, var(--space-10));
+  border-radius: var(--radius-lg);
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.payment-methods__copy { display: grid; max-width: 45rem; gap: var(--space-2); }
+.payment-methods__copy > p { color: var(--color-accent); font-size: .75rem; font-weight: var(--font-weight-extrabold); letter-spacing: .14em; }
+.payment-methods__copy h2 { max-width: 18ch; font-size: clamp(1.75rem, 4vw, 3rem); line-height: 1.15; }
+.payment-methods__copy > span { color: rgb(255 255 255 / 68%); font-size: .9375rem; line-height: 1.7; }
+.payment-methods__options { display: grid; gap: var(--space-3); }
+.payment-methods__option { display: grid; min-width: 0; min-height: 8.5rem; align-content: center; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-lg); background: rgb(255 255 255 / 9%); }
+.payment-methods__option > svg { width: 2.25rem; height: 2.25rem; fill: none; stroke: var(--color-accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.payment-methods__option > span:last-child { display: grid; gap: var(--space-1); }
+.payment-methods__option strong { font-size: 1rem; }
+.payment-methods__option small { color: rgb(255 255 255 / 65%); font-size: .875rem; line-height: 1.5; }
+.payment-methods__card-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.payment-methods__card-list b { display: inline-grid; min-height: 2rem; place-items: center; padding-inline: .65rem; border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); font-family: Arial, sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .02em; }
+.payment-methods__security { display: flex; align-items: flex-start; gap: var(--space-2); color: rgb(255 255 255 / 68%); font-size: .875rem; line-height: 1.6; }
+.payment-methods__security svg { flex: none; width: 1.15rem; height: 1.15rem; margin-top: .15rem; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+@media (min-width: 48rem) {
+  .payment-methods { grid-template-columns: minmax(14rem, .72fr) minmax(0, 1.28fr); align-items: center; }
+  .payment-methods__options { grid-template-columns: .8fr 1.2fr; }
+  .payment-methods__security { grid-column: 1 / -1; }
+}

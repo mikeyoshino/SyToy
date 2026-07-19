@@ -1,12 +1,44 @@
 <footer class="store-footer">
     <div class="store-container store-footer__content">
-        <p>© @DateTime.UtcNow.Year SY TOY สงวนลิขสิทธิ์</p>
-        <nav aria-label="ข้อมูลและความช่วยเหลือ">
+        <section class="store-footer__brand" aria-labelledby="footer-brand-title">
+            <h2 id="footer-brand-title">SY TOYS</h2>
+            <p>อาร์ตทอยและกันดั้มที่คัดสรรสำหรับนักสะสม พร้อมดูแลตั้งแต่เลือกซื้อจนถึงจัดส่ง</p>
+            <a class="store-footer__facebook" href="https://www.facebook.com/sytoysofficial/"
+               target="_blank" rel="noopener noreferrer" aria-label="ติดตาม SY TOYS บน Facebook (เปิดหน้าต่างใหม่)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v3H6v4h3v5h4v-5h3l1-4h-4V9c0-.7.3-1 1-1Z" /></svg>
+                <span>Facebook</span>
+            </a>
+        </section>
+
+        <nav class="store-footer__links" aria-label="ข้อมูลและความช่วยเหลือ">
+            <h2>ช่วยเหลือ</h2>
             <a href="/help">ศูนย์ช่วยเหลือ</a>
             <a href="/shipping">การจัดส่ง</a>
             <a href="/terms">ข้อกำหนดและเงื่อนไข</a>
             <a href="/privacy">นโยบายความเป็นส่วนตัว</a>
             <a href="/contact">ติดต่อเรา</a>
         </nav>
+
+        <section class="store-footer__contact" aria-labelledby="footer-contact-title">
+            <h2 id="footer-contact-title">ติดต่อ SY TOYS</h2>
+            <address>
+                <span>47/27 หมู่ 1 อำเภอสารภี<br />จังหวัดเชียงใหม่ 50140</span>
+                <a href="tel:+66982540399">098-254-0399</a>
+                <a href="mailto:sytoys.official@gmail.com">sytoys.official@gmail.com</a>
+            </address>
+        </section>
+
+        <section class="store-footer__payments" aria-labelledby="footer-payment-title">
+            <h2 id="footer-payment-title">ช่องทางชำระเงิน</h2>
+            <p>PromptPay · บัตรเครดิตและเดบิต</p>
+            <div aria-label="รองรับ PromptPay Visa Mastercard JCB และ American Express">
+                <span>PromptPay</span><span>VISA</span><span>Mastercard</span><span>JCB</span><span>AMEX</span>
+            </div>
+            <small>ประมวลผลอย่างปลอดภัยผ่าน Stripe</small>
+        </section>
+    </div>
+    <div class="store-container store-footer__bottom">
+        <p>© @DateTime.UtcNow.Year SY TOYS สงวนลิขสิทธิ์</p>
+        <span>ชำระเงินปลอดภัย · จัดส่งพร้อมติดตาม</span>
     </div>
 </footer>

@@ -37,6 +37,7 @@ public sealed class SharedFormRenderingTests
         Assert.Contains("name=\"q\"", html, StringComparison.Ordinal);
         Assert.Contains("type=\"search\"", html, StringComparison.Ordinal);
         Assert.Contains("value=\"ORDER-001\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-password-toggle", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,6 +104,12 @@ public sealed class SharedFormRenderingTests
         Assert.Contains("autocomplete=\"current-password\"", html, StringComparison.Ordinal);
         Assert.Contains("placeholder=\"กรอกรหัสผ่าน\"", html, StringComparison.Ordinal);
         Assert.Contains("disabled", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"store-password\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-password-toggle", html, StringComparison.Ordinal);
+        Assert.Contains("data-password-input=\"account-password\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=\"account-password\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-pressed=\"false\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"แสดงรหัสผ่าน\"", html, StringComparison.Ordinal);
     }
 
     [Fact]

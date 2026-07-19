@@ -24,10 +24,34 @@ public sealed class SharedFormDesignContractTests
             "Components/Feedback/StoreSkeleton.razor",
             "wwwroot/css/forms.css",
             "wwwroot/css/feedback.css",
+            "wwwroot/js/password-toggle.js",
         })
         {
             Assert.True(File.Exists(Path.Combine(webRoot, relativePath)), $"Missing shared UI source: {relativePath}");
         }
+    }
+
+    [Fact]
+    public void PasswordFieldUsesMobileMaskSizingAndStaticSsrRevealToggle()
+    {
+        var webRoot = GetWebRoot();
+        var source = File.ReadAllText(
+            Path.Combine(webRoot, "Components", "Forms", "StoreTextField.razor"));
+        var css = File.ReadAllText(Path.Combine(webRoot, "wwwroot", "css", "forms.css"));
+        var script = File.ReadAllText(
+            Path.Combine(webRoot, "wwwroot", "js", "password-toggle.js"));
+        var app = File.ReadAllText(Path.Combine(webRoot, "Components", "App.razor"));
+
+        Assert.Contains("data-password-toggle", source, StringComparison.Ordinal);
+        Assert.Contains("aria-pressed=\"false\"", source, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"แสดงรหัสผ่าน\"", source, StringComparison.Ordinal);
+        Assert.Matches(
+            @"(?s)@media \(max-width: 47\.999rem\).*\.store-password \.store-field__control\[type=""password""\].*font-size:\s*\.875rem",
+            css);
+        Assert.Contains("input.type = reveal ? \"text\" : \"password\"", script, StringComparison.Ordinal);
+        Assert.Contains("toggle.setAttribute(\"aria-pressed\"", script, StringComparison.Ordinal);
+        Assert.Contains("ซ่อนรหัสผ่าน", script, StringComparison.Ordinal);
+        Assert.Contains("js/password-toggle.js", app, StringComparison.Ordinal);
     }
 
     [Fact]

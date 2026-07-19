@@ -264,6 +264,8 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("OnRetry=\"LoadFeaturedAsync\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ActionUrl=\"/categories\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("/journal", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<JournalFeature", source, StringComparison.Ordinal);
+        Assert.Contains("<PaymentMethodsSection", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ลาบูบู้ นักผจญภัย", source, StringComparison.Ordinal);
         Assert.Contains("ProductCardModel.From", source, StringComparison.Ordinal);
         Assert.Contains("StorefrontStructuredData.BuildHome", source, StringComparison.Ordinal);

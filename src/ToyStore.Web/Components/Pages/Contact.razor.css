@@ -1,0 +1,31 @@
+.contact-page { padding-block: clamp(var(--space-8), 8vw, var(--space-16)); }
+.contact-page__hero { display: grid; max-width: 52rem; gap: var(--space-3); margin-bottom: clamp(var(--space-8), 7vw, var(--space-14)); }
+.contact-page__hero > p, .contact-page__primary > div > p, .contact-page__address > p { color: var(--color-muted); font-size: .75rem; font-weight: var(--font-weight-extrabold); letter-spacing: .14em; }
+.contact-page__hero h1 { max-width: 15ch; font-size: clamp(2.25rem, 7vw, 4.75rem); line-height: 1.03; letter-spacing: -.045em; }
+.contact-page__hero > span { max-width: 42rem; color: var(--color-muted); font-size: clamp(1rem, 2vw, 1.125rem); line-height: 1.7; }
+.contact-page__layout { display: grid; gap: var(--space-4); }
+.contact-page__primary, .contact-page__address { display: grid; align-content: start; gap: var(--space-4); padding: clamp(var(--space-5), 5vw, var(--space-9)); border-radius: var(--radius-lg); background: var(--color-surface); }
+.contact-page__primary > div { display: grid; gap: var(--space-2); }
+.contact-page__primary h2, .contact-page__address h2 { font-size: clamp(1.5rem, 4vw, 2.25rem); }
+.contact-page__primary > a { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; min-height: 4.75rem; align-items: center; gap: var(--space-3); padding-block: var(--space-3); border-top: 1px solid var(--color-line); color: inherit; text-decoration: none; }
+.contact-page__primary > a > svg { width: 1.6rem; height: 1.6rem; justify-self: center; fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.contact-page__primary > a > span { display: grid; min-width: 0; gap: .1rem; }
+.contact-page__primary small { color: var(--color-muted); font-size: .75rem; }
+.contact-page__primary strong { overflow-wrap: anywhere; font-size: .9375rem; }
+.contact-page__primary > a:hover strong { text-decoration: underline; text-underline-offset: .2em; }
+.contact-page__facebook > svg { fill: currentcolor !important; stroke: none !important; }
+.contact-page__facebook > b { font-size: 1.1rem; }
+.contact-page__address { position: relative; overflow: hidden; min-height: 25rem; background: var(--color-accent); }
+.contact-page__address address { max-width: 28rem; font-style: normal; font-size: 1.05rem; line-height: 1.8; }
+.contact-page__address > a { display: inline-flex; width: fit-content; min-height: 2.75rem; align-items: center; gap: var(--space-2); margin-top: auto; border-bottom: 2px solid currentcolor; color: inherit; font-weight: var(--font-weight-bold); text-decoration: none; }
+.contact-page__map-mark { position: absolute; right: -2rem; bottom: -3rem; opacity: .12; }
+.contact-page__map-mark svg { width: clamp(12rem, 30vw, 22rem); height: auto; fill: none; stroke: currentcolor; stroke-width: 1.2; }
+.contact-page__assurance { display: grid; gap: 1px; margin-top: var(--space-4); overflow: hidden; border-radius: var(--radius-lg); background: var(--color-line); }
+.contact-page__assurance > div { display: grid; gap: var(--space-1); padding: var(--space-5); background: var(--color-surface); }
+.contact-page__assurance strong { font-size: .9375rem; }
+.contact-page__assurance span { color: var(--color-muted); font-size: .875rem; }
+
+@media (min-width: 48rem) {
+  .contact-page__layout { grid-template-columns: 1.1fr .9fr; }
+  .contact-page__assurance { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

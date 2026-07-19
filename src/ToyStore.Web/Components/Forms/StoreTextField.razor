@@ -5,7 +5,41 @@
                  HelpText="@HelpText"
                  Required="@Required">
     <ChildContent>
-        @if (UpdateOnInput)
+        @if (IsPassword)
+        {
+            <div class="store-password">
+                @if (UpdateOnInput)
+                {
+                    <input value="@Value"
+                           @attributes="ControlAttributes"
+                           @oninput="HandleInputAsync" />
+                }
+                else
+                {
+                    <InputText Value="@Value"
+                               ValueChanged="@ValueChanged"
+                               ValueExpression="@ValueExpression"
+                               @attributes="ControlAttributes" />
+                }
+                <button type="button"
+                        class="store-password__toggle touch-target"
+                        data-password-toggle
+                        data-password-input="@FieldId"
+                        aria-controls="@FieldId"
+                        aria-pressed="false"
+                        aria-label="แสดงรหัสผ่าน"
+                        disabled="@Disabled">
+                    <svg class="store-password__icon store-password__icon--show" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                        <circle cx="12" cy="12" r="2.75" />
+                    </svg>
+                    <svg class="store-password__icon store-password__icon--hide" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 4 20 20M9.7 6.35A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a15 15 0 0 1-2.2 2.8M6.3 7.7C3.8 9.45 2.5 12 2.5 12s3.5 6 9.5 6c1 0 1.95-.16 2.8-.45M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                    </svg>
+                </button>
+            </div>
+        }
+        else if (UpdateOnInput)
         {
             <input value="@Value"
                    @attributes="ControlAttributes"
@@ -73,6 +107,8 @@
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string FieldId => Id ?? IdFromAttributes ?? generatedId;
+
+    private bool IsPassword => string.Equals(Type, "password", StringComparison.OrdinalIgnoreCase);
 
     private string? IdFromAttributes => AdditionalAttributes is not null
         && AdditionalAttributes.TryGetValue("id", out var id)

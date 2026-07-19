@@ -72,6 +72,27 @@ public sealed class StorefrontSeoTests
     }
 
     [Fact]
+    public void ContactStructuredDataExposesStoreIdentityAndCustomerServiceDetails()
+    {
+        using var document = JsonDocument.Parse(StorefrontStructuredData.BuildContact(
+            new Uri("https://sytoys.shop/contact"),
+            new Uri("https://sytoys.shop/images/brand/sy-toys-mark-v2.png"),
+            "https://www.facebook.com/sytoysofficial/"));
+
+        var graph = document.RootElement.GetProperty("@graph").EnumerateArray().ToArray();
+        var organization = graph.Single(node => node.GetProperty("@type").GetString() == "Organization");
+        var contactPage = graph.Single(node => node.GetProperty("@type").GetString() == "ContactPage");
+
+        Assert.Equal("+66-98-254-0399", organization.GetProperty("telephone").GetString());
+        Assert.Equal("sytoys.official@gmail.com", organization.GetProperty("email").GetString());
+        Assert.Equal("50140", organization.GetProperty("address").GetProperty("postalCode").GetString());
+        Assert.Equal("Thai", organization.GetProperty("contactPoint").GetProperty("availableLanguage")[0].GetString());
+        Assert.Equal("https://sytoys.shop/contact", contactPage.GetProperty("url").GetString());
+        Assert.Equal(2, graph.Single(node => node.GetProperty("@type").GetString() == "BreadcrumbList")
+            .GetProperty("itemListElement").GetArrayLength());
+    }
+
+    [Fact]
     public void DiscoveryFilesExposeCanonicalSitemapAndKeepPrivateFlowsOutOfCrawlPaths()
     {
         var robots = SeoEndpointExtensions.BuildRobots("https://sytoys.shop");

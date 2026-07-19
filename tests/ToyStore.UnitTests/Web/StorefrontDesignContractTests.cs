@@ -321,6 +321,7 @@ public sealed class StorefrontDesignContractTests
             "ProductGallery",
             "CollectionCard",
             "JournalFeature",
+            "PaymentMethodsSection",
             "TrustBenefits",
         };
 
@@ -472,6 +473,24 @@ public sealed class StorefrontDesignContractTests
             @"(?s)small\s*\{[^}]*font-size:\s*(?:var\(--font-size-body-min\)|\.875rem|14px)",
             trustCss);
         Assert.DoesNotMatch(@"(?s)small\s*\{[^}]*font-size:\s*\.8125rem", trustCss);
+    }
+
+    [Fact]
+    public void DisplayedPaymentMethodsMatchBothStripeCheckoutSessionTypes()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var paymentUi = File.ReadAllText(Path.Combine(
+            GetWebRoot(), "Components", "Storefront", "PaymentMethodsSection.razor"));
+        var gateway = File.ReadAllText(Path.Combine(
+            repositoryRoot, "src", "ToyStore.Infrastructure", "Payments", "StripePaymentGateway.cs"));
+
+        Assert.Contains("PromptPay", paymentUi, StringComparison.Ordinal);
+        Assert.Contains("บัตรเครดิตและเดบิต", paymentUi, StringComparison.Ordinal);
+        Assert.Contains("Stripe", paymentUi, StringComparison.Ordinal);
+        Assert.Equal(2, Regex.Count(
+            gateway,
+            "PaymentMethodTypes\\s*=\\s*\\[\"card\",\\s*\"promptpay\"\\]",
+            RegexOptions.CultureInvariant));
     }
 
     [Fact]

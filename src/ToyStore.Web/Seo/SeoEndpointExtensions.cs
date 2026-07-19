@@ -40,6 +40,7 @@ public static class SeoEndpointExtensions
             $"{origin}/",
             $"{origin}/products",
             $"{origin}/brands",
+            $"{origin}/contact",
         };
         var page = 1;
         var totalPages = 1;

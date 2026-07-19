@@ -186,6 +186,64 @@ public static class StorefrontStructuredData
             productNode);
     }
 
+    public static string BuildContact(Uri canonicalUrl, Uri logoUrl, string facebookUrl)
+    {
+        ArgumentNullException.ThrowIfNull(canonicalUrl);
+        ArgumentNullException.ThrowIfNull(logoUrl);
+
+        var root = Root(canonicalUrl);
+        var organizationId = $"{root}#organization";
+        var breadcrumbId = $"{canonicalUrl}#breadcrumb";
+        return Serialize(
+            new JsonObject
+            {
+                ["@type"] = "Organization",
+                ["@id"] = organizationId,
+                ["name"] = "SY TOYS",
+                ["url"] = root,
+                ["logo"] = logoUrl.ToString(),
+                ["telephone"] = "+66-98-254-0399",
+                ["email"] = "sytoys.official@gmail.com",
+                ["sameAs"] = new JsonArray(facebookUrl),
+                ["address"] = new JsonObject
+                {
+                    ["@type"] = "PostalAddress",
+                    ["streetAddress"] = "47/27 หมู่ 1",
+                    ["addressLocality"] = "สารภี",
+                    ["addressRegion"] = "เชียงใหม่",
+                    ["postalCode"] = "50140",
+                    ["addressCountry"] = "TH",
+                },
+                ["contactPoint"] = new JsonObject
+                {
+                    ["@type"] = "ContactPoint",
+                    ["telephone"] = "+66-98-254-0399",
+                    ["email"] = "sytoys.official@gmail.com",
+                    ["contactType"] = "customer service",
+                    ["availableLanguage"] = new JsonArray("Thai"),
+                },
+            },
+            new JsonObject
+            {
+                ["@type"] = "ContactPage",
+                ["@id"] = $"{canonicalUrl}#webpage",
+                ["url"] = canonicalUrl.ToString(),
+                ["name"] = "ติดต่อ SY TOYS",
+                ["description"] = "ข้อมูลติดต่อ ที่อยู่ โทรศัพท์ อีเมล และ Facebook ของ SY TOYS",
+                ["inLanguage"] = "th-TH",
+                ["about"] = Reference(organizationId),
+                ["breadcrumb"] = Reference(breadcrumbId),
+            },
+            new JsonObject
+            {
+                ["@type"] = "BreadcrumbList",
+                ["@id"] = breadcrumbId,
+                ["itemListElement"] = new JsonArray(
+                    Breadcrumb(1, "หน้าหลัก", root),
+                    Breadcrumb(2, "ติดต่อเรา", canonicalUrl.ToString())),
+            });
+    }
+
     public static string Normalize(string value) =>
         string.Join(' ', (value ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 

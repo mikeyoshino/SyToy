@@ -41,15 +41,12 @@
         </div>
     </section>
 
-    <div class="home__section">
-        <JournalFeature Heading="เรื่องเล่าจากโลกของเล่น"
-                        Summary="ไอเดียเลือกและจัดแสดงของเล่นให้สนุกในทุกพื้นที่"
-                        AllStoriesUrl="/products"
-                        Stories="@JournalStories" />
-    </div>
-
     <div class="home__section home__section--trust">
         <TrustBenefits />
+    </div>
+
+    <div class="home__section home__section--payment">
+        <PaymentMethodsSection />
     </div>
 </div>
 
@@ -60,12 +57,6 @@
     private IReadOnlyList<ProductCardModel> featuredProducts = [];
     private IReadOnlyList<ProductCardModel> preOrderProducts = [];
     private IReadOnlyList<CollectionCardModel> collections = [];
-    private static readonly IReadOnlyList<JournalStoryModel> JournalStories =
-    [
-        new("เลือกอาร์ตทอยชิ้นแรกอย่างไรให้ตรงใจ", "12 กรกฎาคม 2026", "2026-07-12", "/products"),
-        new("จากเส้นร่างสู่คาแรกเตอร์บนชั้นสะสม", "28 มิถุนายน 2026", "2026-06-28", "/products"),
-        new("จัดมุมแสดงของเล่นให้สนุกและดูแลง่าย", "9 มิถุนายน 2026", "2026-06-09", "/products"),
-    ];
     private StorefrontContentState featuredState = StorefrontContentState.Loading;
     private StorefrontContentState preOrderState = StorefrontContentState.Loading;
     private string CanonicalUrl => NavigationManager.ToAbsoluteUri("/").ToString();
