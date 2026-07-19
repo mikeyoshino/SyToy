@@ -5,6 +5,7 @@
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
+  touch-action: pan-y pinch-zoom;
 }
 
 .store-product-gallery__viewport:focus-visible {
@@ -25,6 +26,8 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
   object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .store-product-gallery__slide figcaption {

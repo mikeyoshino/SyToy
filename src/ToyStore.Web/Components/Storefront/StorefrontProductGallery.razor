@@ -1,7 +1,11 @@
 @using ToyStore.Application.Storefront.Catalog
+@implements IAsyncDisposable
+@inject IJSRuntime JsRuntime
 
 <section class="store-product-gallery" aria-label="รูปภาพสินค้า">
-    <div class="store-product-gallery__viewport" tabindex="0" aria-label="รูปสินค้าที่เลือก">
+    <div @ref="viewportElement" class="store-product-gallery__viewport" tabindex="0"
+         aria-label="รูปสินค้าที่เลือก ปัดซ้ายหรือขวาเพื่อเปลี่ยนรูป"
+         @onkeydown="HandleKeyDown">
         @if (_orderedImages.Count != 0)
         {
             var activeImage = _orderedImages[_activeImageIndex];
@@ -29,12 +33,20 @@
             }
         </nav>
         <p class="store-product-gallery__hint">เลือกรูปด้านล่างเพื่อดูภาพเพิ่มเติม</p>
+        <span class="visually-hidden" aria-live="polite">
+            รูปที่ @(_activeImageIndex + 1) จาก @_orderedImages.Count
+        </span>
     }
 </section>
 @code {
     [Parameter] public IReadOnlyList<StorefrontProductImage> Images { get; set; } = [];
     private IReadOnlyList<StorefrontProductImage> _orderedImages = [];
     private int _activeImageIndex;
+    private ElementReference viewportElement;
+    private IJSObjectReference? swipeModule;
+    private DotNetObjectReference<StorefrontProductGallery>? dotNetReference;
+    private bool swipeInitialized;
+    private bool disposed;
 
     protected override void OnParametersSet()
     {
@@ -51,6 +63,72 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed || swipeInitialized || _orderedImages.Count <= 1) return;
+
+        try
+        {
+            swipeModule ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Storefront/StorefrontProductGallery.razor.js");
+            dotNetReference ??= DotNetObjectReference.Create(this);
+            await swipeModule.InvokeVoidAsync("initialize", viewportElement, dotNetReference);
+            swipeInitialized = true;
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit can disconnect while the gallery is hydrating.
+        }
+    }
+
     private void SelectImage(int imageIndex) => _activeImageIndex = imageIndex;
     private bool IsActiveThumbnail(int imageIndex) => imageIndex == _activeImageIndex;
+
+    private void PreviousImage() => _activeImageIndex = _orderedImages.Count == 0
+        ? 0
+        : (_activeImageIndex - 1 + _orderedImages.Count) % _orderedImages.Count;
+
+    private void NextImage() => _activeImageIndex = _orderedImages.Count == 0
+        ? 0
+        : (_activeImageIndex + 1) % _orderedImages.Count;
+
+    private void HandleKeyDown(KeyboardEventArgs eventArgs)
+    {
+        if (eventArgs.Key == "ArrowLeft") PreviousImage();
+        else if (eventArgs.Key == "ArrowRight") NextImage();
+    }
+
+    [JSInvokable]
+    public Task ShowPreviousImageFromSwipeAsync()
+    {
+        PreviousImage();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task ShowNextImageFromSwipeAsync()
+    {
+        NextImage();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        dotNetReference?.Dispose();
+        if (swipeModule is null) return;
+
+        try
+        {
+            if (swipeInitialized)
+                await swipeModule.InvokeVoidAsync("dispose", viewportElement);
+            await swipeModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+    }
 }

@@ -65,6 +65,7 @@ public sealed class StorefrontCatalogPageContractTests
         var detail = WebSource("Components/Pages/ProductDetail.razor");
         var gallery = WebSource("Components/Storefront/StorefrontProductGallery.razor");
         var galleryCss = WebSource("Components/Storefront/StorefrontProductGallery.razor.css");
+        var galleryScript = WebSource("Components/Storefront/StorefrontProductGallery.razor.js");
         Assert.Contains("StoreSelectField", filters, StringComparison.Ordinal);
         Assert.Contains("StoreNumberField", filters, StringComparison.Ordinal);
         Assert.DoesNotMatch("(?i)<select(?:\\s|>)", filters);
@@ -81,7 +82,15 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("aspect-ratio: 4 / 5", galleryCss, StringComparison.Ordinal);
         Assert.Contains("store-product-gallery__thumb-button::before", galleryCss, StringComparison.Ordinal);
         Assert.Contains("object-fit: contain", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("touch-action: pan-y pinch-zoom", galleryCss, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("ShowPreviousImageFromSwipeAsync", gallery, StringComparison.Ordinal);
+        Assert.Contains("ShowNextImageFromSwipeAsync", gallery, StringComparison.Ordinal);
+        Assert.Contains("@implements IAsyncDisposable", gallery, StringComparison.Ordinal);
+        Assert.Contains("pointerdown", galleryScript, StringComparison.Ordinal);
+        Assert.Contains("pointerup", galleryScript, StringComparison.Ordinal);
+        Assert.Contains("minimumSwipeDistance = 40", galleryScript, StringComparison.Ordinal);
+        Assert.Contains("Math.abs(distanceY) * 1.2", galleryScript, StringComparison.Ordinal);
         Assert.Contains("new(\"pre-order\", \"พรีออเดอร์\")", filters, StringComparison.Ordinal);
         Assert.DoesNotContain("พรีออเดอร์ (เร็ว ๆ นี้)", filters, StringComparison.Ordinal);
     }

@@ -378,7 +378,8 @@ public sealed class StorefrontDesignContractTests
             Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
             Assert.DoesNotContain("ISender", source, StringComparison.Ordinal);
             if (!path.EndsWith("ProductCard.razor", StringComparison.OrdinalIgnoreCase)
-                && !path.EndsWith("HeroShowcase.razor", StringComparison.OrdinalIgnoreCase))
+                && !path.EndsWith("HeroShowcase.razor", StringComparison.OrdinalIgnoreCase)
+                && !path.EndsWith("StorefrontProductGallery.razor", StringComparison.OrdinalIgnoreCase))
                 Assert.DoesNotContain("@inject", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("data:image", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("base64", source, StringComparison.OrdinalIgnoreCase);
