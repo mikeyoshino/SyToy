@@ -180,6 +180,13 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("product-card__media-link", source, StringComparison.Ordinal);
         Assert.Contains("ProductCardImageModel", model, StringComparison.Ordinal);
         Assert.Contains("product-card__gallery-button", styles, StringComparison.Ordinal);
+        Assert.Contains("product-card__badge--status", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Model.ModelScale", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("product-card__badge--scale", source, StringComparison.Ordinal);
+        Assert.Matches(@"(?s)\.product-card__media\s*\{[^}]*aspect-ratio:\s*4\s*/\s*5", styles);
+        Assert.Matches(@"(?s)\.product-card__badge--status\s*\{[^}]*font-size:\s*1\.2rem[^}]*font-weight:\s*300", styles);
+        Assert.Matches(@"(?s)\.product-card__body h3\s*\{[^}]*font-size:\s*1rem[^}]*font-weight:\s*300", styles);
+        Assert.Matches(@"(?s)\.product-card__body h3\s*\{[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap", styles);
         Assert.Contains("touch-action: pan-y", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", styles, StringComparison.Ordinal);
         Assert.Contains("ShowPreviousImageFromSwipeAsync", source, StringComparison.Ordinal);

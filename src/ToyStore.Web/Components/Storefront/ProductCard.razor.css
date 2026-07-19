@@ -18,7 +18,7 @@
 
 .product-card__media {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: #e7e7e2;
@@ -87,16 +87,19 @@
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-extrabold);
 }
 
-.product-card__badge--scale {
-  background: var(--color-ink);
-  color: var(--color-surface);
-}
+.product-card__badge--status { font-size: 1.2rem; font-weight: 300; }
 
 .product-card__body { display: grid; grid-template-rows: auto auto minmax(var(--space-6), 1fr); align-content: start; padding: var(--space-3) var(--space-1) var(--space-2); }
-.product-card__body h3 { font-size: var(--font-size-h3-mobile); line-height: 1.4; }
+.product-card__body h3 {
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .product-card__body p { color: var(--color-muted); font-size: .875rem; }
 .product-card__body strong { display: block; align-self: end; margin-top: var(--space-1); font-size: .9375rem; }
 
@@ -132,7 +135,7 @@
   .product-card__media { border-radius: 0; touch-action: pan-y; overscroll-behavior-inline: contain; }
   .product-card__media img { -webkit-user-drag: none; user-select: none; }
   .product-card__body { padding: .65rem .7rem .5rem; }
-  .product-card__body h3 { font-size: .9375rem; line-height: 1.35; }
+  .product-card__body h3 { line-height: 1.35; }
   .product-card__body p { margin-top: .15rem; font-size: .8125rem; }
   .product-card__body strong { font-size: .9375rem; }
   .product-card__badge { border-radius: .3rem; }
@@ -140,7 +143,6 @@
 
   .product-card--single .product-card__media { aspect-ratio: 4 / 5; }
   .product-card--single .product-card__body { padding: var(--space-4) var(--space-1); }
-  .product-card--single .product-card__body h3 { font-size: 1.25rem; }
   .product-card--single .product-card__body p { font-size: .9375rem; }
   .product-card--single .product-card__body strong { font-size: 1.15rem; }
   .product-card--single .product-card__action { width: 100%; margin-inline: 0; min-height: 3rem; font-size: .875rem; }

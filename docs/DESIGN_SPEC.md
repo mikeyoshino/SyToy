@@ -117,9 +117,10 @@ StoreShell
 └── StoreFooter
 ```
 
-- Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
+- Shared `ProductCard` ในหน้า list ใช้ thumbnail แนวตั้งอัตราส่วน 4:5, แสดงเฉพาะ sale-type badge โดยไม่แสดง model scale; status ใช้ class แยก ขนาด 1.2rem น้ำหนัก 300 และชื่อสินค้าใช้ 1rem น้ำหนัก 300 แสดงบรรทัดเดียวพร้อม ellipsis เฉพาะ ProductCard ส่วน Product Detail ยังคงแสดงชื่อเต็มและ model scale ใน facts เมื่อมีค่า
 - Shared `ProductCard` บนหน้า Home/Catalog/Search แสดงรูปสินค้าทั้งหมดจาก list query และมีลูกศรซ้าย–ขวาแบบ icon-only ไม่มีพื้นหลัง/เส้นขอบเมื่อมีมากกว่า 1 รูป โดยยังคงพื้นที่กดอย่างน้อย 44px ใช้ได้ทั้ง touch, mouse และ keyboard; บน mobile ปัดซ้าย–ขวาบนรูปเพื่อเปลี่ยนภาพได้โดยยังเลื่อนหน้าแนวตั้งได้ และ gesture จะไม่เปิด Product Detail โดยไม่ตั้งใจ
 - ส่วนสินค้าแนะนำบน Home แสดงสูงสุด 8 รายการ และ Catalog แบ่งหน้า 8 รายการ; shared product grid เรียงตามขนาดจอเป็น mobile 2 คอลัมน์, tablet 3 คอลัมน์ และ desktop ขนาดใหญ่ 4 คอลัมน์ รวมถึง Catalog ที่ใช้ large-card mode เพื่อให้แนวการ์ดพอดีกับพื้นที่หน้าจอ
+- Storefront container รองรับความกว้างสูงสุด 112rem เพื่อใช้พื้นที่บนจอ desktop/2K โดยยังคง responsive gutters และเต็มความกว้างอย่างปลอดภัยบนจอขนาดเล็ก
 - Home hero แสดงเฉพาะ Product ประเภท Pre-order จาก query แยก สูงสุด 5 รายการ ครั้งละ 1 ภาพ/สินค้า ใช้ editorial split layout ที่แตกต่างจาก ProductCard, auto-slide ทุก 3 วินาทีเมื่ออยู่ใน viewport และผู้ใช้ไม่ได้ hover/focus พร้อมปุ่มก่อนหน้า/ถัดไป จุดเลือกสไลด์ ปุ่มหยุด และ native touch swipe; ปิด autoplay เมื่อ `prefers-reduced-motion: reduce`
 - ภาพ Spotlight บนมือถือยังใช้ `object-fit: cover` แต่ยก focal point ขึ้นที่แนวตั้งประมาณ 20% เพื่อให้ภาพ figure แนวตั้งเห็นศีรษะและช่วงลำตัวแทนการ crop จากกึ่งกลาง; tablet/desktop คง composition เดิม
 - Product Detail ใช้ shared expandable text กับคำอธิบายยาว: collapsed 3 บรรทัดแล้ว fade จากโปร่งใสไป 50% ก่อนปุ่ม `อ่านเพิ่มเติม`; expanded แสดงข้อความทั้งหมดโดยไม่มี fade และย่อกลับได้ด้วย keyboard-accessible button

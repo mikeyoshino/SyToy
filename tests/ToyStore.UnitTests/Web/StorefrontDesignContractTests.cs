@@ -60,7 +60,7 @@ public sealed class StorefrontDesignContractTests
         AssertCssCustomProperty(css, "shadow-md", "0 8px 24px rgb\\(17 17 17 / 12%\\)");
         AssertCssCustomProperty(css, "shadow-lg", "0 18px 45px rgb\\(17 17 17 / 16%\\)");
 
-        AssertCssCustomProperty(css, "content-max", "76.25rem");
+        AssertCssCustomProperty(css, "content-max", "112rem");
         AssertCssCustomProperty(css, "gutter-mobile", "1rem");
         AssertCssCustomProperty(css, "gutter-tablet", "1.5rem");
         AssertCssCustomProperty(css, "gutter-desktop", "2rem");
@@ -488,11 +488,9 @@ public sealed class StorefrontDesignContractTests
             @"(?s)\.hero-showcase__copy h2,[^{]*\{[^}]*font-size:\s*2rem[^}]*line-height:\s*1\.08",
             heroCss);
         Assert.Matches(
-            @"(?s)\.product-card__body h3\s*\{[^}]*font-size:\s*var\(--font-size-h3-mobile\)",
+            @"(?s)\.product-card__body h3\s*\{[^}]*font-size:\s*1rem[^}]*font-weight:\s*300",
             productCss);
-        Assert.DoesNotMatch(
-            @"(?s)@media\s*\(max-width:[^)]*\)\s*\{[^}]*\.product-card__body h3\s*\{[^}]*font-size:\s*(?:\.875rem|1rem|1[4-6]px)",
-            productCss);
+        Assert.DoesNotContain("product-card__badge--scale", productCss, StringComparison.Ordinal);
         Assert.Matches(
             @"(?s)h3\s*\{[^}]*font-size:\s*var\(--font-size-h3-mobile\)",
             journalCss);

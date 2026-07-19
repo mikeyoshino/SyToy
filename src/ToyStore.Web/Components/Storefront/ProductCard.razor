@@ -31,11 +31,7 @@ else
                 }
             </a>
             <div class="product-card__badges">
-                <span class="product-card__badge">@Model.TypeLabel</span>
-                @if (!string.IsNullOrWhiteSpace(Model.ModelScale))
-                {
-                    <span class="product-card__badge product-card__badge--scale">สเกล @Model.ModelScale</span>
-                }
+                <span class="product-card__badge product-card__badge--status">@Model.TypeLabel</span>
             </div>
             @if (ImageCount > 1)
             {
