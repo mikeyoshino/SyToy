@@ -271,9 +271,14 @@ public sealed class StorefrontDesignContractTests
     public void MobileStorefrontShellUsesFiveDestinationSafeAreaNavigation()
     {
         var layoutRoot = Path.Combine(GetWebRoot(), "Components", "Layout");
+        var accountRoot = Path.Combine(GetWebRoot(), "Components", "Account", "Shared");
+        var pagesRoot = Path.Combine(GetWebRoot(), "Components", "Pages");
         var layout = File.ReadAllText(Path.Combine(layoutRoot, "MainLayout.razor"));
         var navigation = File.ReadAllText(Path.Combine(layoutRoot, "StoreMobileNavigation.razor"));
         var styles = File.ReadAllText(Path.Combine(layoutRoot, "StoreMobileNavigation.razor.css"));
+        var accountNavigation = File.ReadAllText(Path.Combine(accountRoot, "CustomerAccountNav.razor"));
+        var accountStyles = File.ReadAllText(Path.Combine(accountRoot, "CustomerAccountNav.razor.css"));
+        var searchHub = File.ReadAllText(Path.Combine(pagesRoot, "Catalog.razor"));
 
         Assert.Contains("<StoreMobileNavigation />", layout, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: repeat(5", styles, StringComparison.Ordinal);
@@ -290,6 +295,15 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("PolicyNames.CanViewCustomerOrders", navigation, StringComparison.Ordinal);
         Assert.Contains("HideNavigation", navigation, StringComparison.Ordinal);
         Assert.Contains("/checkout", navigation, StringComparison.Ordinal);
+        Assert.Contains("action=\"/Account/Logout\"", accountNavigation, StringComparison.Ordinal);
+        Assert.Contains("method=\"post\"", accountNavigation, StringComparison.Ordinal);
+        Assert.Contains("<AntiforgeryToken />", accountNavigation, StringComparison.Ordinal);
+        Assert.Contains("name=\"ReturnUrl\" value=\"/\"", accountNavigation, StringComparison.Ordinal);
+        Assert.Matches(
+            @"(?s)@media \(max-width: 47\.999rem\).*\.customer-account-nav__logout\s*\{[^}]*display:\s*block[^}]*grid-column:\s*1 / -1",
+            accountStyles);
+        Assert.Contains("action=\"/Account/Logout\"", searchHub, StringComparison.Ordinal);
+        Assert.Contains("<AntiforgeryToken />", searchHub, StringComparison.Ordinal);
     }
 
     [Fact]

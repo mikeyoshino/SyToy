@@ -50,6 +50,14 @@
                                     <Authorized><a href="/account/orders"><span>คำสั่งซื้อของฉัน</span><span aria-hidden="true">›</span></a></Authorized>
                                     <NotAuthorized><a href="/Account/Manage/ChangePassword"><span>ตั้งค่าบัญชี</span><span aria-hidden="true">›</span></a></NotAuthorized>
                                 </AuthorizeView>
+                                <form class="catalog-page__logout" action="/Account/Logout" method="post">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="ReturnUrl" value="/" />
+                                    <button type="submit">
+                                        <span>ออกจากระบบ</span>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" /></svg>
+                                    </button>
+                                </form>
                             </Authorized>
                             <NotAuthorized>
                                 <a href="/Account/Login" data-enhance-nav="false"><span>เข้าสู่ระบบหรือสมัครสมาชิก</span><span aria-hidden="true">›</span></a>

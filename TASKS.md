@@ -13,6 +13,7 @@
 
 ## Current focus
 
+- 2026-07-20: เพิ่ม mobile customer logout ที่หน้า Account และ Search navigation hub ด้วย POST `/Account/Logout`, Antiforgery Token, safe `/` return URL, visible focus และ touch target อย่างน้อย 44px โดยไม่เปลี่ยน desktop logout
 - 2026-07-20: เพิ่ม horizontal gap ของ shared ProductGallery บน mobile จาก 5.6px เป็น 12px ตาม card-gap spec โดยคง tablet 20px, desktop 24px และ single-column spacing เดิม ครอบคลุม Home/Catalog/Search/Brand list
 - 2026-07-20: ลบ blog section จาก Home และแทนด้วย payment assurance ที่ตรงกับ Stripe card/PromptPay จริง; redesign footer พร้อม Facebook/contact/payment methods, เพิ่มหน้า Contact ภาษาไทย ข้อมูล SY TOYS, desktop/search-menu navigation และ SEO/sitemap
 - 2026-07-20: ปรับ shared password field ให้ mobile mask ใช้ glyph เล็กลงและเพิ่ม eye toggle แสดง/ซ่อนรหัสผ่านที่ทำงานบน static SSR ผ่าน global event delegation พร้อม ARIA state, keyboard focus และ touch target; ครอบคลุม Login/Register/Change Password อัตโนมัติ
