@@ -6,7 +6,8 @@
         {
             var activeImage = _orderedImages[_activeImageIndex];
             <figure class="store-product-gallery__slide">
-                <img src="@activeImage.Url" alt="@activeImage.AltText" />
+                <img src="@activeImage.Url" alt="@activeImage.AltText"
+                     loading="eager" fetchpriority="high" decoding="async" />
                 @if (activeImage.IsPrimary) { <figcaption>ภาพหลัก</figcaption> }
             </figure>
         }
@@ -23,7 +24,7 @@
                         aria-label="ดู @image.AltText"
                         aria-current="@(IsActiveThumbnail(currentIndex) ? "page" : null)"
                         @onclick="() => SelectImage(currentIndex)">
-                    <img src="@image.Url" alt="" />
+                    <img src="@image.Url" alt="" loading="lazy" decoding="async" />
                 </button>
             }
         </nav>

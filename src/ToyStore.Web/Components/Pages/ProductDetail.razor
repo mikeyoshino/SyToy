@@ -12,16 +12,23 @@
 @inject CartDrawerCoordinator CartDrawer
 @implements IAsyncDisposable
 
-<PageTitle>@Title</PageTitle>
 @if (product is not null)
 {
-    <HeadContent>
-        <meta name="description" content="@MetaDescription" />
-        <meta property="og:title" content="@product.DisplayName" />
-        <meta property="og:description" content="@MetaDescription" />
-        <meta property="og:image" content="@NavigationManager.ToAbsoluteUri(product.Images.First().Url)" />
-        <link rel="canonical" href="@NavigationManager.ToAbsoluteUri($"/products/{product.Slug}")" />
-    </HeadContent>
+    <StorefrontSeoMetadata Title="@Title"
+                           Description="@MetaDescription"
+                           CanonicalUrl="@CanonicalUrl"
+                           OpenGraphType="product"
+                           ImageUrl="@PrimaryImageUrl"
+                           ImageAlt="@PrimaryImage?.AltText"
+                           StructuredDataJson="@ProductStructuredData" />
+}
+else
+{
+    <PageTitle>@Title</PageTitle>
+    @if (!isLoading)
+    {
+        <HeadContent><meta name="robots" content="noindex,follow" /></HeadContent>
+    }
 }
 
 <div class="product-detail store-container">
@@ -223,10 +230,18 @@
 
     private bool IsPreOrder => product?.SaleType == StorefrontSaleType.PreOrder;
     private bool CanRequestPreOrder => product?.OfferState == StorefrontOfferState.PreOrderOpen;
-    private string Title => product is null ? "สินค้า | SY TOY" : $"{product.DisplayName} | SY TOY";
-    private string MetaDescription => product is null ? "สินค้า SY TOY" : IsPreOrder
-        ? $"{product.DisplayName} โดย {product.BrandName} ราคาเต็ม ฿{product.Price:N2} พรีออเดอร์"
-        : $"{product.DisplayName} โดย {product.BrandName} ราคา ฿{product.Price:N2} สินค้าพร้อมส่ง";
+    private string Title => product is null ? "สินค้า | SY TOY" : $"{product.DisplayName} โดย {product.BrandName} | SY TOY";
+    private string MetaDescription => product is null ? "สินค้า SY TOY" : BuildMetaDescription(product);
+    private string CanonicalUrl => NavigationManager.ToAbsoluteUri($"/products/{product!.Slug}").ToString();
+    private StorefrontProductImage? PrimaryImage => product?.Images
+        .OrderByDescending(image => image.IsPrimary)
+        .ThenBy(image => image.SortOrder)
+        .FirstOrDefault();
+    private string? PrimaryImageUrl => PrimaryImage is null
+        ? null
+        : NavigationManager.ToAbsoluteUri(PrimaryImage.Url).ToString();
+    private string ProductStructuredData => StorefrontStructuredData.BuildProduct(
+        product!, new Uri(CanonicalUrl), MetaDescription);
     private string PreOrderAvailabilityCss => CanRequestPreOrder ? "" : "product-detail__availability--out";
     private string PreOrderAvailabilityText => product?.OfferState switch
     {
@@ -240,6 +255,16 @@
         StorefrontOfferState.PreOrderClosed => "ปิดรับพรีออเดอร์แล้ว",
         _ => "ตรวจสอบสิทธิ์พรีออเดอร์",
     };
+
+    private static string BuildMetaDescription(StorefrontProductDetail value)
+    {
+        var saleCopy = value.SaleType == StorefrontSaleType.PreOrder
+            ? $"พรีออเดอร์ ราคาเต็ม ฿{value.Price.ToString("N2", ThaiCulture)} มัดจำ ฿{value.DepositAmount!.Value.ToString("N2", ThaiCulture)}"
+            : $"สินค้าพร้อมส่ง ราคา ฿{value.Price.ToString("N2", ThaiCulture)}";
+        var description = StorefrontStructuredData.Normalize(value.Description);
+        var summary = $"{value.DisplayName} โดย {value.BrandName} {saleCopy}. {description}";
+        return summary.Length <= 165 ? summary : $"{summary[..162].TrimEnd()}…";
+    }
 
     private async Task AddToCartAsync()
     {

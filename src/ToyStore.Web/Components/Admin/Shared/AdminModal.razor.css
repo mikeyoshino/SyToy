@@ -6,6 +6,14 @@
   box-shadow: var(--shadow-lg);
 }
 
+.admin-modal-host ::deep .admin-modal--tall {
+  height: min(78dvh, 42rem);
+}
+
+.admin-modal-host ::deep .admin-modal--tall .store-dialog__surface {
+  height: 100%;
+}
+
 @media (max-width: 56.249rem) {
   .admin-modal-host ::deep .admin-modal {
     width: 100vw;

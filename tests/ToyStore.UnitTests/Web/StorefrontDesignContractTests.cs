@@ -353,7 +353,8 @@ public sealed class StorefrontDesignContractTests
             Assert.DoesNotContain("EntityFrameworkCore", source, StringComparison.Ordinal);
             Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
             Assert.DoesNotContain("ISender", source, StringComparison.Ordinal);
-            if (!path.EndsWith("ProductCard.razor", StringComparison.OrdinalIgnoreCase))
+            if (!path.EndsWith("ProductCard.razor", StringComparison.OrdinalIgnoreCase)
+                && !path.EndsWith("HeroShowcase.razor", StringComparison.OrdinalIgnoreCase))
                 Assert.DoesNotContain("@inject", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("data:image", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("base64", source, StringComparison.OrdinalIgnoreCase);
@@ -455,8 +456,9 @@ public sealed class StorefrontDesignContractTests
         var journalCss = File.ReadAllText(Path.Combine(storefrontRoot, "JournalFeature.razor.css"));
 
         Assert.Contains("<h1 id=\"hero-showcase-title\" class=\"visually-hidden\">", hero, StringComparison.Ordinal);
+        Assert.Contains("สินค้าพรีออเดอร์อาร์ตทอยและกันดั้ม", hero, StringComparison.Ordinal);
         Assert.Matches(
-            @"(?s)\.hero-showcase__product-copy strong\s*\{[^}]*font-size:\s*\.875rem[^}]*line-height:\s*1\.35",
+            @"(?s)\.hero-showcase__copy h2,[^{]*\{[^}]*font-size:\s*2rem[^}]*line-height:\s*1\.08",
             heroCss);
         Assert.Matches(
             @"(?s)\.product-card__body h3\s*\{[^}]*font-size:\s*var\(--font-size-h3-mobile\)",
@@ -467,6 +469,38 @@ public sealed class StorefrontDesignContractTests
         Assert.Matches(
             @"(?s)h3\s*\{[^}]*font-size:\s*var\(--font-size-h3-mobile\)",
             journalCss);
+    }
+
+    [Fact]
+    public void PreOrderHeroIsOneSlideEditorialCarouselWithAccessibleMotionControls()
+    {
+        var storefrontRoot = Path.Combine(GetWebRoot(), "Components", "Storefront");
+        var hero = File.ReadAllText(Path.Combine(storefrontRoot, "HeroShowcase.razor"));
+        var styles = File.ReadAllText(Path.Combine(storefrontRoot, "HeroShowcase.razor.css"));
+        var script = File.ReadAllText(Path.Combine(storefrontRoot, "HeroShowcase.razor.js"));
+
+        Assert.Contains("product.SaleType == StorefrontSaleType.PreOrder", hero, StringComparison.Ordinal);
+        Assert.Contains(".Take(5)", hero, StringComparison.Ordinal);
+        Assert.Contains("data-carousel-track", hero, StringComparison.Ordinal);
+        Assert.Contains("data-carousel-previous", hero, StringComparison.Ordinal);
+        Assert.Contains("data-carousel-next", hero, StringComparison.Ordinal);
+        Assert.Contains("data-carousel-autoplay", hero, StringComparison.Ordinal);
+        Assert.Contains("ดูรายละเอียดพรีออเดอร์", hero, StringComparison.Ordinal);
+        Assert.Contains("เปิดพรีออเดอร์", hero, StringComparison.Ordinal);
+        Assert.Contains("scroll-snap-type: inline mandatory", styles, StringComparison.Ordinal);
+        Assert.Contains("scrollbar-width: none", styles, StringComparison.Ordinal);
+        Assert.Contains("::-webkit-scrollbar", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-areas: \"copy media\"", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
+        Assert.Contains("module.InvokeVoidAsync(\"initialize\", rootElement, 3000)", hero, StringComparison.Ordinal);
+        Assert.Contains("window.setTimeout", script, StringComparison.Ordinal);
+        Assert.Contains("scrollTo", script, StringComparison.Ordinal);
+        Assert.Contains("pointerdown", script, StringComparison.Ordinal);
+        Assert.Contains("focusin", script, StringComparison.Ordinal);
+        Assert.Contains("IntersectionObserver", script, StringComparison.Ordinal);
+        Assert.Contains("visibilitychange", script, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion: reduce", script, StringComparison.Ordinal);
+        Assert.Contains("slide.inert = inactive", script, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -76,6 +76,7 @@
   --gutter-mobile: 1rem;
   --gutter-tablet: 1.5rem;
   --gutter-desktop: 2rem;
+  --store-header-height: 4.625rem;
   --section-space-min: var(--space-11);
   --section-space-max: var(--space-18);
   --z-header: 100;
@@ -88,4 +89,10 @@
   --duration-normal: 260ms;
   --duration-slow: 600ms;
   --ease-standard: cubic-bezier(.2,.8,.2,1);
+}
+
+@media (min-width: 56.25rem) {
+  :root {
+    --store-header-height: 5rem;
+  }
 }

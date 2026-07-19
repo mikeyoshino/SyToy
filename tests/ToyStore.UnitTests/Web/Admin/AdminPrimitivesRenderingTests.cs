@@ -157,6 +157,20 @@ public sealed class AdminPrimitivesRenderingTests
         Assert.Contains("แบบฟอร์มสินค้า", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task TallAdminModalReservesVerticalSpaceForDropdowns()
+    {
+        var html = await RenderAsync<AdminModal>(new()
+        {
+            [nameof(AdminModal.Title)] = "เพิ่มข้อมูลจัดส่ง",
+            [nameof(AdminModal.IsOpen)] = true,
+            [nameof(AdminModal.IsTall)] = true,
+            [nameof(AdminModal.ChildContent)] = Markup("<p>บริษัทขนส่ง</p>"),
+        });
+
+        Assert.Contains("admin-modal--tall", html, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("/admin/orders?type=pre-order&search=robot", 1)]
     [InlineData("/admin/orders?type=pre-order&status=shipped", 0)]

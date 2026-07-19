@@ -108,6 +108,9 @@ public sealed class AdminPlaceholderPageContractTests
         Assert.Contains("PolicyNames.CanManageOrders", detail, StringComparison.Ordinal);
         Assert.Contains("ประวัติการชำระเงิน", detail, StringComparison.Ordinal);
         Assert.Contains("ที่อยู่จัดส่ง Snapshot", detail, StringComparison.Ordinal);
+        Assert.Contains("IsTall=\"true\"", detail, StringComparison.Ordinal);
+        Assert.Contains("<EditForm id=\"admin-shipment-form\"", detail, StringComparison.Ordinal);
+        Assert.Contains("Form=\"admin-shipment-form\"", detail, StringComparison.Ordinal);
     }
 
     [Fact]

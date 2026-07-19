@@ -38,7 +38,8 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.DoesNotMatch("(?i)<select(?:\\s|>)", filters);
         Assert.Contains("<article", detail, StringComparison.Ordinal);
         Assert.Contains("<dl", detail, StringComparison.Ordinal);
-        Assert.Contains("og:title", detail, StringComparison.Ordinal);
+        Assert.Contains("StorefrontSeoMetadata", detail, StringComparison.Ordinal);
+        Assert.Contains("StorefrontStructuredData.BuildProduct", detail, StringComparison.Ordinal);
         Assert.Contains("CancellationTokenSource? loadTokenSource", detail, StringComparison.Ordinal);
         Assert.Contains("NavigationManager.ToAbsoluteUri", detail, StringComparison.Ordinal);
         Assert.Contains("NavigationManager.NotFound()", detail, StringComparison.Ordinal);
@@ -94,6 +95,20 @@ public sealed class StorefrontCatalogPageContractTests
     }
 
     [Fact]
+    public void ProductDetailStickyPurchasePanelClearsTheStickyStoreHeader()
+    {
+        var tokens = WebSource("wwwroot/css/tokens.css");
+        var headerStyles = WebSource("Components/Layout/StoreHeader.razor.css");
+        var detailStyles = WebSource("Components/Pages/ProductDetail.razor.css");
+
+        Assert.Contains("--store-header-height: 4.625rem", tokens, StringComparison.Ordinal);
+        Assert.Contains("--store-header-height: 5rem", tokens, StringComparison.Ordinal);
+        Assert.Contains("min-height: var(--store-header-height)", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("top: calc(var(--store-header-height) + var(--space-4))", detailStyles, StringComparison.Ordinal);
+        Assert.Contains(".product-detail__content { position: static; }", detailStyles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProductCardOnlyCallsCartForTypedInStockProducts()
     {
         var source = WebSource("Components/Storefront/ProductCard.razor");
@@ -142,11 +157,18 @@ public sealed class StorefrontCatalogPageContractTests
         var source = WebSource("Components/Pages/Home.razor");
         Assert.Contains("ListStorefrontProductsQuery", source, StringComparison.Ordinal);
         Assert.Contains("StorefrontSaleTypeFilter.All", source, StringComparison.Ordinal);
+        Assert.Contains("StorefrontSaleTypeFilter.PreOrder", source, StringComparison.Ordinal);
+        Assert.Contains("PageSize: 5", source, StringComparison.Ordinal);
+        Assert.Contains("preOrderProducts", source, StringComparison.Ordinal);
+        Assert.Contains("preOrderState", source, StringComparison.Ordinal);
         Assert.Contains("OnRetry=\"LoadFeaturedAsync\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ActionUrl=\"/categories\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("/journal", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ลาบูบู้ นักผจญภัย", source, StringComparison.Ordinal);
         Assert.Contains("ProductCardModel.From", source, StringComparison.Ordinal);
+        Assert.Contains("StorefrontStructuredData.BuildHome", source, StringComparison.Ordinal);
+        Assert.Contains("CanonicalUrl", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("latestProducts", source, StringComparison.Ordinal);
     }
 
     [Fact]

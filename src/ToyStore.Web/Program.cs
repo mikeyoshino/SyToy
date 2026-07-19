@@ -16,6 +16,7 @@ using ToyStore.Web.Diagnostics;
 using ToyStore.Web.Identity;
 using ToyStore.Web.Media;
 using ToyStore.Web.Payments;
+using ToyStore.Web.Seo;
 using ToyStore.Web.Startup;
 
 var bootstrapAdminRequested = AdminBootstrapCommand.IsRequested(args);
@@ -111,6 +112,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapToyStoreMedia();
 app.MapStripeWebhook();
+app.MapStorefrontSeo();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

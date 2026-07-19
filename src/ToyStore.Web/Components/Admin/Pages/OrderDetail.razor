@@ -136,11 +136,11 @@ else
 
 <AdminModal IsOpen="isShipmentOpen" IsOpenChanged="SetShipmentOpenAsync"
             Title="@(isConfirmingShipment ? "ยืนยันการจัดส่ง" : "เพิ่มข้อมูลจัดส่ง")"
-            IsBusy="isShipmentBusy" InitialFocusSelector=".store-select__trigger">
+            IsBusy="isShipmentBusy" IsTall="true" InitialFocusSelector=".store-select__trigger">
     <ChildContent>
         @if (!isConfirmingShipment)
         {
-            <EditForm Model="shipmentModel" FormName="admin-shipment-form" OnValidSubmit="PrepareShipmentAsync">
+            <EditForm id="admin-shipment-form" Model="shipmentModel" FormName="admin-shipment-form" OnValidSubmit="PrepareShipmentAsync">
                 <div class="admin-order-detail__shipment-form">
                     <StoreSelectField TValue="AdminShippingCarrier" @bind-Value="shipmentModel.Carrier"
                                       Label="บริษัทขนส่ง" Options="CarrierOptions" />

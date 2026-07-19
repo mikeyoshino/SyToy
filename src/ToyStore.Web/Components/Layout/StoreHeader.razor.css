@@ -9,7 +9,7 @@
 .store-header__bar {
   position: relative;
   display: flex;
-  min-height: 4.625rem;
+  min-height: var(--store-header-height);
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
@@ -64,7 +64,7 @@
   right: var(--gutter-mobile);
   left: var(--gutter-mobile);
   display: grid;
-  max-block-size: calc(100dvh - 4.625rem - env(safe-area-inset-bottom));
+  max-block-size: calc(100dvh - var(--store-header-height) - env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--space-2);
@@ -116,10 +116,6 @@
 }
 
 @media (min-width: 56.25rem) {
-  .store-header__bar {
-    min-height: 5rem;
-  }
-
   .store-header__desktop-nav,
   .store-header__actions {
     display: flex;

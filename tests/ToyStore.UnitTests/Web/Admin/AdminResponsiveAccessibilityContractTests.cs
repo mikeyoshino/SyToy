@@ -27,6 +27,8 @@ public sealed class AdminResponsiveAccessibilityContractTests
         Assert.Contains("display: none", mobile, StringComparison.Ordinal);
         Assert.Contains("overflow-x: auto", context, StringComparison.Ordinal);
         Assert.Contains("overflow-x: auto", table, StringComparison.Ordinal);
+        Assert.Matches(@"(?s)\.admin-modal--tall\s*\{.*?height: min\(78dvh, 42rem\)", modal);
+        Assert.Matches(@"(?s)\.admin-modal--tall \.store-dialog__surface\s*\{.*?height: 100%", modal);
         Assert.Matches(
             @"(?s)@media \(max-width: 56\.249rem\).*?width: 100vw.*?max-width: none.*?height: 100dvh.*?max-height: none.*?border-radius: 0",
             modal);

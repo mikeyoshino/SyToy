@@ -106,7 +106,7 @@ StoreShell
 │   ├── PrimaryNavigation
 │   └── HeaderActions
 ├── HeroShowcase
-│   └── LatestProductMosaic (wide horizontal latest 5, Pre-order/In-stock badges)
+│   └── PreOrderEditorialCarousel (หนึ่งสินค้าต่อสไลด์ สูงสุด 5, auto 3 วินาที, swipe/controls/pause)
 ├── ProductSection
 │   └── ProductCard[]
 ├── CollectionSection
@@ -118,7 +118,9 @@ StoreShell
 ```
 
 - Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
+- Home hero แสดงเฉพาะ Product ประเภท Pre-order จาก query แยก สูงสุด 5 รายการ ครั้งละ 1 ภาพ/สินค้า ใช้ editorial split layout ที่แตกต่างจาก ProductCard, auto-slide ทุก 3 วินาทีเมื่ออยู่ใน viewport และผู้ใช้ไม่ได้ hover/focus พร้อมปุ่มก่อนหน้า/ถัดไป จุดเลือกสไลด์ ปุ่มหยุด และ native touch swipe; ปิด autoplay เมื่อ `prefers-reduced-motion: reduce`
 - Product Detail ใช้ shared expandable text กับคำอธิบายยาว: collapsed 3 บรรทัดแล้ว fade จากโปร่งใสไป 50% ก่อนปุ่ม `อ่านเพิ่มเติม`; expanded แสดงข้อความทั้งหมดโดยไม่มี fade และย่อกลับได้ด้วย keyboard-accessible button
+- Product Detail purchase column ใช้ sticky offset จาก shared `--store-header-height` และเว้นช่องว่างเพิ่ม เพื่อให้ชื่อ ราคา สถานะ และปุ่มซื้อหยุดอยู่ใต้ sticky Store Header เสมอ; จอ mobile ยังคง flow ปกติ
 
 Production routes อย่างน้อย:
 

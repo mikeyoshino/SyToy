@@ -121,10 +121,16 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("<title>SY TOY | อาร์ตทอยดีไซน์เด่นสำหรับทุกคอลเลกชัน</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<title>SY TOY | อาร์ตทอยและกันดั้ม พร้อมส่งและพรีออเดอร์</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<meta name=\"description\"", html, StringComparison.Ordinal);
+        Assert.Contains("<link rel=\"canonical\" href=\"http://localhost/\"", html, StringComparison.Ordinal);
+        Assert.Contains("<meta property=\"og:url\" content=\"http://localhost/\"", html, StringComparison.Ordinal);
+        Assert.Contains("<script type=\"application/ld+json\">", html, StringComparison.Ordinal);
+        Assert.Contains("\"@type\":\"WebSite\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("// ความคิดสร้างสรรค์ไร้ขีดจำกัด", html, StringComparison.Ordinal);
         Assert.DoesNotContain("ของเล่นดีไซน์จัด", html, StringComparison.Ordinal);
         Assert.DoesNotContain("อาร์ตทอยที่เติมคาแรกเตอร์ให้ทุกพื้นที่", html, StringComparison.Ordinal);
+        Assert.Contains("สินค้าพรีออเดอร์อาร์ตทอยและกันดั้มจาก SY TOYS", html, StringComparison.Ordinal);
         Assert.Contains("สินค้าแนะนำ", html, StringComparison.Ordinal);
         Assert.Contains("คอลเลกชันที่น่าสำรวจ", html, StringComparison.Ordinal);
         Assert.Matches(
@@ -147,8 +153,36 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         Assert.Contains("พร้อมดูแล", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data:image", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("base64", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("http://", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("https://", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("fonts.googleapis.com", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cdn.", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RobotsAndDynamicSitemapArePublicAndUseTheRequestOrigin()
+    {
+        await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var robotsResponse = await client.GetAsync(
+            "/robots.txt",
+            TestContext.Current.CancellationToken);
+        var robots = await robotsResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var sitemapResponse = await client.GetAsync(
+            "/sitemap.xml",
+            TestContext.Current.CancellationToken);
+        var sitemap = await sitemapResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, robotsResponse.StatusCode);
+        Assert.StartsWith("text/plain", robotsResponse.Content.Headers.ContentType?.MediaType, StringComparison.Ordinal);
+        Assert.Contains("Sitemap: http://localhost/sitemap.xml", robots, StringComparison.Ordinal);
+        Assert.Contains("Disallow: /admin/", robots, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, sitemapResponse.StatusCode);
+        Assert.Equal("application/xml", sitemapResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("<loc>http://localhost/</loc>", sitemap, StringComparison.Ordinal);
+        Assert.Contains("<loc>http://localhost/products</loc>", sitemap, StringComparison.Ordinal);
     }
 
     [Theory]

@@ -1,61 +1,209 @@
 @using ToyStore.Application.Storefront.Catalog
+@using System.Globalization
+@implements IAsyncDisposable
+@inject IJSRuntime JsRuntime
 
-@if (Products.Count != 0)
-{
-    <section class="hero-showcase" aria-labelledby="hero-showcase-title">
-        <h1 id="hero-showcase-title" class="visually-hidden">สินค้ามาใหม่ล่าสุด</h1>
-        <div class="hero-showcase__products hero-showcase__products--count-@Products.Count"
-             aria-label="สินค้าที่เพิ่มล่าสุด">
-            @for (var index = 0; index < Products.Count; index++)
+<section @ref="rootElement"
+         class="hero-showcase"
+         aria-labelledby="hero-showcase-title"
+         aria-roledescription="สไลด์โชว์"
+         data-slide-count="@VisibleProducts.Count">
+    <h1 id="hero-showcase-title" class="visually-hidden">สินค้าพรีออเดอร์อาร์ตทอยและกันดั้มจาก SY TOYS</h1>
+
+    @if (State == StorefrontContentState.Loading)
+    {
+        <div class="hero-showcase__loading" aria-hidden="true">
+            <span class="hero-showcase__loading-copy"></span>
+            <span class="hero-showcase__loading-image"></span>
+        </div>
+        <p class="visually-hidden" role="status">กำลังโหลดสินค้าพรีออเดอร์</p>
+    }
+    else if (State == StorefrontContentState.Error)
+    {
+        <div class="hero-showcase__state" role="alert">
+            <p class="hero-showcase__eyebrow">PRE-ORDER / CURATED DROP</p>
+            <h2>โหลดพรีออเดอร์ไม่สำเร็จ</h2>
+            <p>กรุณาลองใหม่อีกครั้งเพื่อดูรอบจองล่าสุด</p>
+            @if (OnRetry.HasDelegate)
             {
-                var product = Products[index];
-                <a @key="product.ProductId"
-                   class="hero-showcase__product @(index == 0 ? "hero-showcase__product--latest" : null)"
-                   href="@product.ProductUrl"
-                   aria-label="ดู @product.Name @ProductTypeLabel(product)">
-                    @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
-                    {
-                        <img src="@product.ImageUrl"
-                             alt="@($"{product.Name} โดย {product.Brand}")"
-                             loading="@(index == 0 ? "eager" : "lazy")" />
-                    }
-                    else
-                    {
-                        <span class="hero-showcase__product-placeholder" aria-hidden="true"></span>
-                    }
-                    <span class="hero-showcase__product-type @(product.SaleType == StorefrontSaleType.PreOrder ? "hero-showcase__product-type--preorder" : "hero-showcase__product-type--stock")">
-                        @ProductTypeLabel(product)
-                    </span>
-                    <span class="hero-showcase__product-copy">
-                        <strong>@product.Name</strong>
-                        <small>@product.PriceLabel</small>
-                    </span>
-                </a>
+                <StoreButton OnClick="RetryAsync">ลองอีกครั้ง</StoreButton>
             }
         </div>
-    </section>
-}
-else if (State == StorefrontContentState.Loading)
-{
-    <section class="hero-showcase" aria-labelledby="hero-showcase-loading-title">
-        <h1 id="hero-showcase-loading-title" class="visually-hidden">สินค้ามาใหม่ล่าสุด</h1>
-        <div class="hero-showcase__products hero-showcase__products--loading" aria-hidden="true">
-            @for (var index = 0; index < 5; index++)
+    }
+    else if (VisibleProducts.Count == 0)
+    {
+        <div class="hero-showcase__state" role="status">
+            <p class="hero-showcase__eyebrow">PRE-ORDER / CURATED DROP</p>
+            <h2>ยังไม่มีพรีออเดอร์รอบใหม่</h2>
+            <p>เลือกดูสินค้าพร้อมส่งระหว่างรอรอบจองถัดไปได้เลย</p>
+            <a class="hero-showcase__state-link" href="/products?type=in-stock">ดูสินค้าพร้อมส่ง</a>
+        </div>
+    }
+    else
+    {
+        <div class="hero-showcase__viewport">
+            <div class="hero-showcase__track" data-carousel-track>
+                @for (var index = 0; index < VisibleProducts.Count; index++)
+                {
+                    var product = VisibleProducts[index];
+                    var isFirst = index == 0;
+                    <article @key="product.ProductId"
+                             class="hero-showcase__slide"
+                             data-carousel-slide
+                             aria-roledescription="สไลด์"
+                             aria-label="@(index + 1) จาก @VisibleProducts.Count"
+                             aria-hidden="@(!isFirst)"
+                             inert="@(isFirst ? null : string.Empty)">
+                        <div class="hero-showcase__copy">
+                            <div class="hero-showcase__edition">
+                                <span>PRE-ORDER</span>
+                                <span>@SlideNumber(index + 1) / @SlideNumber(VisibleProducts.Count)</span>
+                            </div>
+                            <p class="hero-showcase__eyebrow"><span aria-hidden="true"></span> เปิดพรีออเดอร์</p>
+                            <h2>@product.Name</h2>
+                            <p class="hero-showcase__brand">@product.Brand</p>
+                            <p class="hero-showcase__price"><small>ยอดชำระรอบจอง</small><strong>@product.PriceLabel</strong></p>
+                            <a class="hero-showcase__cta" href="@product.ProductUrl"
+                               aria-label="ดูรายละเอียดพรีออเดอร์ @product.Name">
+                                ดูรายละเอียดพรีออเดอร์ <span aria-hidden="true">↗</span>
+                            </a>
+                        </div>
+                        <a class="hero-showcase__media" href="@product.ProductUrl" tabindex="-1" aria-hidden="true">
+                            @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                            {
+                                <img src="@product.ImageUrl"
+                                     alt="@($"{product.Name} {product.Brand}")"
+                                     loading="@(isFirst ? "eager" : "lazy")"
+                                     fetchpriority="@(isFirst ? "high" : "auto")"
+                                     decoding="async" />
+                            }
+                            else
+                            {
+                                <span class="hero-showcase__product-placeholder" aria-hidden="true"></span>
+                            }
+                            <span class="hero-showcase__image-mark" aria-hidden="true">PRE<br />ORDER</span>
+                        </a>
+                    </article>
+                }
+            </div>
+
+            @if (VisibleProducts.Count > 1)
             {
-                <span class="hero-showcase__product hero-showcase__product--skeleton @(index == 0 ? "hero-showcase__product--latest" : null)"></span>
+                <div class="hero-showcase__navigation" aria-label="ควบคุมสไลด์พรีออเดอร์">
+                    <button class="hero-showcase__control" type="button" data-carousel-previous aria-label="สินค้าก่อนหน้า">←</button>
+                    <div class="hero-showcase__dots" role="group" aria-label="เลือกสินค้าพรีออเดอร์">
+                        @for (var index = 0; index < VisibleProducts.Count; index++)
+                        {
+                            <button type="button"
+                                    data-carousel-target="@index"
+                                    aria-label="ไปสินค้าลำดับที่ @(index + 1)"
+                                    aria-current="@(index == 0 ? "true" : null)">
+                                <span></span>
+                            </button>
+                        }
+                    </div>
+                    <button class="hero-showcase__control" type="button" data-carousel-next aria-label="สินค้าถัดไป">→</button>
+                    <button class="hero-showcase__autoplay" type="button" data-carousel-autoplay
+                            aria-label="หยุดสไลด์อัตโนมัติ" aria-pressed="false">
+                        <span aria-hidden="true">Ⅱ</span>
+                    </button>
+                </div>
             }
         </div>
-        <p class="visually-hidden" role="status">กำลังโหลดสินค้ามาใหม่</p>
-    </section>
-}
+    }
+</section>
 
 @code {
+    private ElementReference rootElement;
+    private IJSObjectReference? module;
+    private string productSignature = string.Empty;
+    private bool shouldInitialize;
+    private bool initialized;
+    private bool disposed;
+
     [Parameter]
     public IReadOnlyList<ProductCardModel> Products { get; set; } = [];
 
     [Parameter]
     public StorefrontContentState State { get; set; } = StorefrontContentState.Loading;
 
-    private static string ProductTypeLabel(ProductCardModel product) =>
-        product.SaleType == StorefrontSaleType.PreOrder ? "พรีออเดอร์" : "พร้อมส่ง";
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    private IReadOnlyList<ProductCardModel> VisibleProducts => Products
+        .Where(product => product.SaleType == StorefrontSaleType.PreOrder)
+        .Take(5)
+        .ToArray();
+
+    protected override void OnParametersSet()
+    {
+        var nextSignature = string.Join('|', VisibleProducts.Select(product => product.ProductId));
+        if (!string.Equals(nextSignature, productSignature, StringComparison.Ordinal))
+        {
+            productSignature = nextSignature;
+            shouldInitialize = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (VisibleProducts.Count <= 1)
+            {
+                if (initialized && module is not null)
+                {
+                    await module.InvokeVoidAsync("dispose", rootElement);
+                    initialized = false;
+                }
+                return;
+            }
+
+            module ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Storefront/HeroShowcase.razor.js");
+            if (firstRender || shouldInitialize || !initialized)
+            {
+                await module.InvokeVoidAsync("initialize", rootElement, 3000);
+                shouldInitialize = false;
+                initialized = true;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // JavaScript interop is unavailable during static prerendering.
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private Task RetryAsync() => OnRetry.InvokeAsync();
+
+    private static string SlideNumber(int value) => value.ToString("00", CultureInfo.InvariantCulture);
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        if (module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await module.InvokeVoidAsync("dispose", rootElement);
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
 }

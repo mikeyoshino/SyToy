@@ -13,6 +13,10 @@
 
 ## Current focus
 
+- 2026-07-19: แก้ Product Detail sticky purchase column ให้ใช้ shared responsive Store Header height เป็น offset จึงไม่ซ่อนชื่อ ราคา สถานะ หรือปุ่มซื้อไว้หลัง navbar ระหว่างเลื่อนหน้า
+- 2026-07-19: redesign Home hero เป็น editorial Pre-order carousel โดย query เฉพาะพรีออเดอร์สูงสุด 5 รายการ แสดงครั้งละ 1 ภาพ, auto-slide 3 วินาที, swipe/prev-next/dots/pause, หยุดเมื่อ hover/focus/ออกนอก viewport และปิด autoplay ตาม reduced motion พร้อม loading/empty/error state
+- 2026-07-19: ปรับ technical SEO หน้า Home/Product Detail ให้ SSR ส่ง unique title/description/canonical/robots, Open Graph/Twitter, semantic H1, image priority, `WebSite`/`Organization`/`WebPage` และ `Product`/`Offer`/shipping/Breadcrumb JSON-LD ตามข้อมูลจริง พร้อม dynamic sitemap และ robots.txt
+- 2026-07-19: แก้ Admin shipment modal ให้จองความสูงสำหรับ custom carrier dropdown (และเป็น full-screen บน mobile) พร้อมผูก external submit button กับ HTML form id ให้กดตรวจสอบข้อมูลได้จริง
 - 2026-07-19: ทำ M8-07 Shipment/tracking ครบ: Admin confirmation flow สำหรับ Thailand Post/Flash/Kerry-J&T/Other HTTPS, atomic `Paid + ReadyToShip → Paid + Shipped`, durable Shipment/audit, Order version lock, operation retry idempotency, tracking search และ customer tracking link พร้อม migration ที่ review SQL แล้ว
 - 2026-07-19: ทำ M8-02 Combined Admin Order management ครบ list/filter URL state และ full-route detail: กรอง SaleType/payment/fulfillment/ช่วงวัน Bangkok, ค้นหา Order/ลูกค้า/สินค้า, pagination, immutable snapshots และ payment history ด้วย `CanManageOrders`; section balance/shipment/audit/notification พร้อมแสดง empty state จน slice ถัดไป persist ข้อมูล
 - 2026-07-18: เพิ่ม reusable `StoreExpandableText` ใน Product Detail: ย่อคำอธิบายเหลือ 3 บรรทัด, fade 0→50%, แสดงปุ่มเฉพาะเมื่อข้อความล้น, ขยายได้เต็มโดยไม่มี fade และย่อกลับได้

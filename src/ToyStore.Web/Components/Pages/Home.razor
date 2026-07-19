@@ -5,11 +5,17 @@
 @using ToyStore.Web.Components.Storefront.Models
 @inject ISender Sender
 @inject ILogger<Home> Logger
+@inject NavigationManager NavigationManager
 
-<PageTitle>SY TOY | อาร์ตทอยดีไซน์เด่นสำหรับทุกคอลเลกชัน</PageTitle>
+<StorefrontSeoMetadata Title="@HomeTitle"
+                       Description="@HomeDescription"
+                       CanonicalUrl="@CanonicalUrl"
+                       ImageUrl="@SocialImageUrl"
+                       ImageAlt="@SocialImageAlt"
+                       StructuredDataJson="@HomeStructuredData" />
 
 <div class="home store-container">
-    <HeroShowcase Products="@latestProducts" State="@featuredState" />
+    <HeroShowcase Products="@preOrderProducts" State="@preOrderState" OnRetry="LoadFeaturedAsync" />
 
     <section class="home__section" aria-labelledby="featured-products-title">
         <SectionHeader
@@ -48,8 +54,10 @@
 
 @code {
     private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private const string HomeTitle = "SY TOY | อาร์ตทอยและกันดั้ม พร้อมส่งและพรีออเดอร์";
+    private const string HomeDescription = "เลือกซื้ออาร์ตทอยและกันดั้มจาก SY TOY ทั้งสินค้าพร้อมส่งและพรีออเดอร์ พร้อมราคา สถานะสินค้า การชำระเงินปลอดภัย และจัดส่งพร้อมเลขติดตาม";
     private IReadOnlyList<ProductCardModel> featuredProducts = [];
-    private IReadOnlyList<ProductCardModel> latestProducts = [];
+    private IReadOnlyList<ProductCardModel> preOrderProducts = [];
     private IReadOnlyList<CollectionCardModel> collections = [];
     private static readonly IReadOnlyList<JournalStoryModel> JournalStories =
     [
@@ -58,32 +66,78 @@
         new("จัดมุมแสดงของเล่นให้สนุกและดูแลง่าย", "9 มิถุนายน 2026", "2026-06-09", "/products"),
     ];
     private StorefrontContentState featuredState = StorefrontContentState.Loading;
+    private StorefrontContentState preOrderState = StorefrontContentState.Loading;
+    private string CanonicalUrl => NavigationManager.ToAbsoluteUri("/").ToString();
+    private ProductCardModel? SocialProduct => preOrderProducts
+        .Concat(featuredProducts)
+        .FirstOrDefault(product => !string.IsNullOrWhiteSpace(product.ImageUrl));
+    private string? SocialImageUrl => SocialProduct?.ImageUrl is { } imageUrl
+        ? NavigationManager.ToAbsoluteUri(imageUrl).ToString()
+        : NavigationManager.ToAbsoluteUri("/images/brand/sy-toys-mark-v2.png").ToString();
+    private string SocialImageAlt => SocialProduct is null
+        ? "โลโก้ SY TOYS"
+        : $"{SocialProduct.Name} {SocialProduct.Brand}";
+    private string HomeStructuredData => StorefrontStructuredData.BuildHome(
+        new Uri(CanonicalUrl),
+        NavigationManager.ToAbsoluteUri("/images/brand/sy-toys-mark-v2.png"),
+        SocialImageUrl is null ? null : new Uri(SocialImageUrl),
+        HomeDescription);
 
     protected override Task OnInitializedAsync() => LoadFeaturedAsync();
 
     private async Task LoadFeaturedAsync()
     {
         featuredState = StorefrontContentState.Loading;
+        preOrderState = StorefrontContentState.Loading;
         try
         {
-            var result = await Sender.Send(new ListStorefrontProductsQuery(
+            var featuredTask = Sender.Send(new ListStorefrontProductsQuery(
                 SaleType: StorefrontSaleTypeFilter.All,
                 PageSize: 6));
-            if (result.IsFailure)
+            var preOrderTask = Sender.Send(new ListStorefrontProductsQuery(
+                SaleType: StorefrontSaleTypeFilter.PreOrder,
+                PageSize: 5));
+            await Task.WhenAll(featuredTask, preOrderTask);
+
+            var featuredResult = await featuredTask;
+            var preOrderResult = await preOrderTask;
+            if (featuredResult.IsFailure)
             {
                 featuredState = StorefrontContentState.Error;
-                return;
             }
-            featuredProducts = result.Value.Items.Select(item => ProductCardModel.From(item, ThaiCulture)).ToArray();
-            latestProducts = featuredProducts.Take(5).ToArray();
-            collections = result.Value.Categories.Select(option => new CollectionCardModel(
-                option.Label, $"เลือกดู{option.Label}พร้อมส่ง", $"/products?category={option.Id:D}")).ToArray();
-            featuredState = featuredProducts.Count == 0 ? StorefrontContentState.Empty : StorefrontContentState.Normal;
+            else
+            {
+                featuredProducts = featuredResult.Value.Items
+                    .Select(item => ProductCardModel.From(item, ThaiCulture))
+                    .ToArray();
+                collections = featuredResult.Value.Categories.Select(option => new CollectionCardModel(
+                    option.Label, $"เลือกดู{option.Label}พร้อมส่ง", $"/products?category={option.Id:D}")).ToArray();
+                featuredState = featuredProducts.Count == 0
+                    ? StorefrontContentState.Empty
+                    : StorefrontContentState.Normal;
+            }
+
+            if (preOrderResult.IsFailure)
+            {
+                preOrderState = StorefrontContentState.Error;
+            }
+            else
+            {
+                preOrderProducts = preOrderResult.Value.Items
+                    .Where(item => item.SaleType == StorefrontSaleType.PreOrder)
+                    .Take(5)
+                    .Select(item => ProductCardModel.From(item, ThaiCulture))
+                    .ToArray();
+                preOrderState = preOrderProducts.Count == 0
+                    ? StorefrontContentState.Empty
+                    : StorefrontContentState.Normal;
+            }
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Storefront home catalog query failed.");
             featuredState = StorefrontContentState.Error;
+            preOrderState = StorefrontContentState.Error;
         }
     }
 }
