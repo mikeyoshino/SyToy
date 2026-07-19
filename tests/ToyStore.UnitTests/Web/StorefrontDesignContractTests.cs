@@ -446,6 +446,10 @@ public sealed class StorefrontDesignContractTests
         var productCss = File.ReadAllText(Path.Combine(storefrontRoot, "ProductCard.razor.css"));
 
         Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
+        Assert.Matches(
+            @"(?s)\.product-gallery\s*\{[^}]*gap:\s*var\(--space-6\)\s+var\(--space-3\)",
+            galleryCss);
+        Assert.DoesNotContain("gap: var(--space-6) .35rem", galleryCss, StringComparison.Ordinal);
         Assert.Contains("@media (min-width: 35rem)", galleryCss, StringComparison.Ordinal);
         Assert.Contains("repeat(3, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
         Assert.Contains("@media (min-width: 56.25rem)", galleryCss, StringComparison.Ordinal);
