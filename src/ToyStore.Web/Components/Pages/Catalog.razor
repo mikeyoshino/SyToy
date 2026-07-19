@@ -207,7 +207,7 @@
             var result = await Sender.Send(new ListStorefrontProductsQuery(
                 requested.Search, ParseType(requested.SaleType), requested.CategoryId, requested.BrandId,
                 BrandSlug, requested.CharacterId, requested.UniverseId, requested.MinimumPrice,
-                requested.MaximumPrice, requested.Page, 24), next.Token);
+                requested.MaximumPrice, requested.Page, 8), next.Token);
             if (generation != Volatile.Read(ref loadGeneration) || next.IsCancellationRequested) return;
             if (result.IsFailure)
             {

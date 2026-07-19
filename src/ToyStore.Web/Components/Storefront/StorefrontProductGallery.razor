@@ -1,7 +1,7 @@
 @using ToyStore.Application.Storefront.Catalog
 
 <section class="store-product-gallery" aria-label="รูปภาพสินค้า">
-    <div class="store-product-gallery__viewport" tabindex="0" aria-label="เลื่อนซ้ายขวาเพื่อดูรูปสินค้า">
+    <div class="store-product-gallery__viewport" tabindex="0" aria-label="รูปสินค้าที่เลือก">
         @if (_orderedImages.Count != 0)
         {
             var activeImage = _orderedImages[_activeImageIndex];
@@ -28,7 +28,7 @@
                 </button>
             }
         </nav>
-        <p class="store-product-gallery__hint">ปัดซ้ายหรือขวาเพื่อดูรูปเพิ่มเติม</p>
+        <p class="store-product-gallery__hint">เลือกรูปด้านล่างเพื่อดูภาพเพิ่มเติม</p>
     }
 </section>
 @code {

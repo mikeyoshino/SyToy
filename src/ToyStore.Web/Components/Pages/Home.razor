@@ -23,7 +23,8 @@
             HeadingId="featured-products-title"
             ActionLabel="ดูทั้งหมด"
             ActionUrl="/products" />
-        <ProductGallery Products="@featuredProducts" State="@featuredState" OnRetry="LoadFeaturedAsync" />
+        <ProductGallery Products="@featuredProducts" State="@featuredState" OnRetry="LoadFeaturedAsync"
+                        LoadingCardCount="8" />
     </section>
 
     <section class="home__section" aria-labelledby="collections-title">
@@ -93,7 +94,7 @@
         {
             var featuredTask = Sender.Send(new ListStorefrontProductsQuery(
                 SaleType: StorefrontSaleTypeFilter.All,
-                PageSize: 6));
+                PageSize: 8));
             var preOrderTask = Sender.Send(new ListStorefrontProductsQuery(
                 SaleType: StorefrontSaleTypeFilter.PreOrder,
                 PageSize: 5));

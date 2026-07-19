@@ -98,6 +98,13 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         Assert.Equal(HttpStatusCode.OK, publishedResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, draftResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, archivedResponse.StatusCode);
+        var publishedHtml = WebUtility.HtmlDecode(
+            await publishedResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("product-detail__benefits", publishedHtml, StringComparison.Ordinal);
+        Assert.Contains("product-detail__disclosure", publishedHtml, StringComparison.Ordinal);
+        Assert.Contains("รับประกันสินค้าเสียหายหรือชำรุด (แนบวิดีโอตอนเปิดกล่อง)", publishedHtml, StringComparison.Ordinal);
+        Assert.Contains("ติดตามการจัดส่งได้หลังซื้อ", publishedHtml, StringComparison.Ordinal);
+        Assert.Contains("ชำระเงินผ่าน Stripe อย่างปลอดภัย", publishedHtml, StringComparison.Ordinal);
     }
 
     [Fact]

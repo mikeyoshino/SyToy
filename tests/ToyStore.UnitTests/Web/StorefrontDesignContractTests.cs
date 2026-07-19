@@ -450,6 +450,9 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("@media (min-width: 80rem)", galleryCss, StringComparison.Ordinal);
         Assert.Contains("repeat(4, minmax(0, 1fr))", galleryCss, StringComparison.Ordinal);
         Assert.Contains(".product-gallery--large", galleryCss, StringComparison.Ordinal);
+        Assert.Matches(
+            @"(?s)@media \(min-width: 80rem\).*?\.product-gallery--large\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)",
+            galleryCss);
         Assert.Contains("min-height: 2.75rem", productCss, StringComparison.Ordinal);
         Assert.Contains("var(--duration-normal)", productCss, StringComparison.Ordinal);
         Assert.Contains("var(--ease-standard)", productCss, StringComparison.Ordinal);

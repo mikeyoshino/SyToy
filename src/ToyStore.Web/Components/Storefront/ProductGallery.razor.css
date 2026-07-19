@@ -33,5 +33,5 @@
 
 @media (min-width: 80rem) {
   .product-gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); gap-inline: var(--space-6); }
-  .product-gallery--large { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .product-gallery--large { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

@@ -13,6 +13,9 @@
 
 ## Current focus
 
+- 2026-07-19: ปรับ responsive Product Gallery ให้ Home/Catalog แสดง 8 รายการต่อชุด/หน้า และเรียง 2 คอลัมน์บน mobile, 3 บน tablet, 4 บน desktop รวมถึง Catalog large-card grid
+- 2026-07-19: redesign Product Detail ตาม app-like reference ทั้ง mobile/desktop ด้วย portrait gallery/dots, centered purchase hierarchy, black pill CTA, verified trust facts และ native disclosure sections โดยไม่สร้าง variant/review/wishlist flow ปลอม
+- 2026-07-19: ลบ warning card นโยบายมัดจำจาก Pre-order Product Detail และจัด mobile flow ใหม่เป็น gallery → purchase → description → facts พร้อม section spacing/เส้นแบ่ง โดยคง policy acceptance ใน pre-order dialog
 - 2026-07-19: ปรับ Cart continue action เป็น `ช้อปปิ้งต่อ →` แบบ ghost แนวนอนชิดขวา และแยก checkout CTA เต็มแถวด้านล่าง โดยคงปลายทางแบรนด์ของสินค้าที่เพิ่งเพิ่ม
 - 2026-07-19: แสดงปุ่มดูสินค้าต่อใน Cart ทั้ง mobile/desktop และนำกลับหน้าแบรนด์ของสินค้าที่เพิ่งเพิ่มด้วย server-read BrandSlug พร้อม fallback `/brands`
 - 2026-07-19: ปรับ mobile Spotlight image focal point จาก center เป็นแนวตั้ง 20% เพื่อให้ภาพ figure แนวตั้งเห็นศีรษะและลำตัว โดยไม่เปลี่ยน desktop composition

@@ -23,6 +23,7 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("aria-expanded=\"@filtersExpanded\"", source, StringComparison.Ordinal);
         Assert.Contains("aria-controls=\"catalog-filter-panel\"", source, StringComparison.Ordinal);
         Assert.Contains("ActiveFilterCount", source, StringComparison.Ordinal);
+        Assert.Contains("requested.MaximumPrice, requested.Page, 8", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ToyStore.Infrastructure", source, StringComparison.Ordinal);
     }
 
@@ -77,7 +78,9 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("<StoreButton OnClick=\"LoadAsync\"", detail, StringComparison.Ordinal);
         Assert.DoesNotContain("<main", detail, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("aria-label=\"รูปภาพสินค้า\"", gallery, StringComparison.Ordinal);
-        Assert.Contains("scroll-snap-type: x mandatory", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("aspect-ratio: 4 / 5", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("store-product-gallery__thumb-button::before", galleryCss, StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain", galleryCss, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", galleryCss, StringComparison.Ordinal);
         Assert.Contains("new(\"pre-order\", \"พรีออเดอร์\")", filters, StringComparison.Ordinal);
         Assert.DoesNotContain("พรีออเดอร์ (เร็ว ๆ นี้)", filters, StringComparison.Ordinal);
@@ -95,6 +98,8 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("LocalReturnUrl.Normalize", detail, StringComparison.Ordinal);
         Assert.Contains("ยังไม่มีการกันสินค้าและยังไม่เกิดคำสั่งซื้อ", detail, StringComparison.Ordinal);
         Assert.Contains("มัดจำไม่คืน", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Title=\"นโยบายมัดจำ\"", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Message=\"มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือภายในเวลาที่กำหนด\"", detail, StringComparison.Ordinal);
         Assert.Contains("Asia/Bangkok", detail, StringComparison.Ordinal);
         Assert.Contains("ราคาเต็มต่อชิ้น", detail, StringComparison.Ordinal);
         Assert.Contains("eligibility.CloseAtUtc", detail, StringComparison.Ordinal);
@@ -116,6 +121,11 @@ public sealed class StorefrontCatalogPageContractTests
         var script = WebSource("Components/Feedback/StoreExpandableText.razor.js");
 
         Assert.Contains("<StoreExpandableText Text=\"@product.Description\" />", detail, StringComparison.Ordinal);
+        Assert.Contains("product-detail__benefits", detail, StringComparison.Ordinal);
+        Assert.Contains("product-detail__disclosure", detail, StringComparison.Ordinal);
+        Assert.Contains("รับประกันสินค้าเสียหายหรือชำรุด (แนบวิดีโอตอนเปิดกล่อง)", detail, StringComparison.Ordinal);
+        Assert.Contains("ติดตามการจัดส่งได้หลังซื้อ", detail, StringComparison.Ordinal);
+        Assert.Contains("ชำระเงินผ่าน Stripe อย่างปลอดภัย", detail, StringComparison.Ordinal);
         Assert.Contains("อ่านเพิ่มเติม", component, StringComparison.Ordinal);
         Assert.Contains("ย่อรายละเอียด", component, StringComparison.Ordinal);
         Assert.Contains("aria-expanded", component, StringComparison.Ordinal);
@@ -136,7 +146,9 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("--store-header-height: 5rem", tokens, StringComparison.Ordinal);
         Assert.Contains("min-height: var(--store-header-height)", headerStyles, StringComparison.Ordinal);
         Assert.Contains("top: calc(var(--store-header-height) + var(--space-4))", detailStyles, StringComparison.Ordinal);
-        Assert.Contains(".product-detail__content { position: static; }", detailStyles, StringComparison.Ordinal);
+        Assert.Matches(@"(?s)\.product-detail__content\s*\{[^}]*position:\s*static;", detailStyles);
+        Assert.Contains("grid-template-areas: \"media content\" \"additional content\"", detailStyles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-areas: \"media\" \"content\" \"additional\"", detailStyles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -215,7 +227,9 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("ListStorefrontProductsQuery", source, StringComparison.Ordinal);
         Assert.Contains("StorefrontSaleTypeFilter.All", source, StringComparison.Ordinal);
         Assert.Contains("StorefrontSaleTypeFilter.PreOrder", source, StringComparison.Ordinal);
+        Assert.Contains("PageSize: 8", source, StringComparison.Ordinal);
         Assert.Contains("PageSize: 5", source, StringComparison.Ordinal);
+        Assert.Contains("LoadingCardCount=\"8\"", source, StringComparison.Ordinal);
         Assert.Contains("preOrderProducts", source, StringComparison.Ordinal);
         Assert.Contains("preOrderState", source, StringComparison.Ordinal);
         Assert.Contains("OnRetry=\"LoadFeaturedAsync\"", source, StringComparison.Ordinal);

@@ -52,19 +52,6 @@ else
         <article class="product-detail__layout @(IsPreOrder ? "product-detail__layout--preorder" : null)">
             <div class="product-detail__media-column">
                 <StorefrontProductGallery Images="@product.Images" />
-                <section class="product-detail__additional" aria-labelledby="description-heading">
-                    <div class="product-detail__description">
-                        <h2 id="description-heading">รายละเอียดสินค้า</h2>
-                        <StoreExpandableText Text="@product.Description" />
-                    </div>
-                    <dl class="product-detail__facts" aria-label="ข้อมูลสินค้า">
-                        <div><dt>แบรนด์</dt><dd><a href="/brands/@product.BrandSlug">@product.BrandName</a></dd></div>
-                        <div><dt>หมวดหมู่</dt><dd>@product.CategoryName</dd></div>
-                        @if (!string.IsNullOrWhiteSpace(product.ModelScale)) { <div><dt>สเกลโมเดล</dt><dd>@product.ModelScale</dd></div> }
-                        <div><dt>จักรวาล</dt><dd>@product.UniverseName</dd></div>
-                        @if (product.Characters.Count != 0) { <div><dt>ตัวละคร</dt><dd>@string.Join(", ", product.Characters)</dd></div> }
-                    </dl>
-                </section>
             </div>
             <div class="product-detail__content">
                 <p class="product-detail__type">@(IsPreOrder ? "พรีออเดอร์" : "สินค้าพร้อมส่ง")</p>
@@ -89,8 +76,6 @@ else
                         <div><dt>สินค้าคาดว่าจะมา</dt><dd>@FormatEstimatedArrival(product.EstimatedArrivalMonth!.Value, product.EstimatedArrivalYear!.Value)</dd></div>
                         <div><dt>ชำระยอดคงเหลือ</dt><dd>ภายใน @product.BalancePaymentDays!.Value.ToString("N0", ThaiCulture) วันหลังได้รับแจ้ง</dd></div>
                     </dl>
-                    <StoreAlert Tone="StoreAlertTone.Warning" Title="นโยบายมัดจำ"
-                                Message="มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือภายในเวลาที่กำหนด" />
                 }
                 else
                 {
@@ -118,9 +103,41 @@ else
                         @(product.OfferState == StorefrontOfferState.InStockAvailable ? "เพิ่มลงตะกร้า" : "สินค้าหมด")
                     </StoreButton>
                     @if (addFeedback is not null) { <p class="product-detail__cart-feedback" role="status" aria-live="polite">@addFeedback</p> }
-                    <p id="cart-availability-note" class="product-detail__shipping">จัดส่งฟรี · ระยะเวลาจัดส่งโดยประมาณ 2–5 วันทำการ</p>
+                    <p id="cart-availability-note" class="product-detail__shipping">ค่าจัดส่งคำนวณในขั้นตอนชำระเงิน · ระยะเวลาจัดส่งโดยประมาณ 2–5 วันทำการ</p>
                 }
+                <ul class="product-detail__benefits" aria-label="ข้อมูลก่อนสั่งซื้อ">
+                    <li>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM8 7V4h8v3M4 11h16" /></svg>
+                        <span>รับประกันสินค้าเสียหายหรือชำรุด (แนบวิดีโอตอนเปิดกล่อง)</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" /></svg>
+                        <span>ติดตามการจัดส่งได้หลังซื้อ</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+                        <span>ชำระเงินผ่าน Stripe อย่างปลอดภัย</span>
+                    </li>
+                </ul>
             </div>
+            <section class="product-detail__additional" aria-labelledby="description-heading">
+                <details class="product-detail__disclosure">
+                    <summary id="description-heading"><span>รายละเอียดสินค้า</span><span aria-hidden="true">＋</span></summary>
+                    <div class="product-detail__description">
+                        <StoreExpandableText Text="@product.Description" />
+                    </div>
+                </details>
+                <details class="product-detail__disclosure">
+                    <summary><span>ข้อมูลสินค้า</span><span aria-hidden="true">＋</span></summary>
+                    <dl class="product-detail__facts" aria-label="ข้อมูลสินค้า">
+                        <div><dt>แบรนด์</dt><dd><a href="/brands/@product.BrandSlug">@product.BrandName</a></dd></div>
+                        <div><dt>หมวดหมู่</dt><dd>@product.CategoryName</dd></div>
+                        @if (!string.IsNullOrWhiteSpace(product.ModelScale)) { <div><dt>สเกลโมเดล</dt><dd>@product.ModelScale</dd></div> }
+                        <div><dt>จักรวาล</dt><dd>@product.UniverseName</dd></div>
+                        @if (product.Characters.Count != 0) { <div><dt>ตัวละคร</dt><dd>@string.Join(", ", product.Characters)</dd></div> }
+                    </dl>
+                </details>
+            </section>
         </article>
     }
 </div>
