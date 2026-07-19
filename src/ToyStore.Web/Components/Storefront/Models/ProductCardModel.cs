@@ -13,8 +13,15 @@ public sealed record ProductCardModel(
     string ProductUrl,
     StorefrontSaleType SaleType,
     StorefrontOfferState OfferState,
-    string? ModelScale = null)
+    string? ModelScale = null,
+    IReadOnlyList<ProductCardImageModel>? Images = null)
 {
+    public IReadOnlyList<ProductCardImageModel> GalleryImages => Images is { Count: > 0 }
+        ? Images
+        : string.IsNullOrWhiteSpace(ImageUrl)
+            ? []
+            : [new ProductCardImageModel(ImageUrl, $"{Name} โดย {Brand}")];
+
     public static ProductCardModel From(StorefrontProductCard item, CultureInfo culture)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -33,6 +40,11 @@ public sealed record ProductCardModel(
             $"/products/{item.Slug}",
             item.SaleType,
             item.OfferState,
-            item.ModelScale);
+            item.ModelScale,
+            item.Images?.OrderBy(image => image.SortOrder)
+                .Select(image => new ProductCardImageModel(image.Url, image.AltText))
+                .ToArray());
     }
 }
+
+public sealed record ProductCardImageModel(string Url, string AltText);

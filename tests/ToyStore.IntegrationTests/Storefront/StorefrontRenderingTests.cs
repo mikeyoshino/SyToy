@@ -91,8 +91,8 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
         Assert.Contains("aria-label=\"เปิดตะกร้าสินค้า มีสินค้า 0 ชิ้น\"", html, StringComparison.Ordinal);
         Assert.Contains("ตะกร้าของคุณ", html, StringComparison.Ordinal);
         Assert.Contains("ตะกร้ายังว่างอยู่", html, StringComparison.Ordinal);
-        Assert.Contains("เลือกซื้อสินค้าต่อ", html, StringComparison.Ordinal);
-        Assert.Contains("ไปชำระเงิน", html, StringComparison.Ordinal);
+        Assert.Contains("ช้อปปิ้งต่อ", html, StringComparison.Ordinal);
+        Assert.Contains("ชำระเงินอย่างปลอดภัย", html, StringComparison.Ordinal);
         AssertAnchor(html, "/", "หน้าหลัก");
         AssertAnchor(html, "/products", "สินค้า");
         AssertAnchor(html, "/products?type=pre-order", "พรีออเดอร์");
@@ -241,7 +241,7 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
     [InlineData("/products", "/products")]
     [InlineData("/products?type=pre-order", "/products?type=pre-order")]
     [InlineData("/products?type=in-stock", "/products?type=in-stock")]
-    public async Task ProductNavigationMarksOnlyTheExactPathAndQueryAsCurrent(
+    public async Task DesktopProductNavigationMarksOnlyTheExactPathAndQueryAsCurrent(
         string requestPath,
         string expectedCurrentHref)
     {
@@ -262,10 +262,55 @@ public sealed class StorefrontRenderingTests(PostgreSqlFixture postgreSql)
             html,
             "class=\"store-header__desktop-nav\"",
             expectedCurrentHref);
-        AssertCurrentNavigationLink(
-            html,
-            "aria-label=\"เมนูหลักสำหรับมือถือ\"",
-            expectedCurrentHref);
+    }
+
+    [Fact]
+    public async Task SearchRendersMobileNavigationHubInServerHtml()
+    {
+        await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync(
+            "/search",
+            TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("store-header__mobile-menu", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"เมนูร้านค้า\"", html, StringComparison.Ordinal);
+        AssertAnchor(html, "/brands", "สินค้า");
+        AssertAnchor(html, "/", "หน้าหลัก");
+        AssertAnchor(html, "/products", "สินค้าทั้งหมด");
+        AssertAnchor(html, "/products?type=pre-order", "เปิดพรีออเดอร์");
+        AssertAnchor(html, "/products?type=in-stock", "พร้อมส่ง");
+        AssertAnchor(html, "/brands", "แบรนด์ทั้งหมด");
+        AssertAnchor(html, "/Account/Login", "เข้าสู่ระบบหรือสมัครสมาชิก");
+    }
+
+    [Fact]
+    public async Task ProductTabRendersBrandFirstDirectorySeparateFromProductResults()
+    {
+        await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync(
+            "/brands",
+            TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("เลือกแบรนด์ก่อนดูสินค้า", html, StringComparison.Ordinal);
+        Assert.Contains("แบรนด์", html, StringComparison.Ordinal);
+        AssertAnchor(html, "/brands", "สินค้า");
+        Assert.DoesNotContain("catalog-page__results", html, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string source, string value)

@@ -50,6 +50,9 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
         Assert.True(card.IsAvailable);
         Assert.Equal(seeded.ThumbnailImageUrl, card.PrimaryImageUrl);
         Assert.Equal("ภาพหลักสำหรับหน้าร้าน", card.PrimaryImageAltText);
+        Assert.Equal(
+            [seeded.ThumbnailImageUrl, seeded.SecondaryImageUrl],
+            card.Images!.Select(image => image.Url));
         Assert.Equal("1/12", card.ModelScale);
         Assert.Equal("แบรนด์หน้าร้าน", brandRoute.Value.BrandDisplayName);
         Assert.Equal(2, brandRoute.Value.TotalCount);

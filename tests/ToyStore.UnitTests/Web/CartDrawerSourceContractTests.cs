@@ -24,6 +24,14 @@ public sealed class CartDrawerSourceContractTests
         Assert.Contains("ตะกร้ายังว่างอยู่", source, StringComparison.Ordinal);
         Assert.Contains("ตรวจสอบราคาและสต็อกอีกครั้ง", source, StringComparison.Ordinal);
         Assert.Contains("InitialFocusSelector=\".store-dialog__close\"", source, StringComparison.Ordinal);
+        Assert.Contains("ยอดสินค้า", source, StringComparison.Ordinal);
+        Assert.Contains("คำนวณในขั้นตอนถัดไป", source, StringComparison.Ordinal);
+        Assert.Contains("ชำระเงินอย่างปลอดภัย", source, StringComparison.Ordinal);
+        Assert.Contains("ช้อปปิ้งต่อ", source, StringComparison.Ordinal);
+        Assert.Contains("StoreButtonTone.Ghost", source, StringComparison.Ordinal);
+        Assert.Contains("FullWidth=\"true\"", source, StringComparison.Ordinal);
+        Assert.Contains("addedItem?.BrandSlug", source, StringComparison.Ordinal);
+        Assert.Contains("NavigationManager.NavigateTo(continueShoppingUrl)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
     }
 
@@ -57,6 +65,10 @@ public sealed class CartDrawerSourceContractTests
         Assert.Contains("inset-inline: auto 0", feedback, StringComparison.Ordinal);
         Assert.Contains("width: 100%", feedback, StringComparison.Ordinal);
         Assert.Contains(".store-cart:focus { outline: none; }", source, StringComparison.Ordinal);
+        Assert.Contains("env(safe-area-inset-bottom)", source, StringComparison.Ordinal);
+        Assert.Contains("border-radius: var(--radius-pill)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(".store-cart__continue-action { display: none; }", source, StringComparison.Ordinal);
+        Assert.Contains("justify-content: flex-end", source, StringComparison.Ordinal);
     }
 
     [Fact]

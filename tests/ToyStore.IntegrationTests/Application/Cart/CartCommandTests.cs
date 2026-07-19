@@ -214,7 +214,9 @@ public sealed class CartCommandTests(PostgreSqlFixture postgreSql)
         ]), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(3, result.Value.Items.Single(item => item.ProductId == seeded.Published.Id).Quantity);
+        var availableItem = result.Value.Items.Single(item => item.ProductId == seeded.Published.Id);
+        Assert.Equal(3, availableItem.Quantity);
+        Assert.Equal("cart-brand", availableItem.BrandSlug);
         Assert.Equal(3000, result.Value.DisplayTotal);
         Assert.Equal(2, result.Value.Items.Count(item => !item.IsCurrentlyAvailable));
         Assert.All(result.Value.Items.Where(item => !item.IsCurrentlyAvailable), item =>
@@ -222,6 +224,7 @@ public sealed class CartCommandTests(PostgreSqlFixture postgreSql)
             Assert.Equal(0, item.CurrentUnitPrice);
             Assert.Equal("สินค้าไม่พร้อมใช้งาน", item.DisplayName);
             Assert.Empty(item.Slug);
+            Assert.Empty(item.BrandSlug);
             Assert.Empty(item.PrimaryImageUrl);
         });
         Assert.Null(result.Value.CartId);

@@ -1,0 +1,112 @@
+@implements IDisposable
+@inject NavigationManager NavigationManager
+@inject CartDrawerCoordinator CartDrawer
+
+@if (!HideNavigation)
+{
+<nav class="mobile-nav" aria-label="เมนูหลักสำหรับมือถือ">
+    <a href="/" class="@LinkClass("/")" aria-label="หน้าหลัก" aria-current="@Current("/")">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10h-6v-6H9v6H3Z" /></svg>
+        <span>หน้าหลัก</span>
+    </a>
+    <a href="/brands" class="@ProductLinkClass" aria-label="เลือกแบรนด์สินค้า" aria-current="@ProductCurrent">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg>
+        <span>สินค้า</span>
+    </a>
+    <button type="button" class="@(CartDrawer.IsOpen ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item")"
+            @onclick="CartDrawer.Open" aria-label="เปิดตะกร้า มีสินค้า @CartDrawer.TotalQuantity ชิ้น"
+            aria-haspopup="dialog" aria-expanded="@CartDrawer.IsOpen.ToString().ToLowerInvariant()">
+        <span class="mobile-nav__icon-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 14H6Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></svg>
+            @if (CartDrawer.TotalQuantity > 0)
+            {
+                <b aria-hidden="true">@CartDrawer.TotalQuantity</b>
+            }
+        </span>
+        <span>ตะกร้า</span>
+    </button>
+    <a href="/products?type=pre-order" class="@LinkClass("/products?type=pre-order")" aria-label="สินค้าพรีออเดอร์" aria-current="@Current("/products?type=pre-order")">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5 4.4 13A5.1 5.1 0 0 1 12 6.2 5.1 5.1 0 0 1 19.6 13Z" /></svg>
+        <span>พรีออเดอร์</span>
+    </a>
+    <AuthorizeView>
+        <Authorized>
+            <AuthorizeView Policy="@PolicyNames.CanViewCustomerOrders" Context="mobileAccountContext">
+                <Authorized>
+                    <a href="/account/orders" class="@LinkClass("/account")" aria-label="บัญชีของฉัน" aria-current="@Current("/account")">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></svg>
+                        <span>บัญชี</span>
+                    </a>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/Account/Manage/ChangePassword" class="@LinkClass("/Account")" aria-label="บัญชีของฉัน" aria-current="@Current("/Account")">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></svg>
+                        <span>บัญชี</span>
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </Authorized>
+        <NotAuthorized>
+            <a href="/Account/Login" data-enhance-nav="false" class="@LinkClass("/Account")" aria-label="เข้าสู่ระบบ" aria-current="@Current("/Account")">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></svg>
+                <span>เข้าสู่ระบบ</span>
+            </a>
+        </NotAuthorized>
+    </AuthorizeView>
+</nav>
+}
+
+@code {
+    private string currentUrl = "/";
+    private bool HideNavigation => currentUrl.StartsWith("/checkout", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        SetCurrentUrl(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+        CartDrawer.Changed += OnCartChanged;
+    }
+
+    private string LinkClass(string href) => IsActive(href)
+        ? "mobile-nav__item mobile-nav__item--active"
+        : "mobile-nav__item";
+
+    private string ProductLinkClass => IsProductSection
+        ? "mobile-nav__item mobile-nav__item--active"
+        : "mobile-nav__item";
+
+    private string? ProductCurrent => IsProductSection ? "page" : null;
+    private bool IsProductSection => currentUrl.StartsWith("/brands", StringComparison.OrdinalIgnoreCase)
+        || currentUrl.StartsWith("/products", StringComparison.OrdinalIgnoreCase)
+        || currentUrl.StartsWith("/search", StringComparison.OrdinalIgnoreCase);
+
+    private string? Current(string href) => IsActive(href) ? "page" : null;
+
+    private bool IsActive(string href)
+    {
+        if (href == "/") return currentUrl == "/";
+        if (href.Contains('?'))
+            return currentUrl.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+        return currentUrl.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetCurrentUrl(args.Location);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void SetCurrentUrl(string location)
+    {
+        var relative = NavigationManager.ToBaseRelativePath(location);
+        currentUrl = string.IsNullOrEmpty(relative) ? "/" : $"/{relative}";
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        CartDrawer.Changed -= OnCartChanged;
+    }
+}

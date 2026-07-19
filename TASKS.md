@@ -13,6 +13,14 @@
 
 ## Current focus
 
+- 2026-07-19: ปรับ Cart continue action เป็น `ช้อปปิ้งต่อ →` แบบ ghost แนวนอนชิดขวา และแยก checkout CTA เต็มแถวด้านล่าง โดยคงปลายทางแบรนด์ของสินค้าที่เพิ่งเพิ่ม
+- 2026-07-19: แสดงปุ่มดูสินค้าต่อใน Cart ทั้ง mobile/desktop และนำกลับหน้าแบรนด์ของสินค้าที่เพิ่งเพิ่มด้วย server-read BrandSlug พร้อม fallback `/brands`
+- 2026-07-19: ปรับ mobile Spotlight image focal point จาก center เป็นแนวตั้ง 20% เพื่อให้ภาพ figure แนวตั้งเห็นศีรษะและลำตัว โดยไม่เปลี่ยน desktop composition
+- 2026-07-19: ลด gallery control บน ProductCard ให้เหลือ icon-only ไม่มีพื้นหลัง เส้นขอบ หรือเงาปุ่ม โดยคงพื้นที่กด 44px, focus และ drop-shadow บนเส้นลูกศรเพื่อให้อ่านได้บนรูป
+- 2026-07-19: เปลี่ยนแท็บ mobile เป็น “สินค้า” และแยก flow `/brands` ให้ลูกค้าเลือกแบรนด์ก่อนเข้า `/brands/{slug}` โดยไม่รวม brand directory กับ product results ในหน้าเดียวกัน
+- 2026-07-19: เพิ่ม gallery ใน shared ProductCard สำหรับหน้า list ทั้ง mobile/desktop โดย list query ส่ง thumbnail ทุกรูปและมีปุ่มลูกศร minimal ที่รองรับ touch/keyboard โดยไม่เปิด Product Detail
+- 2026-07-19: ย้าย mobile hamburger menu เข้า Search navigation hub: header เหลือโลโก้กึ่งกลาง และ `/search` รวมลิงก์หน้าหลัก/สินค้าทั้งหมด/พรีออเดอร์/พร้อมส่ง/แบรนด์/บัญชีหรือคำสั่งซื้อตาม authorization
+- 2026-07-19: redesign Storefront mobile จาก reference layout เป็น app-like shell: bottom nav 5 จุด + safe area/cart badge, Search discovery, Catalog filter pill และ grid/single toggle, compact product typography, full-screen cart summary/secure CTA และ flat In-stock/Pre-order checkout presentation โดยไม่เปลี่ยน Stripe/payment invariants
 - 2026-07-19: แก้ Product Detail sticky purchase column ให้ใช้ shared responsive Store Header height เป็น offset จึงไม่ซ่อนชื่อ ราคา สถานะ หรือปุ่มซื้อไว้หลัง navbar ระหว่างเลื่อนหน้า
 - 2026-07-19: redesign Home hero เป็น editorial Pre-order carousel โดย query เฉพาะพรีออเดอร์สูงสุด 5 รายการ แสดงครั้งละ 1 ภาพ, auto-slide 3 วินาที, swipe/prev-next/dots/pause, หยุดเมื่อ hover/focus/ออกนอก viewport และปิด autoplay ตาม reduced motion พร้อม loading/empty/error state
 - 2026-07-19: ปรับ technical SEO หน้า Home/Product Detail ให้ SSR ส่ง unique title/description/canonical/robots, Open Graph/Twitter, semantic H1, image priority, `WebSite`/`Organization`/`WebPage` และ `Product`/`Offer`/shipping/Breadcrumb JSON-LD ตามข้อมูลจริง พร้อม dynamic sitemap และ robots.txt

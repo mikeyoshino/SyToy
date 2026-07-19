@@ -64,6 +64,7 @@ public sealed class StorefrontDesignContractTests
         AssertCssCustomProperty(css, "gutter-mobile", "1rem");
         AssertCssCustomProperty(css, "gutter-tablet", "1.5rem");
         AssertCssCustomProperty(css, "gutter-desktop", "2rem");
+        AssertCssCustomProperty(css, "mobile-nav-height", "4.5rem");
         AssertCssCustomProperty(css, "section-space-min", @"var\(--space-11\)");
         AssertCssCustomProperty(css, "section-space-max", @"var\(--space-18\)");
         AssertCssCustomProperty(css, "z-header", "100");
@@ -233,9 +234,8 @@ public sealed class StorefrontDesignContractTests
 
         Assert.Contains("<header", header, StringComparison.Ordinal);
         Assert.Contains("<nav", header, StringComparison.Ordinal);
-        Assert.Contains("<details", header, StringComparison.Ordinal);
-        Assert.Contains("<summary", header, StringComparison.Ordinal);
-        Assert.Contains("@key=\"currentUrl\"", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("<details", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("store-header__mobile-menu", header, StringComparison.Ordinal);
         Assert.DoesNotContain("<NavLink", header, StringComparison.Ordinal);
         Assert.True(File.Exists(storeNavLinkPath), $"Missing exact storefront navigation link: {storeNavLinkPath}");
         var storeNavLink = File.ReadAllText(storeNavLinkPath);
@@ -252,9 +252,8 @@ public sealed class StorefrontDesignContractTests
         Assert.Matches(
             @"(?s)\.store-header__brand\s*\{[^}]*display:\s*inline-flex[^}]*min-height:\s*2\.75rem[^}]*align-items:\s*center",
             headerCss);
-        Assert.Matches(
-            @"(?s)\.store-header__mobile-menu nav\s*\{[^}]*max-block-size:\s*calc\([^}]*100dvh[^}]*\)[^}]*overflow-y:\s*auto[^}]*overscroll-behavior:\s*contain",
-            headerCss);
+        Assert.DoesNotContain("store-header__mobile-menu", headerCss, StringComparison.Ordinal);
+        Assert.Contains("justify-content: center", headerCss, StringComparison.Ordinal);
         Assert.Contains("<footer", footer, StringComparison.Ordinal);
         Assert.Contains("href=\"#main-content\"", layout, StringComparison.Ordinal);
         Assert.Contains("<main id=\"main-content\" tabindex=\"-1\">", layout, StringComparison.Ordinal);
@@ -266,6 +265,31 @@ public sealed class StorefrontDesignContractTests
         Assert.False(File.Exists(Path.Combine(pagesRoot, "Counter.razor")));
         Assert.False(File.Exists(Path.Combine(pagesRoot, "Weather.razor")));
         Assert.False(File.Exists(Path.Combine(pagesRoot, "Auth.razor")));
+    }
+
+    [Fact]
+    public void MobileStorefrontShellUsesFiveDestinationSafeAreaNavigation()
+    {
+        var layoutRoot = Path.Combine(GetWebRoot(), "Components", "Layout");
+        var layout = File.ReadAllText(Path.Combine(layoutRoot, "MainLayout.razor"));
+        var navigation = File.ReadAllText(Path.Combine(layoutRoot, "StoreMobileNavigation.razor"));
+        var styles = File.ReadAllText(Path.Combine(layoutRoot, "StoreMobileNavigation.razor.css"));
+
+        Assert.Contains("<StoreMobileNavigation />", layout, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(5", styles, StringComparison.Ordinal);
+        Assert.Contains("env(safe-area-inset-bottom)", styles, StringComparison.Ordinal);
+        Assert.Contains("position: fixed", styles, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 56.25rem)", styles, StringComparison.Ordinal);
+        Assert.Contains("CartDrawer.TotalQuantity", navigation, StringComparison.Ordinal);
+        Assert.Contains("CartDrawer.Open", navigation, StringComparison.Ordinal);
+        Assert.Contains("aria-current", navigation, StringComparison.Ordinal);
+        Assert.Contains("เลือกแบรนด์สินค้า", navigation, StringComparison.Ordinal);
+        Assert.Contains("href=\"/brands\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("<span>สินค้า</span>", navigation, StringComparison.Ordinal);
+        Assert.Contains("IsProductSection", navigation, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanViewCustomerOrders", navigation, StringComparison.Ordinal);
+        Assert.Contains("HideNavigation", navigation, StringComparison.Ordinal);
+        Assert.Contains("/checkout", navigation, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -491,6 +515,7 @@ public sealed class StorefrontDesignContractTests
         Assert.Contains("scrollbar-width: none", styles, StringComparison.Ordinal);
         Assert.Contains("::-webkit-scrollbar", styles, StringComparison.Ordinal);
         Assert.Contains("grid-template-areas: \"copy media\"", styles, StringComparison.Ordinal);
+        Assert.Contains("object-position: center 20%", styles, StringComparison.Ordinal);
         Assert.Contains("@media (prefers-reduced-motion: reduce)", styles, StringComparison.Ordinal);
         Assert.Contains("module.InvokeVoidAsync(\"initialize\", rootElement, 3000)", hero, StringComparison.Ordinal);
         Assert.Contains("window.setTimeout", script, StringComparison.Ordinal);

@@ -307,6 +307,7 @@
 @media (max-width: 35rem) {
   .hero-showcase { border-radius: var(--radius-md); }
   .hero-showcase__slide { height: 43rem; grid-template-rows: 17rem minmax(0, 1fr); }
+  .hero-showcase__media img { object-position: center 20%; }
   .hero-showcase__copy { gap: var(--space-3); }
   .hero-showcase__edition { font-size: .6875rem; }
   .hero-showcase__brand { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }

@@ -64,7 +64,8 @@ public sealed record StorefrontProductCard(
     int AvailableQuantity,
     string PrimaryImageUrl,
     string PrimaryImageAltText,
-    string? ModelScale = null)
+    string? ModelScale = null,
+    IReadOnlyList<StorefrontProductImage>? Images = null)
 {
     public bool IsAvailable => OfferState is StorefrontOfferState.InStockAvailable
         or StorefrontOfferState.PreOrderOpen;

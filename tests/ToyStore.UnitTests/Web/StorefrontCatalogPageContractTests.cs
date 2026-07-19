@@ -27,6 +27,37 @@ public sealed class StorefrontCatalogPageContractTests
     }
 
     [Fact]
+    public void MobileCatalogProvidesDiscoveryFilterAndRealGridSingleViewControls()
+    {
+        var catalog = WebSource("Components/Pages/Catalog.razor");
+        var catalogStyles = WebSource("Components/Pages/Catalog.razor.css");
+        var gallery = WebSource("Components/Storefront/ProductGallery.razor");
+        var galleryStyles = WebSource("Components/Storefront/ProductGallery.razor.css");
+        var card = WebSource("Components/Storefront/ProductCard.razor");
+
+        Assert.Contains("catalog-page__search", catalog, StringComparison.Ordinal);
+        Assert.Contains("กำลังมองหาสินค้าอะไร?", catalog, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"เมนูร้านค้า\"", catalog, StringComparison.Ordinal);
+        Assert.Contains("เปิดพรีออเดอร์", catalog, StringComparison.Ordinal);
+        Assert.Contains("สินค้าทั้งหมด", catalog, StringComparison.Ordinal);
+        Assert.Contains("แบรนด์ทั้งหมด", catalog, StringComparison.Ordinal);
+        Assert.Contains("คำสั่งซื้อของฉัน", catalog, StringComparison.Ordinal);
+        Assert.Contains("เข้าสู่ระบบหรือสมัครสมาชิก", catalog, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanViewCustomerOrders", catalog, StringComparison.Ordinal);
+        Assert.Contains("catalog-page__menu-links", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("catalog-page__view-switch", catalog, StringComparison.Ordinal);
+        Assert.Contains("SetDisplayMode(\"grid\")", catalog, StringComparison.Ordinal);
+        Assert.Contains("SetDisplayMode(\"single\")", catalog, StringComparison.Ordinal);
+        Assert.Contains("ViewMode=\"@displayMode\"", catalog, StringComparison.Ordinal);
+        Assert.Contains("aria-pressed", catalog, StringComparison.Ordinal);
+        Assert.Contains("position: sticky", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("ViewMode", gallery, StringComparison.Ordinal);
+        Assert.Contains("product-gallery--single", gallery, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", galleryStyles, StringComparison.Ordinal);
+        Assert.Contains("SingleColumn", card, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FiltersReuseSharedCrossBrowserFieldsAndDetailOwnsSemanticSwipeGalleryAndSeo()
     {
         var filters = WebSource("Components/Storefront/StorefrontCatalogFilterBar.razor");
@@ -121,12 +152,35 @@ public sealed class StorefrontCatalogPageContractTests
     }
 
     [Fact]
+    public void ProductCardProvidesAccessibleListGalleryWithoutNestedInteractiveControls()
+    {
+        var source = WebSource("Components/Storefront/ProductCard.razor");
+        var styles = WebSource("Components/Storefront/ProductCard.razor.css");
+        var model = WebSource("Components/Storefront/Models/ProductCardModel.cs");
+
+        Assert.Contains("Model.GalleryImages", source, StringComparison.Ordinal);
+        Assert.Contains("PreviousImage", source, StringComparison.Ordinal);
+        Assert.Contains("NextImage", source, StringComparison.Ordinal);
+        Assert.Contains("ดูรูปก่อนหน้าของ", source, StringComparison.Ordinal);
+        Assert.Contains("ดูรูปถัดไปของ", source, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", source, StringComparison.Ordinal);
+        Assert.Contains("product-card__media-link", source, StringComparison.Ordinal);
+        Assert.Contains("ProductCardImageModel", model, StringComparison.Ordinal);
+        Assert.Contains("product-card__gallery-button", styles, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SharedProductCardMapperKeepsPreOrderPriceAndActionTypeConsistent()
     {
         var card = new StorefrontProductCard(
             Guid.NewGuid(), "สินค้าทดสอบ", "test-product", "แบรนด์", "อาร์ตทอย",
             StorefrontSaleType.PreOrder, StorefrontOfferState.PreOrderOpen, 2500, 500, 4,
-            "/media/test.webp", "รูปสินค้า");
+            "/media/test.webp", "รูปสินค้า", Images:
+            [
+                new StorefrontProductImage("/media/test.webp", "รูปแรก", 0, true),
+                new StorefrontProductImage("/media/test-2.webp", "รูปที่สอง", 1, false),
+            ]);
 
         var mapped = ProductCardModel.From(card, CultureInfo.GetCultureInfo("th-TH"));
 
@@ -136,6 +190,7 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.DoesNotContain("ราคาเต็ม", mapped.PriceLabel, StringComparison.Ordinal);
         Assert.Equal("พรีออเดอร์", mapped.TypeLabel);
         Assert.Equal("/products/test-product", mapped.ProductUrl);
+        Assert.Equal(["/media/test.webp", "/media/test-2.webp"], mapped.GalleryImages.Select(image => image.Url));
     }
 
     [Fact]
@@ -146,6 +201,8 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("ListStorefrontProductsQuery", source, StringComparison.Ordinal);
         Assert.Contains("result.Value.Brands", source, StringComparison.Ordinal);
         Assert.Contains("/brands/{brand.Slug}", source, StringComparison.Ordinal);
+        Assert.Contains("เลือกแบรนด์ก่อนดูสินค้า", source, StringComparison.Ordinal);
+        Assert.Contains("สินค้าพร้อมส่งและพรีออเดอร์", source, StringComparison.Ordinal);
         Assert.Contains("<meta name=\"description\"", source, StringComparison.Ordinal);
         Assert.Contains("<StoreButton OnClick=\"LoadAsync\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("<main", source, StringComparison.OrdinalIgnoreCase);
@@ -168,15 +225,6 @@ public sealed class StorefrontCatalogPageContractTests
         Assert.Contains("ProductCardModel.From", source, StringComparison.Ordinal);
         Assert.Contains("StorefrontStructuredData.BuildHome", source, StringComparison.Ordinal);
         Assert.Contains("CanonicalUrl", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("latestProducts", source, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ProductCardKeepsMobileActionTextReadable()
-    {
-        var source = WebSource("Components/Storefront/ProductCard.razor.css");
-        Assert.Contains(".product-card__action { font-size: .875rem; }", source, StringComparison.Ordinal);
-        Assert.DoesNotContain(".product-card__action { font-size: .8125rem; }", source, StringComparison.Ordinal);
     }
 
     private static string WebSource(string path) => File.ReadAllText(Path.Combine(Root(), "src", "ToyStore.Web", path));

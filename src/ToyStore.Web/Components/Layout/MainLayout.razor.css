@@ -43,3 +43,13 @@ main:focus {
   cursor: pointer;
   transform: translateY(-50%);
 }
+
+@media (max-width: 56.249rem) {
+  .store-shell {
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+  }
+
+  .store-shell:has(.checkout-page) {
+    padding-bottom: 0;
+  }
+}

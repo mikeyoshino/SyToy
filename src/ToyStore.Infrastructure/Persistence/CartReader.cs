@@ -41,16 +41,20 @@ internal sealed class CartReader(IDbContextFactory<ApplicationDbContext> context
                 && product.SaleType == SaleType.InStock);
         var products = await productQuery
             .ToDictionaryAsync(product => product.Id, cancellationToken);
+        var brandIds = products.Values.Select(product => product.BrandId).Distinct().ToArray();
+        var brandSlugs = await db.Brands.AsNoTracking()
+            .Where(brand => brandIds.Contains(brand.Id))
+            .ToDictionaryAsync(brand => brand.Id, brand => brand.Slug.Value, cancellationToken);
         var items = cartItems.OrderBy(item => item.ProductId).Select(item =>
         {
             if (!products.TryGetValue(item.ProductId, out var product))
                 return new CustomerCartItemView(item.ProductId, "สินค้าไม่พร้อมใช้งาน", string.Empty,
-                    string.Empty, 0, item.Quantity, false);
+                    string.Empty, string.Empty, 0, item.Quantity, false);
             var available = product.Status == ProductStatus.Published && product.SaleType == SaleType.InStock;
             var price = available ? product.InStockOffer!.Price.Amount : 0;
             var image = product.Images.OrderBy(value => value.SortOrder).FirstOrDefault()?.CardImageUrl ?? string.Empty;
             return new CustomerCartItemView(product.Id, product.DisplayName, product.Slug,
-                image, price, item.Quantity, available);
+                brandSlugs.GetValueOrDefault(product.BrandId, string.Empty), image, price, item.Quantity, available);
         }).ToArray();
         return new(cartId, version, items,
             items.Sum(item => item.CurrentUnitPrice * item.Quantity));

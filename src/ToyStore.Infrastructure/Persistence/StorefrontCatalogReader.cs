@@ -86,7 +86,13 @@ internal sealed class StorefrontCatalogReader(
                 availability.Quantity,
                 primary.CardImageUrl,
                 primary.AltText,
-                product.ModelScale);
+                product.ModelScale,
+                product.Images.OrderBy(image => image.SortOrder).Select(image =>
+                    new StorefrontProductImage(
+                        image.CardImageUrl,
+                        image.AltText,
+                        image.SortOrder,
+                        image.IsPrimary)).ToArray());
         }).ToArray();
         await transaction.CommitAsync(cancellationToken);
         return new StorefrontCatalogReadPage(

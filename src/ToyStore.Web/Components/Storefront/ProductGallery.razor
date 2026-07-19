@@ -3,7 +3,7 @@
     <div class="@GalleryCssClass" aria-hidden="true">
         @for (var index = 0; index < LoadingCardCount; index++)
         {
-            <ProductCard @key="index" IsLoading="true" />
+            <ProductCard @key="index" IsLoading="true" SingleColumn="@IsSingleColumn" />
         }
     </div>
     <p class="visually-hidden" role="status">กำลังโหลดรายการสินค้า</p>
@@ -38,7 +38,7 @@ else
     <div class="@GalleryCssClass">
         @foreach (var product in Products)
         {
-            <ProductCard @key="product" Model="product" />
+            <ProductCard @key="product" Model="product" SingleColumn="@IsSingleColumn" />
         }
     </div>
 }
@@ -59,7 +59,11 @@ else
     [Parameter]
     public bool LargeCards { get; set; }
 
-    private string GalleryCssClass => LargeCards ? "product-gallery product-gallery--large" : "product-gallery";
+    [Parameter]
+    public string ViewMode { get; set; } = "grid";
+
+    private bool IsSingleColumn => ViewMode.Equals("single", StringComparison.OrdinalIgnoreCase);
+    private string GalleryCssClass => $"product-gallery{(LargeCards ? " product-gallery--large" : "")}{(IsSingleColumn ? " product-gallery--single" : "")}";
 
     internal Task RetryAsync() => OnRetry.InvokeAsync();
 }

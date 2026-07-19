@@ -3,7 +3,7 @@
 
 @if (IsLoading)
 {
-    <article class="product-card product-card--loading" aria-hidden="true">
+    <article class="product-card product-card--loading @(SingleColumn ? "product-card--single" : null)" aria-hidden="true">
         <div class="product-card__media product-card__skeleton"></div>
         <div class="product-card__body">
             <span class="product-card__skeleton product-card__skeleton--short"></span>
@@ -15,26 +15,40 @@
 }
 else
 {
-    <article class="product-card">
-        <a class="product-card__detail" href="@Model.ProductUrl" aria-label="ดูรายละเอียด @Model.Name โดย @Model.Brand">
-            <div class="product-card__media">
-                @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+    <article class="product-card @(SingleColumn ? "product-card--single" : null)">
+        <div class="product-card__media">
+            <a class="product-card__media-link" href="@Model.ProductUrl" aria-label="ดูรายละเอียด @Model.Name โดย @Model.Brand">
+                @if (CurrentImage is not null)
                 {
-                    <img src="@Model.ImageUrl" alt="@($"{Model.Name} โดย {Model.Brand}")"
+                    <img @key="CurrentImage.Url" src="@CurrentImage.Url" alt="@CurrentImage.AltText"
                          loading="lazy" decoding="async" />
                 }
                 else
                 {
                     <span class="product-card__placeholder" aria-hidden="true"><i></i></span>
                 }
-                <div class="product-card__badges">
-                    <span class="product-card__badge">@Model.TypeLabel</span>
-                    @if (!string.IsNullOrWhiteSpace(Model.ModelScale))
-                    {
-                        <span class="product-card__badge product-card__badge--scale">สเกล @Model.ModelScale</span>
-                    }
-                </div>
+            </a>
+            <div class="product-card__badges">
+                <span class="product-card__badge">@Model.TypeLabel</span>
+                @if (!string.IsNullOrWhiteSpace(Model.ModelScale))
+                {
+                    <span class="product-card__badge product-card__badge--scale">สเกล @Model.ModelScale</span>
+                }
             </div>
+            @if (ImageCount > 1)
+            {
+                <button class="product-card__gallery-button product-card__gallery-button--previous" type="button"
+                        @onclick="PreviousImage" aria-label="ดูรูปก่อนหน้าของ @Model.Name">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
+                </button>
+                <button class="product-card__gallery-button product-card__gallery-button--next" type="button"
+                        @onclick="NextImage" aria-label="ดูรูปถัดไปของ @Model.Name">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                </button>
+                <span class="visually-hidden" aria-live="polite">รูปที่ @(currentImageIndex + 1) จาก @ImageCount</span>
+            }
+        </div>
+        <a class="product-card__detail" href="@Model.ProductUrl" aria-label="ดูรายละเอียด @Model.Name โดย @Model.Brand">
             <div class="product-card__body">
                 <h3>@Model.Name</h3>
                 <p>@Model.Brand</p>
@@ -88,7 +102,32 @@ else
     [Parameter]
     public bool IsLoading { get; set; }
 
+    [Parameter]
+    public bool SingleColumn { get; set; }
+
     private bool isAdding;
+    private Guid currentProductId;
+    private int currentImageIndex;
+    private IReadOnlyList<ProductCardImageModel> GalleryImages => Model.GalleryImages;
+    private int ImageCount => GalleryImages.Count;
+    private ProductCardImageModel? CurrentImage => ImageCount == 0
+        ? null
+        : GalleryImages[Math.Clamp(currentImageIndex, 0, ImageCount - 1)];
+
+    protected override void OnParametersSet()
+    {
+        if (currentProductId == Model.ProductId && currentImageIndex < ImageCount) return;
+        currentProductId = Model.ProductId;
+        currentImageIndex = 0;
+    }
+
+    private void PreviousImage() => currentImageIndex = ImageCount == 0
+        ? 0
+        : (currentImageIndex - 1 + ImageCount) % ImageCount;
+
+    private void NextImage() => currentImageIndex = ImageCount == 0
+        ? 0
+        : (currentImageIndex + 1) % ImageCount;
 
     private async Task AddAsync()
     {

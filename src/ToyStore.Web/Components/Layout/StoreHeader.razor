@@ -61,42 +61,6 @@
             </button>
         </div>
 
-        <details @key="currentUrl" class="store-header__mobile-menu">
-            <summary class="touch-target">
-                <span>เมนู</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M4 7h16M4 12h16M4 17h16"></path>
-                </svg>
-            </summary>
-            <nav aria-label="เมนูหลักสำหรับมือถือ">
-                <StoreNavLink Href="/" CurrentUrl="@currentUrl">หน้าหลัก</StoreNavLink>
-                <StoreNavLink Href="/products" CurrentUrl="@currentUrl">สินค้า</StoreNavLink>
-                <StoreNavLink Href="/products?type=pre-order" CurrentUrl="@currentUrl">พรีออเดอร์</StoreNavLink>
-                <StoreNavLink Href="/products?type=in-stock" CurrentUrl="@currentUrl">สินค้าพร้อมส่ง</StoreNavLink>
-                <StoreNavLink Href="/brands" CurrentUrl="@currentUrl">แบรนด์</StoreNavLink>
-                <a href="/search">ค้นหาสินค้า</a>
-                <button type="button" @onclick="CartDrawer.Open" aria-haspopup="dialog">
-                    ตะกร้าสินค้า (@CartDrawer.TotalQuantity)
-                </button>
-                <AuthorizeView>
-                    <Authorized>
-                        <AuthorizeView Policy="@PolicyNames.CanViewCustomerOrders" Context="mobileCustomerAccountContext">
-                            <Authorized><a href="/account/orders">บัญชีของฉัน</a></Authorized>
-                            <NotAuthorized><a href="/Account/Manage/ChangePassword">บัญชีของฉัน</a></NotAuthorized>
-                        </AuthorizeView>
-                        <form action="/Account/Logout" method="post">
-                            <AntiforgeryToken />
-                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                            <button type="submit">ออกจากระบบ</button>
-                        </form>
-                    </Authorized>
-                    <NotAuthorized>
-                        <a href="/Account/Login" data-enhance-nav="false">เข้าสู่ระบบ</a>
-                        <a href="/Account/Register">สมัครสมาชิก</a>
-                    </NotAuthorized>
-                </AuthorizeView>
-            </nav>
-        </details>
     </div>
 </header>
 

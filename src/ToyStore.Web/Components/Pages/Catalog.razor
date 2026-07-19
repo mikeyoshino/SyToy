@@ -18,27 +18,83 @@
 
 <div class="catalog-page store-container">
     <header class="catalog-page__header">
-        <p class="catalog-page__eyebrow">// สินค้าและพรีออเดอร์</p>
+        <p class="catalog-page__eyebrow">SY TOYS COLLECTION</p>
         <h1>@Heading</h1>
         <p>@Intro</p>
     </header>
 
+    @if (IsSearchRoute)
+    {
+        <section class="catalog-page__discovery" aria-labelledby="storefront-search-title">
+            <h2 id="storefront-search-title" class="visually-hidden">ค้นหาสินค้า</h2>
+            <form class="catalog-page__search" action="/search" method="get" role="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+                <input name="q" value="@queryState.Search" placeholder="กำลังมองหาสินค้าอะไร?" aria-label="ค้นหาสินค้า" />
+                <button type="submit">ค้นหา</button>
+            </form>
+            @if (string.IsNullOrWhiteSpace(queryState.Search))
+            {
+                <nav class="catalog-page__store-menu" aria-label="เมนูร้านค้า">
+                    <div class="catalog-page__menu-highlights">
+                        <a href="/products?type=pre-order"><strong>เปิดพรีออเดอร์</strong><span>สินค้ารอบจองล่าสุด</span></a>
+                        <a href="/products?type=in-stock"><strong>พร้อมส่ง</strong><span>จัดส่งได้ทันที</span></a>
+                    </div>
+                    <div class="catalog-page__menu-links">
+                        <a href="/"><span>หน้าหลัก</span><span aria-hidden="true">›</span></a>
+                        <a href="/products"><span>สินค้าทั้งหมด</span><span aria-hidden="true">›</span></a>
+                        <a href="/brands"><span>แบรนด์ทั้งหมด</span><span aria-hidden="true">›</span></a>
+                        <AuthorizeView>
+                            <Authorized>
+                                <AuthorizeView Policy="@PolicyNames.CanViewCustomerOrders" Context="searchAccountContext">
+                                    <Authorized><a href="/account/orders"><span>คำสั่งซื้อของฉัน</span><span aria-hidden="true">›</span></a></Authorized>
+                                    <NotAuthorized><a href="/Account/Manage/ChangePassword"><span>ตั้งค่าบัญชี</span><span aria-hidden="true">›</span></a></NotAuthorized>
+                                </AuthorizeView>
+                            </Authorized>
+                            <NotAuthorized>
+                                <a href="/Account/Login" data-enhance-nav="false"><span>เข้าสู่ระบบหรือสมัครสมาชิก</span><span aria-hidden="true">›</span></a>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </div>
+                </nav>
+                @if (categories.Count != 0)
+                {
+                    <nav class="catalog-page__category-links" aria-label="หมวดหมู่สินค้า">
+                        <h2>เลือกตามหมวดหมู่</h2>
+                        @foreach (var category in categories.Take(6))
+                        {
+                            <a href="@($"/products?category={category.Id:D}")">
+                                <span>@category.Label</span><span aria-hidden="true">›</span>
+                            </a>
+                        }
+                    </nav>
+                }
+            }
+        </section>
+    }
+
+    <div class="catalog-page__mobile-toolbar" aria-label="รูปแบบรายการและตัวกรอง">
+        <div class="catalog-page__view-switch" role="group" aria-label="เลือกรูปแบบแสดงสินค้า">
+            <button type="button" class="@(displayMode == "grid" ? "is-active" : null)"
+                    aria-pressed="@(displayMode == "grid")" @onclick='() => SetDisplayMode("grid")' aria-label="แสดงแบบสองคอลัมน์">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg>
+            </button>
+            <button type="button" class="@(displayMode == "single" ? "is-active" : null)"
+                    aria-pressed="@(displayMode == "single")" @onclick='() => SetDisplayMode("single")' aria-label="แสดงแบบรายการใหญ่">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v18H7z" /></svg>
+            </button>
+        </div>
+        <button class="catalog-page__filter-toggle" type="button"
+                aria-expanded="@filtersExpanded" aria-controls="catalog-filter-panel"
+                aria-label="@(filtersExpanded ? "ซ่อนตัวกรองสินค้า" : "แสดงตัวกรองสินค้า")"
+                @onclick="ToggleFilters">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6M14 7h6M4 17h10M18 17h2" /><circle cx="12" cy="7" r="2" /><circle cx="16" cy="17" r="2" /></svg>
+            <span>กรองสินค้า</span>
+            @if (ActiveFilterCount > 0) { <b>@ActiveFilterCount</b> }
+        </button>
+    </div>
+
     <div class="catalog-page__body">
         <aside class="catalog-page__sidebar" aria-label="ตัวกรองสินค้า">
-            <button class="catalog-page__filter-toggle" type="button"
-                    aria-expanded="@filtersExpanded" aria-controls="catalog-filter-panel"
-                    aria-label="@(filtersExpanded ? "ซ่อนตัวกรองสินค้า" : "แสดงตัวกรองสินค้า")"
-                    @onclick="ToggleFilters">
-                <span>
-                    ตัวกรองสินค้า
-                    @if (ActiveFilterCount > 0)
-                    {
-                        <span class="catalog-page__filter-count">@ActiveFilterCount</span>
-                    }
-                </span>
-                <span class="catalog-page__filter-chevron" aria-hidden="true"></span>
-            </button>
-
             <div id="catalog-filter-panel"
                  class="catalog-page__filter-panel @(filtersExpanded ? "catalog-page__filter-panel--expanded" : null)">
                 <StorefrontCatalogFilterBar State="@queryState" BasePath="@BasePath" LockBrand="@IsBrandRoute"
@@ -62,7 +118,7 @@
                 { <span>พบ @totalCount.ToString("N0", ThaiCulture) รายการ</span> }
             </div>
             <ProductGallery Products="@products" State="@contentState" OnRetry="ReloadAsync"
-                            LoadingCardCount="8" LargeCards="true" />
+                            LoadingCardCount="8" LargeCards="true" ViewMode="@displayMode" />
             @if (contentState == StorefrontContentState.Normal && totalPages > 1)
             { <StorefrontPagination CurrentPage="@currentPage" TotalPages="@totalPages" PageUrl="BuildPageUrl" /> }
         </section>
@@ -87,6 +143,7 @@
     private int totalPages = 1;
     private int totalCount;
     private bool filtersExpanded;
+    private string displayMode = "grid";
 
     [Parameter] public string? BrandSlug { get; set; }
     [SupplyParameterFromQuery(Name = "q")] public string? Search { get; set; }
@@ -136,6 +193,7 @@
 
     private Task ReloadAsync() => LoadAsync(queryState);
     private void ToggleFilters() => filtersExpanded = !filtersExpanded;
+    private void SetDisplayMode(string mode) => displayMode = mode == "single" ? "single" : "grid";
     private async Task LoadAsync(StorefrontCatalogQueryState requested)
     {
         var generation = Interlocked.Increment(ref loadGeneration);

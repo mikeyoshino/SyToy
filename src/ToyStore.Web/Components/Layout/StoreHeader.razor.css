@@ -11,7 +11,7 @@
   display: flex;
   min-height: var(--store-header-height);
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: var(--space-4);
 }
 
@@ -28,94 +28,11 @@
   display: none;
 }
 
-.store-header__mobile-menu {
-  position: static;
-}
-
-.store-header__mobile-menu summary {
-  display: flex;
-  min-height: 2.75rem;
-  align-items: center;
-  gap: var(--space-2);
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: .875rem;
-  font-weight: var(--font-weight-extrabold);
-  list-style: none;
-  cursor: pointer;
-}
-
-.store-header__mobile-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.store-header__mobile-menu summary svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-width: 1.8;
-}
-
-.store-header__mobile-menu nav {
-  position: absolute;
-  top: 100%;
-  right: var(--gutter-mobile);
-  left: var(--gutter-mobile);
-  display: grid;
-  max-block-size: calc(100dvh - var(--store-header-height) - env(safe-area-inset-bottom));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-lg);
-}
-
-.store-header__mobile-menu nav a,
-.store-header__mobile-menu nav button {
-  display: flex;
-  width: 100%;
-  min-height: 2.75rem;
-  align-items: center;
-  padding-inline: var(--space-3);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-ink);
-  font-size: .9375rem;
-  font-weight: var(--font-weight-bold);
-  text-align: left;
-  text-decoration: none;
-  transition:
-    transform var(--duration-fast) var(--ease-standard),
-    opacity var(--duration-fast) var(--ease-standard);
-}
-
-.store-header__mobile-menu nav a:hover,
-.store-header__mobile-menu nav button:hover,
-.store-header__mobile-menu nav .active {
-  background: var(--color-bg);
-}
-
-.store-header__mobile-menu nav a:active,
-.store-header__mobile-menu nav button:active {
-  transform: scale(.98);
-}
-
-.store-header__mobile-menu form {
-  margin: 0;
-}
-
-@media (min-width: 35rem) {
-  .store-header__mobile-menu nav {
-    right: var(--gutter-tablet);
-    left: var(--gutter-tablet);
-  }
-}
-
 @media (min-width: 56.25rem) {
+  .store-header__bar {
+    justify-content: space-between;
+  }
+
   .store-header__desktop-nav,
   .store-header__actions {
     display: flex;
@@ -232,9 +149,6 @@
     background: var(--color-surface);
   }
 
-  .store-header__mobile-menu {
-    display: none;
-  }
 }
 
 @media (min-width: 56.25rem) and (max-width: 65.5625rem) {

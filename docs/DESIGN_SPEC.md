@@ -118,9 +118,16 @@ StoreShell
 ```
 
 - Shared `ProductCard` แสดง sale-type badge และ optional model-scale badge (เช่น `สเกล 1/12`) บน thumbnail โดยใช้สีต่างกันเพื่อแยกประเภทการขายกับขนาดโมเดล; Product Detail แสดงค่าเดียวกันใน facts และซ่อนทั้งสองจุดเมื่อไม่มีค่า
+- Shared `ProductCard` บนหน้า Home/Catalog/Search แสดงรูปสินค้าทั้งหมดจาก list query และมีลูกศรซ้าย–ขวาแบบ icon-only ไม่มีพื้นหลัง/เส้นขอบเมื่อมีมากกว่า 1 รูป โดยยังคงพื้นที่กดอย่างน้อย 44px ใช้ได้ทั้ง touch, mouse และ keyboard และเปลี่ยนรูปใน card โดยไม่เปิดหน้ารายละเอียด
 - Home hero แสดงเฉพาะ Product ประเภท Pre-order จาก query แยก สูงสุด 5 รายการ ครั้งละ 1 ภาพ/สินค้า ใช้ editorial split layout ที่แตกต่างจาก ProductCard, auto-slide ทุก 3 วินาทีเมื่ออยู่ใน viewport และผู้ใช้ไม่ได้ hover/focus พร้อมปุ่มก่อนหน้า/ถัดไป จุดเลือกสไลด์ ปุ่มหยุด และ native touch swipe; ปิด autoplay เมื่อ `prefers-reduced-motion: reduce`
+- ภาพ Spotlight บนมือถือยังใช้ `object-fit: cover` แต่ยก focal point ขึ้นที่แนวตั้งประมาณ 20% เพื่อให้ภาพ figure แนวตั้งเห็นศีรษะและช่วงลำตัวแทนการ crop จากกึ่งกลาง; tablet/desktop คง composition เดิม
 - Product Detail ใช้ shared expandable text กับคำอธิบายยาว: collapsed 3 บรรทัดแล้ว fade จากโปร่งใสไป 50% ก่อนปุ่ม `อ่านเพิ่มเติม`; expanded แสดงข้อความทั้งหมดโดยไม่มี fade และย่อกลับได้ด้วย keyboard-accessible button
 - Product Detail purchase column ใช้ sticky offset จาก shared `--store-header-height` และเว้นช่องว่างเพิ่ม เพื่อให้ชื่อ ราคา สถานะ และปุ่มซื้อหยุดอยู่ใต้ sticky Store Header เสมอ; จอ mobile ยังคง flow ปกติ
+- Storefront mobile ใช้ app-like bottom navigation 5 จุด (หน้าหลัก, สินค้า, ตะกร้า, พรีออเดอร์, บัญชี) พร้อม active state, cart badge, iPhone safe-area และซ่อนระหว่าง checkout; mobile header แสดงโลโก้กึ่งกลางโดยไม่มี hamburger ซ้ำ ส่วน desktop คง header navigation เดิม
+- แท็บ `สินค้า` mobile ไปที่ route `/brands` และบังคับ flow แบบเลือกแบรนด์ก่อน จากนั้นจึงไป `/brands/{slug}` เพื่อดูสินค้าพร้อมส่งและพรีออเดอร์ของแบรนด์นั้น; `/search` คงเป็นหน้า search/navigation hub แยกและไม่รวม brand directory กับ product results ไว้ใน section เดียวกัน
+- Catalog/Search mobile ใช้หัวเรื่องกะทัดรัด, search discovery ภาษาไทย, quick links พรีออเดอร์/พร้อมส่ง, filter pill และ toggle แสดงสินค้าแบบกริด 2 คอลัมน์หรือภาพใหญ่ 1 คอลัมน์จริง โดยไม่สร้าง sort/filter ที่ backend ไม่รองรับ
+- Cart mobile เป็น full-screen drawer พร้อม item controls, order summary และ CTA `ชำระเงินอย่างปลอดภัย` แบบ pill ที่ฐานจอ; In-stock/Pre-order checkout ใช้ flat mobile sheet, field ขนาดอ่านง่าย, summary และ sticky submit แต่คง Stripe Embedded และ commerce invariants เดิม
+- Cart แสดง action `ช้อปปิ้งต่อ →` แบบ ghost แนวนอนชิดขวาทั้ง mobile/desktop หลังเพิ่มสินค้า โดยปิด drawer และกลับไป `/brands/{slug}` ของสินค้าที่เพิ่งเพิ่มจาก BrandSlug ที่ server อ่านจริง; fallback ไป `/brands` เมื่อไม่มีปลายทางที่ใช้ได้ และ CTA ชำระเงินอยู่เต็มแถวแยกด้านล่าง
 
 Production routes อย่างน้อย:
 

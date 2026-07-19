@@ -8,7 +8,7 @@
 .preorder-checkout__panel h2 { margin-bottom: var(--space-5); font-size: 1.35rem; }
 .preorder-checkout__fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-5); }
 .preorder-checkout__field-wide { grid-column: 1 / -1; }
-.preorder-checkout__order-summary { position: sticky; top: var(--space-6); display: grid; gap: var(--space-5); }
+.preorder-checkout__order-summary { position: sticky; top: calc(var(--store-header-height) + var(--space-4)); display: grid; gap: var(--space-5); }
 .preorder-checkout__summary { display: grid; gap: var(--space-3); }
 .preorder-checkout__summary div { display: flex; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-line); }
 .preorder-checkout__summary dt { color: var(--color-muted); }
@@ -18,8 +18,18 @@
 .preorder-checkout__result .store-action { justify-self: start; text-decoration: none; }
 .preorder-checkout__result-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 @media (max-width: 47.999rem) {
+  .preorder-checkout { padding: var(--space-5) 0 var(--space-10); background: var(--color-surface); }
+  .preorder-checkout__header { margin-bottom: var(--space-6); padding-inline: var(--gutter-mobile); text-align: center; }
+  .preorder-checkout__header h1, .preorder-checkout__result h1, .preorder-checkout__state h1 { font-size: 1.5rem; }
+  .preorder-checkout__eyebrow { margin-bottom: var(--space-2); padding: 0; background: transparent; color: var(--color-muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
   .preorder-checkout__layout, .preorder-checkout__payment-layout { grid-template-columns: 1fr; }
+  .preorder-checkout__layout, .preorder-checkout__payment-layout { gap: 0; }
+  .preorder-checkout__panel { padding: var(--space-6) var(--gutter-mobile); border-radius: 0; box-shadow: inset 0 1px var(--color-line); }
+  .preorder-checkout__panel h2 { font-size: 1.1rem; text-transform: uppercase; }
   .preorder-checkout__fields { grid-template-columns: 1fr; }
   .preorder-checkout__field-wide { grid-column: auto; }
   .preorder-checkout__order-summary { position: static; }
+  .preorder-checkout__order-summary > ::deep .store-action { position: sticky; z-index: 5; bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); min-height: 3.5rem; border-radius: var(--radius-pill); background: var(--color-ink); color: var(--color-surface); text-transform: uppercase; box-shadow: 0 8px 24px rgb(17 17 17 / 18%); }
+  .preorder-checkout__stripe { min-height: 34rem; }
+  .preorder-checkout__state, .preorder-checkout__result { padding-inline: var(--gutter-mobile); }
 }

@@ -113,24 +113,30 @@
                         </li>
                     }
                 </ul>
-                <div class="store-cart__summary">
-                    <span>ยอดรวมที่แสดง</span>
-                    <strong>฿@View.DisplayTotal.ToString("N2", ThaiCulture)</strong>
-                </div>
+                <dl class="store-cart__summary">
+                    <div><dt>ยอดสินค้า</dt><dd>฿@View.DisplayTotal.ToString("N2", ThaiCulture)</dd></div>
+                    <div><dt>ค่าจัดส่ง</dt><dd>คำนวณในขั้นตอนถัดไป</dd></div>
+                    <div class="store-cart__summary-total"><dt>ยอดรวม</dt><dd>฿@View.DisplayTotal.ToString("N2", ThaiCulture)</dd></div>
+                </dl>
                 <p class="store-cart__notice">ราคานี้เป็นราคาปัจจุบัน ระบบจะตรวจสอบราคาและสต็อกอีกครั้งตอนชำระเงิน</p>
             }
         </section>
     </ChildContent>
     <Actions>
         <div class="store-cart__footer">
-            <StoreButtonGroup IsBusy="@isBusy">
-                <StoreButton Tone="StoreButtonTone.Secondary" OnClick="Close">เลือกซื้อสินค้าต่อ</StoreButton>
-                <StoreButton IsBusy="@isBusy" LoadingText="กำลังเตรียมชำระเงิน…"
+            <div class="store-cart__continue-action">
+                <StoreButton Tone="StoreButtonTone.Ghost" Compact="true" OnClick="ContinueShopping">
+                    ช้อปปิ้งต่อ <span aria-hidden="true">→</span>
+                </StoreButton>
+            </div>
+            <div class="store-cart__checkout-action">
+                <StoreButton FullWidth="true" IsBusy="@isBusy" LoadingText="กำลังเตรียมชำระเงิน…"
                              Disabled="@(!CanCheckout)" OnClick="CheckoutAsync"
                              aria-describedby="store-cart-checkout-note">
-                    ไปชำระเงิน
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="10" width="12" height="10" rx="2" /><path d="M9 10V7a3 3 0 0 1 6 0v3" /></svg>
+                    ชำระเงินอย่างปลอดภัย
                 </StoreButton>
-            </StoreButtonGroup>
+            </div>
             <span id="store-cart-checkout-note" class="visually-hidden">
                 @CheckoutNote
             </span>
@@ -153,6 +159,7 @@
     private bool isBusy;
     private bool disposed;
     private string? errorMessage;
+    private string continueShoppingUrl = "/brands";
     private IReadOnlyList<string> mergeMessages = [];
     private bool CanCheckout => !isBusy && errorMessage is null
         && View.Items.Count != 0 && View.Items.All(item => item.IsCurrentlyAvailable);
@@ -274,6 +281,10 @@
                 await BrowserStore.SaveAsync(anonymous, disposalTokenSource.Token);
                 await LoadAnonymousPreviewAsync(disposalTokenSource.Token);
             }
+            var addedItem = View.Items.FirstOrDefault(item => item.ProductId == productId);
+            continueShoppingUrl = string.IsNullOrWhiteSpace(addedItem?.BrandSlug)
+                ? "/brands"
+                : $"/brands/{Uri.EscapeDataString(addedItem.BrandSlug)}";
             return true;
         }
         catch (OperationCanceledException) when (disposalTokenSource.IsCancellationRequested) { return false; }
@@ -425,7 +436,11 @@
             _ = InvokeAsync(StateHasChanged);
     }
 
-    private void Close() => Coordinator.Close();
+    private void ContinueShopping()
+    {
+        Coordinator.Close();
+        NavigationManager.NavigateTo(continueShoppingUrl);
+    }
 
     private async Task CheckoutAsync()
     {

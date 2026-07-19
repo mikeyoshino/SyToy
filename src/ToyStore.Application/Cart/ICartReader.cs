@@ -24,6 +24,7 @@ public sealed record CustomerCartItemView(
     Guid ProductId,
     string DisplayName,
     string Slug,
+    string BrandSlug,
     string PrimaryImageUrl,
     decimal CurrentUnitPrice,
     int Quantity,

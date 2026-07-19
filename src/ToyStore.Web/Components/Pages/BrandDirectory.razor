@@ -8,7 +8,7 @@
 <HeadContent><meta name="description" content="เลือกดูแบรนด์ของเล่นสะสมที่มีสินค้าพร้อมส่งกับ SY TOY" /></HeadContent>
 
 <div class="brand-directory store-container">
-    <header><p>// แบรนด์</p><h1>เลือกดูสินค้าตามแบรนด์</h1><span>แสดงเฉพาะแบรนด์ที่มีสินค้าพร้อมส่งเปิดขายอยู่</span></header>
+    <header><p>// สินค้า</p><h1>เลือกแบรนด์ก่อนดูสินค้า</h1><span>เลือกแบรนด์ที่สนใจ แล้วดูสินค้าพร้อมส่งและพรีออเดอร์ของแบรนด์นั้น</span></header>
     @if (state == StorefrontContentState.Loading)
     { <div class="brand-directory__state" role="status">กำลังโหลดแบรนด์</div> }
     else if (state == StorefrontContentState.Error)
@@ -17,9 +17,9 @@
     { <div class="brand-directory__state" role="status">ยังไม่มีแบรนด์ที่เปิดขายสินค้า</div> }
     else
     {
-        <section class="brand-directory__grid" aria-label="แบรนด์ที่มีสินค้าพร้อมส่ง">
+        <section class="brand-directory__grid" aria-label="แบรนด์ที่มีสินค้าเปิดขาย">
             @foreach (var brand in brands)
-            { <CollectionCard @key="brand.Id" Model="@(new CollectionCardModel(brand.Label, "ดูสินค้าพร้อมส่งทั้งหมด", $"/brands/{brand.Slug}"))" /> }
+            { <CollectionCard @key="brand.Id" Model="@(new CollectionCardModel(brand.Label, "ดูสินค้าของแบรนด์นี้", $"/brands/{brand.Slug}"))" /> }
         </section>
     }
 </div>
