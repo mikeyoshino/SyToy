@@ -63,7 +63,7 @@ internal sealed class StorefrontCatalogReader(
         var effectivePage = EffectivePage(request.PageNumber, request.PageSize, total);
         var products = total == 0 ? [] : await query
             .Include(product => product.Images)
-            .OrderByDescending(product => product.PublishedAtUtc)
+            .OrderByDescending(product => product.UpdatedAtUtc)
             .ThenBy(product => product.Id)
             .Skip((effectivePage - 1) * request.PageSize)
             .Take(request.PageSize)

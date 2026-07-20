@@ -108,6 +108,67 @@ public sealed class StorefrontCatalogReaderTests(PostgreSqlFixture postgreSql)
     }
 
     [Fact]
+    public async Task PublicListMovesMostRecentlyEditedPublishedProductToTheFront()
+    {
+        await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
+        _ = factory.CreateClient();
+        await postgreSql.ResetAsync(factory.Services);
+        var seeded = await SeedAsync(factory);
+        await using (var updateScope = factory.Services.CreateAsyncScope())
+        {
+            var db = updateScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var product = await db.Products
+                .Include(current => current.Images)
+                .Include(current => current.Characters)
+                .SingleAsync(current => current.Id == seeded.PublishedId,
+                    TestContext.Current.CancellationToken);
+            product.UpdateDraftInStock(
+                product.DisplayName,
+                product.EnglishName,
+                $"{product.Description} แก้ไขล่าสุด",
+                product.Slug,
+                product.ProductCategoryId,
+                product.BrandId,
+                product.UniverseId,
+                product.InStockOffer!,
+                product.Images.OrderBy(image => image.SortOrder).Select(image =>
+                    new ProductImageDefinition(
+                        image.Id,
+                        image.StorageKey,
+                        image.PublicRelativeUrl,
+                        image.AltText,
+                        image.ThumbnailStorageKey,
+                        image.ThumbnailPublicRelativeUrl)).ToArray(),
+                product.Characters.Select(link => link.CharacterId).ToArray(),
+                product.Version,
+                Now.AddMinutes(-30),
+                "admin-test",
+                product.ModelScale);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using var readScope = factory.Services.CreateAsyncScope();
+        var page = await readScope.ServiceProvider.GetRequiredService<IStorefrontCatalogReader>()
+            .ListAsync(
+                new StorefrontCatalogReadRequest(
+                    null,
+                    StorefrontSaleTypeFilter.All,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    1,
+                    12,
+                    Now),
+                TestContext.Current.CancellationToken);
+
+        Assert.Equal(seeded.PublishedId, page.Items[0].Id);
+    }
+
+    [Fact]
     public async Task PublishedPreOrderUsesFullPriceForFiltersAndProjectsOpenFullClosedAndRequiredDetailFields()
     {
         await using var factory = new ToyStoreWebApplicationFactory(postgreSql.ConnectionString);
