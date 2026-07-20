@@ -69,8 +69,8 @@
                 <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalMonth" Label="เดือนที่คาดว่าสินค้าจะมา" Required="true" Min="1" Max="12" Step="1" InputMode="numeric" Disabled="@IsBusy" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.EstimatedArrivalYear" Label="ปีที่คาดว่าสินค้าจะมา" Required="true" Min="2026" Step="1" InputMode="numeric" Disabled="@IsBusy" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.TotalCapacity" Label="จำนวนรับพรีออเดอร์" Required="true"
-                                  Min="1" Step="1" InputMode="numeric" Disabled="@(IsBusy || IsPublished)"
-                                  HelpText="@(IsPublished ? "ล็อกหลังเผยแพร่เพื่อรักษาจำนวนจองและการชำระเงินเดิม" : null)" />
+                                  Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy"
+                                  HelpText="@(IsPublished ? "ปรับได้ แต่ต้องไม่น้อยกว่าจำนวนที่ถูกจอง ชำระ หรือปิดสิทธิ์ไปแล้ว" : null)" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.MaxPerCustomer" Label="จำนวนสูงสุดต่อคน" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" />
                 <StoreNumberField TValue="int?" @bind-Value="Model.BalancePaymentDays" Label="จำนวนวันชำระยอดคงเหลือ" Required="true" Min="1" Step="1" InputMode="numeric" Disabled="@IsBusy" HelpText="ค่าเริ่มต้น 7 วัน" />
                 <p class="admin-product-editor__policy">มัดจำไม่คืนเมื่อลูกค้ายกเลิกหรือไม่ชำระยอดคงเหลือตามกำหนด</p>

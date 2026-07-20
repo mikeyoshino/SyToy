@@ -1,6 +1,7 @@
 using MediatR;
 using ToyStore.Application.Common.Models;
 using ToyStore.Domain.Catalog;
+using ToyStore.Domain.PreOrders;
 using ToyStore.Domain.Products;
 
 namespace ToyStore.Application.Products.UpdateDraftPreOrderProduct;
@@ -72,11 +73,36 @@ public sealed class UpdateDraftPreOrderProductHandler(
                         EstimatedArrival.Create(request.EstimatedArrivalMonth, request.EstimatedArrivalYear),
                         request.TotalCapacity, request.MaxPerCustomer, now, request.BalancePaymentDays);
                     if (product.Status == ProductStatus.Published
-                        && (offer.CloseAtUtc != product.PreOrderOffer!.CloseAtUtc
-                            || offer.TotalCapacity != product.PreOrderOffer.TotalCapacity))
+                        && offer.CloseAtUtc != product.PreOrderOffer!.CloseAtUtc)
                     {
                         return Result<ProductMutationResult>.Failure(
                             ProductErrors.PublishedPreOrderCapacityLocked);
+                    }
+
+                    if (product.Status == ProductStatus.Published
+                        && offer.TotalCapacity != product.PreOrderOffer!.TotalCapacity)
+                    {
+                        var capacity = await session.LockPreOrderCapacityAsync(product.Id, token);
+                        if (capacity is null
+                            || capacity.TotalCapacity != product.PreOrderOffer.TotalCapacity
+                            || capacity.CloseAtUtc != product.PreOrderOffer.CloseAtUtc)
+                        {
+                            return Result<ProductMutationResult>.Failure(
+                                ProductErrors.PreOrderCapacityUnavailable);
+                        }
+
+                        var adjustment = capacity.AdjustTotalCapacity(
+                            offer.TotalCapacity,
+                            Guid.NewGuid(),
+                            "ผู้ดูแลระบบปรับจำนวนรับพรีออเดอร์หลังเผยแพร่",
+                            $"admin-product-update:{product.Id}:{request.ExpectedVersion}",
+                            capacity.Version,
+                            now,
+                            actor);
+                        if (adjustment.Movement is not null)
+                        {
+                            session.Add(adjustment.Movement);
+                        }
                     }
                     product.UpdateDraftPreOrder(
                         request.DisplayName, request.EnglishName, request.Description, slug.Value,
@@ -96,6 +122,26 @@ public sealed class UpdateDraftPreOrderProductHandler(
                     return Result<ProductMutationResult>.Failure(
                         error,
                         failure is null ? null : [failure]);
+                }
+                catch (PreOrderCapacityRuleException exception)
+                {
+                    var error = exception.Rule switch
+                    {
+                        PreOrderCapacityRule.TotalCapacityBelowAllocated =>
+                            ProductErrors.PreOrderCapacityBelowAllocated,
+                        PreOrderCapacityRule.PreOrderClosed =>
+                            ProductErrors.PublishedPreOrderCapacityLocked,
+                        _ => ProductErrors.PreOrderCapacityUnavailable,
+                    };
+                    var failures = exception.Rule == PreOrderCapacityRule.TotalCapacityBelowAllocated
+                        ? new[]
+                        {
+                            new FieldValidationFailure(
+                                nameof(UpdateDraftPreOrderProductCommand.TotalCapacity),
+                                error.Message),
+                        }
+                        : null;
+                    return Result<ProductMutationResult>.Failure(error, failures);
                 }
             },
             token => sessionFactory.VerifyCommitAsync(

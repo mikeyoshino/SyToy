@@ -37,6 +37,47 @@ public sealed class PreOrderCapacityTests
     }
 
     [Fact]
+    public void AdjustTotalCapacityRecordsIncreaseAndDecreaseMovements()
+    {
+        var capacity = CreateCapacity(totalCapacity: 10).Capacity;
+
+        var increased = capacity.AdjustTotalCapacity(
+            15, Guid.NewGuid(), "เพิ่มรอบรับ", "admin:increase", capacity.Version,
+            CreatedAtUtc.AddMinutes(1), "admin@example.com");
+        var decreased = capacity.AdjustTotalCapacity(
+            8, Guid.NewGuid(), "ลดรอบรับ", "admin:decrease", capacity.Version,
+            CreatedAtUtc.AddMinutes(2), "admin@example.com");
+
+        Assert.Equal(8, capacity.TotalCapacity);
+        Assert.Equal(8, capacity.RemainingQuantity);
+        Assert.Equal(3, capacity.Version);
+        Assert.Equal(PreOrderCapacityMovementType.CapacityIncreased, increased.Movement?.Type);
+        Assert.Equal(5, increased.Movement?.AvailableQuantityDelta);
+        Assert.Equal(PreOrderCapacityMovementType.CapacityDecreased, decreased.Movement?.Type);
+        Assert.Equal(-7, decreased.Movement?.AvailableQuantityDelta);
+    }
+
+    [Fact]
+    public void AdjustTotalCapacityCannotDropBelowAllocatedQuantity()
+    {
+        var capacity = CreateCapacity(totalCapacity: 3).Capacity;
+        _ = capacity.Reserve(
+            Guid.NewGuid(), Guid.NewGuid(), "customer-1", 2,
+            CreatedAtUtc.AddMinutes(1), CreatedAtUtc.AddMinutes(33), Guid.NewGuid(),
+            "เริ่มชำระมัดจำ", "checkout:1", capacity.Version, "customer-1");
+
+        var exception = Assert.Throws<PreOrderCapacityRuleException>(() =>
+            capacity.AdjustTotalCapacity(
+                1, Guid.NewGuid(), "ลดรอบรับ", "admin:decrease", capacity.Version,
+                CreatedAtUtc.AddMinutes(2), "admin@example.com"));
+
+        Assert.Equal(PreOrderCapacityRule.TotalCapacityBelowAllocated, exception.Rule);
+        Assert.Equal(3, capacity.TotalCapacity);
+        Assert.Equal(2, capacity.HeldQuantity);
+        Assert.Equal(2, capacity.Version);
+    }
+
+    [Fact]
     public void ReserveMovesRemainingCapacityIntoHoldAndRecordsMovement()
     {
         var capacity = CreateCapacity(totalCapacity: 3).Capacity;

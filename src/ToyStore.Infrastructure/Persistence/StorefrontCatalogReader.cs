@@ -303,6 +303,11 @@ internal sealed class StorefrontCatalogReader(
             .Sum(x => (long)x.Quantity);
         var latest = movements.Length == 0 ? null : movements[^1];
         var initial = movements.Where(x => x.Type == PreOrderCapacityMovementType.InitialCapacity).ToArray();
+        var evidencedTotalCapacity = initial.Sum(x => (long)x.Quantity)
+            + movements.Where(x => x.Type == PreOrderCapacityMovementType.CapacityIncreased)
+                .Sum(x => (long)x.Quantity)
+            - movements.Where(x => x.Type == PreOrderCapacityMovementType.CapacityDecreased)
+                .Sum(x => (long)x.Quantity);
         if (capacity.ProductId != product.Id
             || offer.CloseAtUtc.Offset != TimeSpan.Zero
             || capacity.CloseAtUtc.Offset != TimeSpan.Zero
@@ -317,7 +322,7 @@ internal sealed class StorefrontCatalogReader(
                 + capacity.CommittedQuantity + capacity.RetiredQuantity != capacity.TotalCapacity
             || movements.Length != capacity.Version
             || initial.Length != 1
-            || initial[0].Quantity != capacity.TotalCapacity
+            || evidencedTotalCapacity != capacity.TotalCapacity
             || latest is null
             || latest.ResultingCapacityVersion != capacity.Version
             || latest.ResultingRemainingQuantity != capacity.RemainingQuantity

@@ -13,6 +13,7 @@
 
 ## Current focus
 
+- 2026-07-20: เปิดให้ Admin ปรับจำนวนรับพรีออเดอร์ของสินค้า Published ก่อนปิดรอบ โดย lock Product/capacity และอัปเดต offer, capacity กับ append-only increase/decrease movement ใน transaction เดียว; ห้ามลดต่ำกว่า held + committed + retired และอัปเดต storefront coherence/migration/tests
 - 2026-07-20: เพิ่ม mobile customer logout ที่หน้า Account และ Search navigation hub ด้วย POST `/Account/Logout`, Antiforgery Token, safe `/` return URL, visible focus และ touch target อย่างน้อย 44px โดยไม่เปลี่ยน desktop logout
 - 2026-07-20: เพิ่ม horizontal gap ของ shared ProductGallery บน mobile จาก 5.6px เป็น 12px ตาม card-gap spec โดยคง tablet 20px, desktop 24px และ single-column spacing เดิม ครอบคลุม Home/Catalog/Search/Brand list
 - 2026-07-20: ลบ blog section จาก Home และแทนด้วย payment assurance ที่ตรงกับ Stripe card/PromptPay จริง; redesign footer พร้อม Facebook/contact/payment methods, เพิ่มหน้า Contact ภาษาไทย ข้อมูล SY TOYS, desktop/search-menu navigation และ SEO/sitemap

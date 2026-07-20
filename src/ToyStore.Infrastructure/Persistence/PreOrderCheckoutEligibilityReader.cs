@@ -151,9 +151,14 @@ internal sealed class PreOrderCheckoutEligibilityReader(
 
         var initial = movements.Where(item => item.Type == PreOrderCapacityMovementType.InitialCapacity)
             .ToArray();
+        var evidencedTotalCapacity = initial.Sum(item => (long)item.Quantity)
+            + movements.Where(item => item.Type == PreOrderCapacityMovementType.CapacityIncreased)
+                .Sum(item => (long)item.Quantity)
+            - movements.Where(item => item.Type == PreOrderCapacityMovementType.CapacityDecreased)
+                .Sum(item => (long)item.Quantity);
         var latest = movements.Length == 0 ? null : movements[^1];
         if (initial.Length != 1
-            || initial[0].Quantity != capacity.TotalCapacity
+            || evidencedTotalCapacity != capacity.TotalCapacity
             || initial[0].ResultingCapacityVersion != 1
             || latest is null
             || latest.ResultingCapacityVersion != capacity.Version

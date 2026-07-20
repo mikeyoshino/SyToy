@@ -332,10 +332,7 @@ public sealed class ProductVersionedEditingTests
         Assert.Equal(2590, product.PreOrderOffer!.FullPrice.Amount);
         Assert.Equal(3, product.Version);
 
-        var beforeCapacityChange = Snapshot(product);
-        AssertRule(
-            ProductRule.ProductPublishedPreOrderCapacityLocked,
-            () => product.UpdateDraftPreOrder(
+        product.UpdateDraftPreOrder(
                 product.DisplayName,
                 product.EnglishName,
                 product.Description,
@@ -356,8 +353,35 @@ public sealed class ProductVersionedEditingTests
                 [],
                 product.Version,
                 CreatedAtUtc.AddMinutes(3),
-                "admin-3"));
-        Assert.Equal(beforeCapacityChange, Snapshot(product));
+                "admin-3");
+        Assert.Equal(currentOffer.TotalCapacity + 1, product.PreOrderOffer.TotalCapacity);
+
+        var beforeCloseChange = Snapshot(product);
+        AssertRule(
+            ProductRule.ProductPublishedPreOrderCapacityLocked,
+            () => product.UpdateDraftPreOrder(
+                product.DisplayName,
+                product.EnglishName,
+                product.Description,
+                product.Slug,
+                product.ProductCategoryId,
+                product.BrandId,
+                product.UniverseId,
+                PreOrderOffer.Create(
+                    product.PreOrderOffer.FullPrice,
+                    product.PreOrderOffer.DepositAmount,
+                    new DateOnly(2026, 12, 30),
+                    product.PreOrderOffer.EstimatedArrival,
+                    product.PreOrderOffer.TotalCapacity,
+                    product.PreOrderOffer.MaxPerCustomer,
+                    CreatedAtUtc.AddMinutes(4),
+                    product.PreOrderOffer.BalancePaymentDays),
+                [image],
+                [],
+                product.Version,
+                CreatedAtUtc.AddMinutes(4),
+                "admin-4"));
+        Assert.Equal(beforeCloseChange, Snapshot(product));
     }
 
     [Fact]

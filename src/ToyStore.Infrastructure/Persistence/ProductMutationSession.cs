@@ -177,6 +177,8 @@ internal sealed class ProductMutationSession(ApplicationDbContext db) : IProduct
     private bool namespaceLocked;
     private bool productLockAttempted;
     private Guid lockedProductId;
+    private bool capacityLockAttempted;
+    private Guid lockedCapacityId;
     private bool referencesLockAttempted;
     private bool referencesLocked;
     private bool resourcesDisposed;
@@ -211,6 +213,34 @@ internal sealed class ProductMutationSession(ApplicationDbContext db) : IProduct
             .Include(product => product.Characters)
             .AsSingleQuery()
             .SingleOrDefaultAsync(product => product.Id == productId, cancellationToken);
+    }
+
+    public async Task<PreOrderCapacity?> LockPreOrderCapacityAsync(
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        EnsureProductLockAttempted();
+        if (productId != lockedProductId)
+        {
+            throw new InvalidOperationException(
+                "Pre-order capacity must belong to the locked Product.");
+        }
+
+        if (capacityLockAttempted)
+        {
+            throw new InvalidOperationException(
+                "A Product session can lock one Pre-order capacity only.");
+        }
+
+        capacityLockAttempted = true;
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM \"PreOrderCapacities\" WHERE \"ProductId\" = {productId} FOR UPDATE",
+            cancellationToken);
+        var capacity = await db.PreOrderCapacities.SingleOrDefaultAsync(
+            current => current.ProductId == productId,
+            cancellationToken);
+        lockedCapacityId = capacity?.Id ?? Guid.Empty;
+        return capacity;
     }
 
     public async Task<ProductReferenceReadiness> LockReferencesAsync(
@@ -354,6 +384,22 @@ internal sealed class ProductMutationSession(ApplicationDbContext db) : IProduct
 
         db.PreOrderCapacities.Add(capacityCreation.Capacity);
         db.PreOrderCapacityMovements.Add(capacityCreation.Movement);
+    }
+
+    public void Add(PreOrderCapacityMovement movement)
+    {
+        EnsureReferencesLocked();
+        ArgumentNullException.ThrowIfNull(movement);
+        if (!capacityLockAttempted
+            || lockedCapacityId == Guid.Empty
+            || movement.CapacityId != lockedCapacityId
+            || movement.ProductId != lockedProductId)
+        {
+            throw new InvalidOperationException(
+                "Pre-order capacity movement does not belong to the locked Product capacity.");
+        }
+
+        db.PreOrderCapacityMovements.Add(movement);
     }
 
     public async Task<CatalogMutationExecution<T>> ExecuteOnceAsync<T>(

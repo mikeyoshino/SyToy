@@ -17,6 +17,7 @@ using ToyStore.Application.Products.CreatePreOrderProduct;
 using ToyStore.Application.Products.PublishProduct;
 using ToyStore.Application.Products.UpdateDraftInStockProduct;
 using ToyStore.Application.Products.UpdateDraftPreOrderProduct;
+using ToyStore.Application.Storefront.Catalog;
 using ToyStore.Domain.Catalog;
 using ToyStore.Domain.Inventory;
 using ToyStore.Domain.PreOrders;
@@ -72,17 +73,39 @@ public sealed class InStockProductCommandPersistenceTests(PostgreSqlFixture post
             publishedUpdate.Value.EstimatedArrivalYear!.Value, 13,
             publishedUpdate.Value.MaxPerCustomer!.Value, publishedUpdate.Value.BalancePaymentDays!.Value,
             publishedUpdate.Value.Images.Select(x => (ProductMediaPlanSlot)new RetainedProductMediaSlot(x.Id)).ToArray()));
-        Assert.Equal(ProductErrors.PublishedPreOrderCapacityLocked, capacityChange.Error);
+        Assert.True(capacityChange.IsSuccess);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var capacity = await db.PreOrderCapacities.AsNoTracking().SingleAsync(
             x => x.ProductId == published.Value.Id, TestContext.Current.CancellationToken);
-        var movement = await db.PreOrderCapacityMovements.AsNoTracking().SingleAsync(
-            x => x.CapacityId == capacity.Id, TestContext.Current.CancellationToken);
-        Assert.Equal(12, capacity.TotalCapacity);
-        Assert.Equal(PreOrderCapacityMovementType.InitialCapacity, movement.Type);
-        Assert.Equal(12, movement.Quantity);
+        var movements = await db.PreOrderCapacityMovements.AsNoTracking()
+            .Where(x => x.CapacityId == capacity.Id)
+            .OrderBy(x => x.ResultingCapacityVersion)
+            .ToArrayAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(13, capacity.TotalCapacity);
+        Assert.Equal(13, capacity.RemainingQuantity);
+        Assert.Collection(
+            movements,
+            movement =>
+            {
+                Assert.Equal(PreOrderCapacityMovementType.InitialCapacity, movement.Type);
+                Assert.Equal(12, movement.Quantity);
+            },
+            movement =>
+            {
+                Assert.Equal(PreOrderCapacityMovementType.CapacityIncreased, movement.Type);
+                Assert.Equal(1, movement.Quantity);
+                Assert.Equal(1, movement.AvailableQuantityDelta);
+            });
+        var storefront = await scope.ServiceProvider.GetRequiredService<IStorefrontCatalogReader>()
+            .FindBySlugAsync(
+                capacityChange.Value.Slug,
+                new DateTimeOffset(2026, 7, 20, 0, 0, 0, TimeSpan.Zero),
+                TestContext.Current.CancellationToken);
+        Assert.NotNull(storefront);
+        Assert.Equal(13, storefront.AvailableQuantity);
+        Assert.Equal(StorefrontOfferState.PreOrderOpen, storefront.OfferState);
     }
 
     [Fact]

@@ -36,7 +36,17 @@ public static class ProductErrors
 
     public static readonly Error PublishedPreOrderCapacityLocked = new(
         "Product.PublishedPreOrderCapacityLocked",
-        "หลังเผยแพร่แล้วไม่สามารถเปลี่ยนวันปิดรอบหรือจำนวนรับพรีออเดอร์ทั้งหมดได้",
+        "หลังเผยแพร่แล้วไม่สามารถเปลี่ยนวันปิดรอบได้",
+        ErrorType.Conflict);
+
+    public static readonly Error PreOrderCapacityUnavailable = new(
+        "Product.PreOrderCapacityUnavailable",
+        "ข้อมูลจำนวนพรีออเดอร์ไม่สมบูรณ์ กรุณาติดต่อผู้ดูแลระบบ",
+        ErrorType.Failure);
+
+    public static readonly Error PreOrderCapacityBelowAllocated = new(
+        "Product.PreOrderCapacityBelowAllocated",
+        "จำนวนรับพรีออเดอร์ใหม่ต้องไม่น้อยกว่าจำนวนที่ถูกจอง ชำระ หรือปิดสิทธิ์ไปแล้ว",
         ErrorType.Conflict);
 
     public static readonly Error CategoryUnavailable = new(

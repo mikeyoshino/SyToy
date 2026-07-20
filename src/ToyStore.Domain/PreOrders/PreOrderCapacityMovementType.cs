@@ -9,4 +9,6 @@ public enum PreOrderCapacityMovementType
     ReservationConsumed,
     CancellationReopened,
     CancellationRetired,
+    CapacityIncreased,
+    CapacityDecreased,
 }

@@ -370,8 +370,7 @@ public sealed class Product
             displayName, englishName, description, modelScale, slug,
             productCategoryId, brandId, universeId, offer);
         if (Status == ProductStatus.Published
-            && (offer.CloseAtUtc != _preOrderOffer!.CloseAtUtc
-                || offer.TotalCapacity != _preOrderOffer.TotalCapacity))
+            && offer.CloseAtUtc != _preOrderOffer!.CloseAtUtc)
         {
             throw new ProductRuleException(ProductRule.ProductPublishedPreOrderCapacityLocked);
         }

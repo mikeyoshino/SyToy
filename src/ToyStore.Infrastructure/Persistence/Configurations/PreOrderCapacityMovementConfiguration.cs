@@ -25,7 +25,11 @@ internal sealed class PreOrderCapacityMovementConfiguration
                 + "(\"Type\" IN ('Released', 'Expired', 'CancellationReopened') "
                 + "AND \"AvailableQuantityDelta\" = \"Quantity\" AND \"ReservationId\" IS NOT NULL) OR "
                 + "(\"Type\" IN ('ReservationConsumed', 'CancellationRetired') "
-                + "AND \"AvailableQuantityDelta\" = 0 AND \"ReservationId\" IS NOT NULL)");
+                + "AND \"AvailableQuantityDelta\" = 0 AND \"ReservationId\" IS NOT NULL) OR "
+                + "(\"Type\" = 'CapacityIncreased' AND \"AvailableQuantityDelta\" = \"Quantity\" "
+                + "AND \"ReservationId\" IS NULL) OR "
+                + "(\"Type\" = 'CapacityDecreased' AND \"AvailableQuantityDelta\" = -\"Quantity\" "
+                + "AND \"ReservationId\" IS NULL)");
             table.HasCheckConstraint(
                 "CK_PreOrderCapacityMovements_ResultingQuantities_NonNegative",
                 "\"ResultingRemainingQuantity\" >= 0 AND \"ResultingHeldQuantity\" >= 0 "

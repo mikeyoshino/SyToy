@@ -9,6 +9,7 @@ public enum PreOrderCapacityRule
     CheckoutAttemptIdentityRequired,
     CustomerIdentityRequired,
     QuantityMustBePositive,
+    TotalCapacityBelowAllocated,
     QuantityOverflow,
     InsufficientRemainingCapacity,
     HeldQuantityInvariant,

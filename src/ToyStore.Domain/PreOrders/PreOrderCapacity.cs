@@ -95,6 +95,60 @@ public sealed class PreOrderCapacity
         return PreOrderCapacityCreation.Create(capacity, movement);
     }
 
+    public PreOrderCapacityTransitionResult AdjustTotalCapacity(
+        int totalCapacity,
+        Guid movementId,
+        string reason,
+        string reference,
+        long expectedVersion,
+        DateTimeOffset changedAtUtc,
+        string actor)
+    {
+        EnsurePositive(totalCapacity);
+        EnsureExpectedVersion(expectedVersion);
+        ValidateAudit(changedAtUtc);
+        if (changedAtUtc >= CloseAtUtc)
+        {
+            Fail(PreOrderCapacityRule.PreOrderClosed);
+        }
+
+        var allocated = CheckedAdd(CheckedAdd(HeldQuantity, CommittedQuantity), RetiredQuantity);
+        if (totalCapacity < allocated)
+        {
+            Fail(PreOrderCapacityRule.TotalCapacityBelowAllocated);
+        }
+
+        if (totalCapacity == TotalCapacity)
+        {
+            return PreOrderCapacityTransitionResult.Unchanged();
+        }
+
+        var prepared = PrepareTransitionEvidence(
+            movementId, reason, reference, changedAtUtc, actor);
+        var availableDelta = totalCapacity - TotalCapacity;
+        var quantity = Math.Abs(availableDelta);
+        var nextVersion = NextVersion();
+        TotalCapacity = totalCapacity;
+        var movement = CreateMovement(
+            movementId,
+            availableDelta > 0
+                ? PreOrderCapacityMovementType.CapacityIncreased
+                : PreOrderCapacityMovementType.CapacityDecreased,
+            quantity,
+            availableDelta,
+            HeldQuantity,
+            CommittedQuantity,
+            RetiredQuantity,
+            nextVersion,
+            prepared.Reason,
+            prepared.Reference,
+            changedAtUtc,
+            prepared.Actor);
+        ApplyAudit(changedAtUtc, prepared.Actor, nextVersion);
+        EnsureAccountingInvariant();
+        return PreOrderCapacityTransitionResult.ChangedWith(movement);
+    }
+
     public PreOrderCapacityReservationCreation Reserve(
         Guid reservationId,
         Guid checkoutAttemptId,

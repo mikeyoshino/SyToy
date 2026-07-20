@@ -22,6 +22,12 @@ public interface IProductMutationSession : ICatalogMutationSession
 
     Task<Product?> LockProductAsync(Guid productId, CancellationToken cancellationToken);
 
+    Task<PreOrderCapacity?> LockPreOrderCapacityAsync(
+        Guid productId,
+        CancellationToken cancellationToken) =>
+        throw new NotSupportedException(
+            "This Product mutation session does not support Pre-order capacity locking.");
+
     Task<ProductReferenceReadiness> LockReferencesAsync(
         Guid productCategoryId,
         Guid brandId,
@@ -51,6 +57,9 @@ public interface IProductMutationSession : ICatalogMutationSession
 
     void Add(PreOrderCapacityCreation capacityCreation) =>
         throw new NotSupportedException("This Product mutation session does not support Pre-order capacity creation.");
+
+    void Add(PreOrderCapacityMovement movement) =>
+        throw new NotSupportedException("This Product mutation session does not support Pre-order capacity adjustment.");
 }
 
 public sealed record ProductReferenceReadiness(
