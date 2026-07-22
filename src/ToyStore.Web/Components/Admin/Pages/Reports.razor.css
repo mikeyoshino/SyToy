@@ -1,0 +1,61 @@
+.admin-reports { display: grid; gap: var(--space-7); min-width: 0; }
+.admin-reports__filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-5); align-items: end; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--admin-surface); box-shadow: var(--shadow-sm); }
+.admin-reports__filter-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 14rem)); gap: var(--space-4); }
+.admin-reports__filter-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: var(--space-4); }
+.admin-reports__filter-actions nav { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.admin-reports__filter-actions a { display: inline-flex; min-height: 2.75rem; align-items: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-pill); background: var(--admin-accent-soft); color: var(--admin-ink); font-size: .875rem; font-weight: var(--font-weight-bold); text-decoration: none; }
+.admin-reports__filter-actions a[aria-current="page"] { background: var(--admin-accent-strong); color: var(--admin-surface); }
+.admin-reports__filter-actions a:focus-visible,.admin-reports__order-link:focus-visible,.admin-reports__trend-table summary:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; }
+.admin-reports__meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); color: var(--admin-muted); font-size: .875rem; }
+.admin-reports__meta p { margin: 0; }
+.admin-reports section { min-width: 0; }
+.admin-reports__section-heading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-4); }
+.admin-reports__section-heading div { display: grid; gap: var(--space-1); }
+.admin-reports__section-heading span { color: var(--admin-accent-strong); font-size: .75rem; font-weight: var(--font-weight-extrabold); letter-spacing: .08em; text-transform: uppercase; }
+.admin-reports__section-heading h2 { margin: 0; color: var(--admin-ink); font-size: clamp(1.25rem, 2.5vw, 1.65rem); }
+.admin-reports__section-heading p { max-width: 34rem; margin: 0; color: var(--admin-muted); font-size: .875rem; text-align: right; }
+.admin-reports__metrics { display: grid; margin: 0; gap: var(--space-4); }
+.admin-reports__metrics--primary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-reports__metrics--breakdown { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-reports__metric { display: grid; gap: var(--space-2); min-width: 0; padding: clamp(var(--space-4), 3vw, var(--space-6)); border-radius: var(--radius-lg); background: var(--admin-surface); box-shadow: var(--shadow-sm); }
+.admin-reports__metric--separate { background: var(--admin-accent-soft); }
+.admin-reports__metric dt { color: var(--admin-muted); font-size: .875rem; }
+.admin-reports__metric dd { margin: 0; overflow-wrap: anywhere; color: var(--admin-ink); font-size: clamp(1.45rem, 3vw, 2.15rem); font-weight: var(--font-weight-extrabold); line-height: 1.1; }
+.admin-reports__metric small { color: var(--admin-muted); line-height: 1.5; }
+.admin-reports__negative { color: var(--color-danger) !important; }
+.admin-reports__panel { padding: clamp(var(--space-4), 3vw, var(--space-6)); border-radius: var(--radius-lg); background: var(--admin-surface); box-shadow: var(--shadow-sm); }
+.admin-reports__chart { display: grid; grid-template-columns: repeat(auto-fit, minmax(.65rem, 1fr)); align-items: end; gap: clamp(.15rem, .5vw, .45rem); min-height: 16rem; margin: 0; padding: var(--space-5) 0 0; border-bottom: 1px solid color-mix(in srgb, var(--admin-muted) 24%, transparent); list-style: none; }
+.admin-reports__chart li { display: grid; height: 13rem; grid-template-rows: minmax(0, 1fr) 1.5rem; align-items: end; gap: var(--space-2); min-width: 0; }
+.admin-reports__bar { display: block; width: 100%; min-height: .15rem; height: max(.15rem, calc(var(--report-bar) * 1%)); border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--admin-accent); transition: height var(--duration-normal) var(--ease-standard); }
+.admin-reports__chart time { overflow: hidden; color: var(--admin-muted); font-size: .65rem; text-align: center; text-overflow: clip; }
+.admin-reports__empty { display: grid; min-height: 12rem; place-items: center; margin: 0; color: var(--admin-muted); }
+.admin-reports__trend-table { margin-top: var(--space-5); }
+.admin-reports__trend-table summary { width: fit-content; min-height: 2.75rem; padding: var(--space-2); color: var(--admin-accent-strong); font-weight: var(--font-weight-bold); cursor: pointer; }
+.admin-reports__trend-table ::deep .admin-data-table__scroller { margin-top: var(--space-3); box-shadow: none; }
+.admin-reports__rankings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+.admin-reports__panel ::deep .admin-data-table__scroller { box-shadow: none; }
+.admin-reports__panel ::deep .admin-data-table td small { display: block; margin-top: var(--space-1); color: var(--admin-muted); }
+.admin-reports__order-link { color: var(--admin-accent-strong); font-weight: var(--font-weight-extrabold); text-decoration: none; }
+
+@media (max-width: 74.999rem) {
+  .admin-reports__filter { grid-template-columns: 1fr; }
+  .admin-reports__filter-actions { justify-content: space-between; }
+  .admin-reports__metrics--primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 55.999rem) {
+  .admin-reports__rankings { grid-template-columns: 1fr; }
+  .admin-reports__metrics--breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 39.999rem) {
+  .admin-reports { gap: var(--space-6); }
+  .admin-reports__filter,.admin-reports__panel { padding: var(--space-4); }
+  .admin-reports__filter-fields,.admin-reports__metrics--primary,.admin-reports__metrics--breakdown { grid-template-columns: 1fr; }
+  .admin-reports__filter-actions,.admin-reports__filter-actions nav { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-reports__filter-actions a { justify-content: center; }
+  .admin-reports__filter-actions ::deep .store-action { grid-column: 1 / -1; width: 100%; }
+  .admin-reports__section-heading { align-items: start; flex-direction: column; }
+  .admin-reports__section-heading p { text-align: left; }
+  .admin-reports__chart { min-height: 12rem; }
+  .admin-reports__chart li { height: 10rem; }
+}
+@media (prefers-reduced-motion: reduce) { .admin-reports__bar { transition: none; } }

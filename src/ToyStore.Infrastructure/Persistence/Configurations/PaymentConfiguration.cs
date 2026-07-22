@@ -15,6 +15,8 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasIndex(x => x.ProviderSessionId).IsUnique();
         builder.HasIndex(x => x.ProviderPaymentReference).IsUnique();
         builder.HasIndex(x => x.ProviderEventId).IsUnique();
+        builder.HasIndex(x => x.PaidAtUtc)
+            .HasDatabaseName("IX_Payments_PaidAtUtc");
         builder.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(x => x.Amount).HasPrecision(18, 2);
         builder.Property(x => x.Currency).HasMaxLength(3).IsRequired();

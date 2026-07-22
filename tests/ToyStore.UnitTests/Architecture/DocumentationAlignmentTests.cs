@@ -270,7 +270,7 @@ public sealed class DocumentationAlignmentTests
         var tasks = Read("TASKS.md");
         var persistence = SliceBetween(tasks, "**M8-08**", "**M8-09**");
         var email = SliceBetween(tasks, "**M8-09**", "**M8-10**");
-        var line = SliceBetween(tasks, "**M8-10**", "**M8-11**");
+        var line = SliceBetween(tasks, "**M8-10**", "**M8-10A**");
         var retry = SliceBetween(tasks, "**M8-11**", "**M8-12**");
 
         Assert.Contains("NotificationDelivery", persistence, StringComparison.Ordinal);

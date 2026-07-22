@@ -8,6 +8,7 @@ using ToyStore.Domain.Carts;
 using ToyStore.Domain.Catalog;
 using ToyStore.Domain.Checkouts;
 using ToyStore.Domain.Inventory;
+using ToyStore.Domain.Notifications;
 using ToyStore.Domain.Orders;
 using ToyStore.Domain.PreOrders;
 using ToyStore.Domain.Products;
@@ -59,6 +60,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<OrderAuditEvent> OrderAuditEvents => Set<OrderAuditEvent>();
+
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
 
     public DbSet<SavedAddress> SavedAddresses => Set<SavedAddress>();
 

@@ -10,7 +10,6 @@ public sealed class AdminPlaceholderPageContractTests
             ["Dashboard.razor"] = ("/admin", "ภาพรวมร้าน"),
             ["Inventory.razor"] = ("/admin/inventory", "สินค้าคงคลัง"),
             ["Notifications.razor"] = ("/admin/notifications", "การแจ้งเตือน"),
-            ["Reports.razor"] = ("/admin/reports", "รายงานยอดขาย"),
             ["Settings.razor"] = ("/admin/settings", "ตั้งค่าร้าน"),
         };
 
@@ -37,6 +36,23 @@ public sealed class AdminPlaceholderPageContractTests
             Assert.DoesNotContain("chart", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("metric", source, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    [Fact]
+    public void ReportsDestinationIsAnAuthorizedProductionPageInsteadOfAPlaceholder()
+    {
+        var source = File.ReadAllText(Path.Combine(PagesRoot(), "Reports.razor"));
+
+        Assert.Contains("@page \"/admin/reports\"", source, StringComparison.Ordinal);
+        Assert.Contains("@layout AdminLayout", source, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanAccessAdmin", source, StringComparison.Ordinal);
+        Assert.Contains("PolicyNames.CanManageOrders", source, StringComparison.Ordinal);
+        Assert.Contains("GetSalesReportQuery", source, StringComparison.Ordinal);
+        Assert.Contains("<AdminContentStateView", source, StringComparison.Ordinal);
+        Assert.Contains("<AdminDataTable", source, StringComparison.Ordinal);
+        Assert.Contains("Asia/Bangkok", source, StringComparison.Ordinal);
+        Assert.Contains("ดูข้อมูลกราฟแบบตาราง", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("<AdminPhasePlaceholder", source, StringComparison.Ordinal);
     }
 
     [Fact]

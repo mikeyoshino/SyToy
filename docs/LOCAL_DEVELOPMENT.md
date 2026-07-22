@@ -75,6 +75,25 @@ dotnet user-secrets list --project src/ToyStore.Web
 
 รูปสินค้าสำหรับ local development เก็บใน `.data/uploads` ที่กำหนดใน First setup
 
+## Telegram แจ้งเตือนคำสั่งซื้อใหม่
+
+Telegram notification เป็น optional และปิดไว้ตามค่าเริ่มต้น ระบบส่งหลัง Stripe ยืนยัน payment และสร้าง Order สำเร็จแล้วเท่านั้น ข้อความมีเลข Order, ประเภทการขาย, ยอดที่รับชำระ และลิงก์ Admin โดยไม่ส่งชื่อ ที่อยู่ เบอร์โทร หรือข้อมูล payment ของลูกค้า
+
+1. สร้าง bot กับ `@BotFather` แล้วเก็บ bot token เป็น secret
+2. เพิ่ม bot เข้า chat/group ที่ต้องการ จากนั้นส่งข้อความหนึ่งครั้งและอ่าน `chat.id` จาก Bot API `getUpdates` ห้ามนำ token หรือ response ที่มีข้อมูล chat ไปใส่ source control/log
+3. ตั้งค่า local ด้วย .NET user secrets แล้ว restart Web:
+
+```bash
+dotnet user-secrets set "Telegram:Enabled" "true" --project src/ToyStore.Web
+dotnet user-secrets set "Telegram:BotToken" "<bot-token>" --project src/ToyStore.Web
+dotnet user-secrets set "Telegram:ChatId" "<chat-id>" --project src/ToyStore.Web
+dotnet user-secrets set "Telegram:AdminBaseUrl" "https://sytoys.shop" --project src/ToyStore.Web
+```
+
+Production ใช้ configuration secret/environment variables ชื่อ `Telegram__Enabled`, `Telegram__BotToken`, `Telegram__ChatId` และ `Telegram__AdminBaseUrl` ห้าม commit token/chat ID ลง `appsettings*.json` หรือ `.env` หากเปิดใช้งานแต่ configuration ไม่ครบ application จะหยุด startup พร้อมข้อความที่ไม่เปิดเผย secret
+
+เมื่อ provider ล้มเหลว Order/Payment ยังคงสำเร็จ และผลล้มเหลวแบบ safe ถูกบันทึกใน `NotificationDeliveries` การ replay Stripe webhook จะ retry delivery เดิมด้วย idempotency key เดิม โดยไม่สร้าง Order, Payment หรือ notification row ซ้ำ
+
 ## Stripe sandbox และ local checkout flow
 
 Checkout ทั้งสินค้าพร้อมส่งและพรีออเดอร์ใช้ Stripe Checkout Sessions แบบ Embedded page (`ui_mode=embedded_page`) แอปส่งราคาและชื่อสินค้าด้วย `price_data` จึงไม่ต้องสร้าง Product หรือ Price ใน Stripe Product catalog ก่อนทดสอบ

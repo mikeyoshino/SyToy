@@ -434,7 +434,7 @@ Admin order detail มี shipping action:
 
 Shipping email มี order number, recipient name, carrier, tracking number และ tracking link โดยไม่ใส่ข้อมูล payment ที่ไม่จำเป็น
 
-## 15. Transactional email and LINE notifications
+## 15. Transactional email, Telegram and LINE notifications
 
 ### Email
 
@@ -450,6 +450,14 @@ Templates ขั้นต่ำ:
 - Shipment confirmed
 
 Development ใช้ local capture sender Production อ่าน provider/from address/credential จาก configuration/secret หากยังไม่ configure ให้ Admin แสดง warning และถือเป็น launch blocker
+
+### Telegram
+
+- ใช้ Telegram Bot API `sendMessage` เพื่อแจ้งร้านหลัง verified payment สร้าง Order สำเร็จ
+- เก็บ bot token และ chat ID ใน server configuration/secret และปิด provider เป็นค่าเริ่มต้น
+- ข้อความมี order number, sale type, amount received และ Admin order link เท่านั้น
+- ห้ามส่งชื่อ ที่อยู่ เบอร์โทร หรือ personal/payment secrets เข้า Telegram
+- Webhook replay ใช้ `NotificationDelivery` idempotency key เดิม; delivery ที่ส่งสำเร็จแล้วห้ามส่งซ้ำ และ failure retry row เดิมได้
 
 ### LINE
 

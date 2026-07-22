@@ -15,13 +15,16 @@ using ToyStore.Application.Common.Files;
 using ToyStore.Application.Common.Interfaces;
 using ToyStore.Application.Common.Persistence;
 using ToyStore.Application.Inventory;
+using ToyStore.Application.Notifications;
 using ToyStore.Application.Orders;
 using ToyStore.Application.PreOrders;
 using ToyStore.Application.Products;
 using ToyStore.Application.Products.ManageProducts;
+using ToyStore.Application.Reports;
 using ToyStore.Application.Storefront.Catalog;
 using ToyStore.Application.Universes;
 using ToyStore.Infrastructure.Identity;
+using ToyStore.Infrastructure.Notifications;
 using ToyStore.Infrastructure.Addresses;
 using ToyStore.Infrastructure.Persistence;
 using ToyStore.Infrastructure.Payments;
@@ -80,7 +83,16 @@ public static class DependencyInjection
         services.AddSingleton<ICartReader, CartReader>();
         services.AddSingleton<ICustomerOrderReader, CustomerOrderReader>();
         services.AddSingleton<IAdminOrderReader, AdminOrderReader>();
+        services.AddSingleton<ISalesReportReader, SalesReportReader>();
         services.AddSingleton<IShipmentMutationStore, ShipmentMutationStore>();
+        services.AddOptions<TelegramNotificationOptions>()
+            .Bind(configuration.GetSection(TelegramNotificationOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<TelegramNotificationOptions>,
+            TelegramNotificationOptionsValidator>();
+        services.AddSingleton<TelegramBotClient>();
+        services.AddSingleton<IOrderPlacedNotificationDispatcher,
+            TelegramOrderPlacedNotificationDispatcher>();
         services.AddSingleton<IInventoryReadStore, InventoryReadStore>();
         services.AddSingleton<IMediaReferenceVerifier, MediaReferenceVerifier>();
         services.AddSingleton<IMediaCleanupRegistry, MediaCleanupRegistry>();

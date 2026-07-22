@@ -1,8 +1,383 @@
 @page "/admin/reports"
 @layout AdminLayout
 @attribute [Authorize(Policy = PolicyNames.CanAccessAdmin)]
+@attribute [Authorize(Policy = PolicyNames.CanManageOrders)]
+@using System.Globalization
+@using MediatR
+@using ToyStore.Application.Common.Models
+@using ToyStore.Application.Reports
+@using ToyStore.Application.Reports.GetSalesReport
+@implements IAsyncDisposable
+@inject ISender Sender
+@inject AdminRequestExecutor RequestExecutor
+@inject NavigationManager NavigationManager
 
 <PageTitle>รายงานยอดขาย</PageTitle>
 <AdminPageHeader Title="รายงานยอดขาย"
-                 Description="ดูแนวโน้มยอดขายจากข้อมูลการชำระเงินจริง" />
-<AdminPhasePlaceholder Message="รายงานยอดขายจะพร้อมใช้งานในระยะถัดไป" />
+                 Description="วิเคราะห์รายรับที่ Stripe ยืนยันแล้ว ยอดคืนเงิน และผลงานสินค้าตามเวลาไทย" />
+
+<div class="admin-reports">
+    <EditForm EditContext="filterContext"
+              FormName="admin-sales-report-period"
+              class="admin-reports__filter"
+              OnSubmit="ApplyPeriodAsync">
+        <div class="admin-reports__filter-fields">
+            <StoreTextField @bind-Value="filterModel.From"
+                            Type="date"
+                            Label="ตั้งแต่วันที่"
+                            Required="true" />
+            <StoreTextField @bind-Value="filterModel.To"
+                            Type="date"
+                            Label="ถึงวันที่"
+                            Required="true" />
+        </div>
+        <div class="admin-reports__filter-actions">
+            <nav aria-label="ช่วงรายงานด่วน">
+                @foreach (var preset in PeriodPresets())
+                {
+                    <a href="@preset.Href" aria-current="@(preset.IsCurrent ? "page" : null)">@preset.Label</a>
+                }
+            </nav>
+            <StoreButton ButtonType="submit">ดูรายงาน</StoreButton>
+        </div>
+    </EditForm>
+
+    <AdminContentStateView State="contentState"
+                           LoadingMessage="กำลังคำนวณรายงานยอดขาย"
+                           ErrorTitle="ไม่สามารถโหลดรายงานยอดขายได้"
+                           ErrorMessage="@errorMessage"
+                           Retry="ReloadAsync">
+        <ReadyContent>
+            @if (report is not null)
+            {
+                <div class="admin-reports__meta">
+                    <p>ช่วง <strong>@FormatDate(report.SelectedFrom)</strong> – <strong>@FormatDate(report.SelectedTo)</strong></p>
+                    <p>อัปเดต <time datetime="@report.GeneratedAtUtc.ToString("O", CultureInfo.InvariantCulture)">@FormatDateTime(report.GeneratedAtUtc)</time></p>
+                </div>
+
+                <section aria-labelledby="sales-summary-heading">
+                    <header class="admin-reports__section-heading">
+                        <div>
+                            <span>ภาพรวม</span>
+                            <h2 id="sales-summary-heading">ยอดขายสุทธิ</h2>
+                        </div>
+                        <p>คำนวณจาก Payment ที่ยืนยันแล้ว หักรายการคืนเงินสำเร็จ</p>
+                    </header>
+                    <dl class="admin-reports__metrics admin-reports__metrics--primary">
+                        @foreach (var metric in SummaryMetrics(report.Summary))
+                        {
+                            <div class="admin-reports__metric @(metric.IsSeparate ? "admin-reports__metric--separate" : null)">
+                                <dt>@metric.Label</dt>
+                                <dd>@FormatMoney(metric.Value)</dd>
+                                <small>@metric.Description</small>
+                            </div>
+                        }
+                    </dl>
+                </section>
+
+                <section aria-labelledby="sales-breakdown-heading">
+                    <header class="admin-reports__section-heading">
+                        <div>
+                            <span>ช่วงที่เลือก</span>
+                            <h2 id="sales-breakdown-heading">องค์ประกอบรายรับ</h2>
+                        </div>
+                        <p>@report.Breakdown.OrderCount.ToString("N0", ThaiCulture) คำสั่งซื้อ · มูลค่าสุทธิเฉลี่ย @FormatMoney(report.Breakdown.AverageNetOrderValue)</p>
+                    </header>
+                    <dl class="admin-reports__metrics admin-reports__metrics--breakdown">
+                        @foreach (var metric in BreakdownMetrics(report.Breakdown))
+                        {
+                            <div class="admin-reports__metric">
+                                <dt>@metric.Label</dt>
+                                <dd class="@(metric.Value < 0 ? "admin-reports__negative" : null)">@FormatMoney(metric.Value)</dd>
+                            </div>
+                        }
+                    </dl>
+                </section>
+
+                <section class="admin-reports__panel" aria-labelledby="sales-trend-heading">
+                    <header class="admin-reports__section-heading">
+                        <div>
+                            <span>แนวโน้ม</span>
+                            <h2 id="sales-trend-heading">ยอดขายสุทธิรายวัน</h2>
+                        </div>
+                        <p>วันตัดรอบเวลา 00:00 น. เขตเวลา Asia/Bangkok</p>
+                    </header>
+                    @if (HasTrendData(report.Trend))
+                    {
+                        <ol class="admin-reports__chart" aria-label="กราฟยอดขายสุทธิรายวัน">
+                            @foreach (var point in report.Trend)
+                            {
+                                <li title="@($"{FormatDate(point.Date)}: {FormatMoney(point.NetSales)}")">
+                                    <span class="admin-reports__bar" style="--report-bar: @BarPercentage(point.NetSales)%"></span>
+                                    <time datetime="@point.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@point.Date.Day.ToString(CultureInfo.InvariantCulture)</time>
+                                </li>
+                            }
+                        </ol>
+                    }
+                    else
+                    {
+                        <p class="admin-reports__empty">ยังไม่มี Payment ในช่วงวันที่เลือก</p>
+                    }
+                    <details class="admin-reports__trend-table">
+                        <summary>ดูข้อมูลกราฟแบบตาราง</summary>
+                        <AdminDataTable Caption="ยอดขายรายวัน">
+                            <Header>
+                                <tr><th scope="col">วันที่</th><th scope="col">รับชำระ</th><th scope="col">คืนเงิน</th><th scope="col">สุทธิ</th></tr>
+                            </Header>
+                            <Rows>
+                                @foreach (var point in report.Trend)
+                                {
+                                    <tr>
+                                        <td>@FormatDate(point.Date)</td>
+                                        <td>@FormatMoney(point.GrossReceived)</td>
+                                        <td>@FormatMoney(point.Refunds)</td>
+                                        <td>@FormatMoney(point.NetSales)</td>
+                                    </tr>
+                                }
+                            </Rows>
+                        </AdminDataTable>
+                    </details>
+                </section>
+
+                <div class="admin-reports__rankings">
+                    <section class="admin-reports__panel" aria-labelledby="top-products-heading">
+                        <header class="admin-reports__section-heading">
+                            <div><span>สินค้า</span><h2 id="top-products-heading">สินค้าทำยอดสูงสุด</h2></div>
+                        </header>
+                        <AdminDataTable Caption="สินค้าทำยอดสูงสุด">
+                            <Header><tr><th scope="col">สินค้า</th><th scope="col">จำนวน</th><th scope="col">ยอดสุทธิ</th></tr></Header>
+                            <Rows>
+                                @if (report.TopProducts.Count > 0)
+                                {
+                                    @foreach (var item in report.TopProducts)
+                                    {
+                                        <tr>
+                                            <td><strong>@item.ProductName</strong><small>@item.BrandName</small></td>
+                                            <td>@item.Quantity.ToString("N0", ThaiCulture)</td>
+                                            <td>@FormatMoney(item.NetSales)</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td colspan="3">ยังไม่มีข้อมูลสินค้าในช่วงนี้</td></tr>
+                                }
+                            </Rows>
+                        </AdminDataTable>
+                    </section>
+
+                    <section class="admin-reports__panel" aria-labelledby="top-brands-heading">
+                        <header class="admin-reports__section-heading">
+                            <div><span>แบรนด์</span><h2 id="top-brands-heading">แบรนด์ทำยอดสูงสุด</h2></div>
+                        </header>
+                        <AdminDataTable Caption="แบรนด์ทำยอดสูงสุด">
+                            <Header><tr><th scope="col">แบรนด์</th><th scope="col">จำนวน</th><th scope="col">ยอดสุทธิ</th></tr></Header>
+                            <Rows>
+                                @if (report.TopBrands.Count > 0)
+                                {
+                                    @foreach (var item in report.TopBrands)
+                                    {
+                                        <tr><td><strong>@item.BrandName</strong></td><td>@item.Quantity.ToString("N0", ThaiCulture)</td><td>@FormatMoney(item.NetSales)</td></tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td colspan="3">ยังไม่มีข้อมูลแบรนด์ในช่วงนี้</td></tr>
+                                }
+                            </Rows>
+                        </AdminDataTable>
+                    </section>
+                </div>
+
+                <section class="admin-reports__panel" aria-labelledby="recent-orders-heading">
+                    <header class="admin-reports__section-heading">
+                        <div><span>ล่าสุด</span><h2 id="recent-orders-heading">คำสั่งซื้อที่รับชำระแล้ว</h2></div>
+                    </header>
+                    <AdminDataTable Caption="คำสั่งซื้อที่รับชำระล่าสุด">
+                        <Header><tr><th scope="col">คำสั่งซื้อ</th><th scope="col">ประเภท</th><th scope="col">ยอดรับชำระ</th><th scope="col">เวลา</th></tr></Header>
+                        <Rows>
+                            @if (report.RecentOrders.Count > 0)
+                            {
+                                @foreach (var order in report.RecentOrders)
+                                {
+                                    <tr>
+                                        <td><a class="admin-reports__order-link" href="/admin/orders/@order.OrderNumber">@order.OrderNumber</a></td>
+                                        <td>@SaleTypeLabel(order.SaleType)</td>
+                                        <td>@FormatMoney(order.AmountReceived)</td>
+                                        <td><time datetime="@order.PaidAtUtc.ToString("O", CultureInfo.InvariantCulture)">@FormatDateTime(order.PaidAtUtc)</time></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="4">ยังไม่มีคำสั่งซื้อที่รับชำระในช่วงนี้</td></tr>
+                            }
+                        </Rows>
+                    </AdminDataTable>
+                </section>
+            }
+        </ReadyContent>
+    </AdminContentStateView>
+</div>
+
+@code {
+    private const string BasePath = "/admin/reports";
+    private static readonly CultureInfo ThaiCulture = CultureInfo.GetCultureInfo("th-TH");
+    private static readonly TimeZoneInfo BangkokTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+    private readonly CancellationTokenSource disposalTokenSource = new();
+    private readonly ReportPeriodModel filterModel = new();
+    private EditContext filterContext = default!;
+    private CancellationTokenSource? loadTokenSource;
+    private SalesReportView? report;
+    private AdminContentState contentState = AdminContentState.Loading;
+    private string errorMessage = "เกิดข้อผิดพลาดชั่วคราว กรุณาลองอีกครั้ง";
+    private long loadGeneration;
+
+    [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
+    [SupplyParameterFromQuery(Name = "to")] public string? To { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var from = ParseDate(From);
+        var to = ParseDate(To);
+        if ((From is not null || To is not null) && (from is null || to is null))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(BasePath, replace: true);
+            return;
+        }
+
+        var canonical = BuildUrl(from, to);
+        if (!CurrentRelativeUrl().Equals(canonical, StringComparison.Ordinal))
+        {
+            await CancelCurrentLoadAsync();
+            NavigationManager.NavigateTo(canonical, replace: true);
+            return;
+        }
+
+        filterContext = new EditContext(filterModel);
+        await LoadAsync(from, to);
+    }
+
+    private Task ReloadAsync() => LoadAsync(ParseDate(From), ParseDate(To));
+
+    private async Task LoadAsync(DateOnly? from, DateOnly? to)
+    {
+        var generation = Interlocked.Increment(ref loadGeneration);
+        var next = CancellationTokenSource.CreateLinkedTokenSource(disposalTokenSource.Token);
+        var previous = Interlocked.Exchange(ref loadTokenSource, next);
+        if (previous is not null) { await previous.CancelAsync(); previous.Dispose(); }
+        contentState = AdminContentState.Loading;
+
+        Result<SalesReportView> result;
+        try
+        {
+            result = await RequestExecutor.ExecuteAsync(
+                token => Sender.Send(new GetSalesReportQuery(from, to), token), next.Token);
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested) { return; }
+
+        if (generation != Volatile.Read(ref loadGeneration) || next.IsCancellationRequested) return;
+        if (result.IsFailure)
+        {
+            errorMessage = result.ValidationFailures.FirstOrDefault()?.ErrorMessage ?? result.Error.Message;
+            contentState = AdminContentState.Error;
+            return;
+        }
+
+        report = result.Value;
+        filterModel.From = report.SelectedFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        filterModel.To = report.SelectedTo.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        filterContext = new EditContext(filterModel);
+        contentState = AdminContentState.Ready;
+    }
+
+    private Task ApplyPeriodAsync(EditContext _)
+    {
+        var from = ParseDate(filterModel.From);
+        var to = ParseDate(filterModel.To);
+        NavigationManager.NavigateTo(from is null || to is null ? BasePath : BuildUrl(from, to));
+        return Task.CompletedTask;
+    }
+
+    private IEnumerable<PeriodPreset> PeriodPresets()
+    {
+        if (report is null) return [];
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(report.GeneratedAtUtc, BangkokTimeZone).DateTime);
+        var presets = new[]
+        {
+            new PeriodPreset("7 วัน", BuildUrl(today.AddDays(-6), today), false),
+            new PeriodPreset("30 วัน", BasePath, false),
+            new PeriodPreset("90 วัน", BuildUrl(today.AddDays(-89), today), false),
+            new PeriodPreset("ปีนี้", BuildUrl(new DateOnly(today.Year, 1, 1), today), false),
+        };
+        return presets.Select(preset => preset with
+        {
+            IsCurrent = report.SelectedFrom == PeriodFrom(preset.Href, today)
+                && report.SelectedTo == today,
+        });
+    }
+
+    private static DateOnly PeriodFrom(string href, DateOnly today)
+    {
+        if (href == BasePath) return today.AddDays(-29);
+        var marker = "from=";
+        var start = href.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+        var end = href.IndexOf('&', start);
+        return DateOnly.ParseExact(Uri.UnescapeDataString(href[start..end]), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    private static IEnumerable<MetricView> SummaryMetrics(SalesSummaryView summary) =>
+    [
+        new("วันนี้", summary.NetSalesToday, "ตั้งแต่ 00:00 น. วันนี้", false),
+        new("เดือนปัจจุบัน", summary.NetSalesCurrentMonth, "ตั้งแต่วันที่ 1 ของเดือน", false),
+        new("ปีปัจจุบัน", summary.NetSalesCurrentYear, "ตั้งแต่วันที่ 1 มกราคม", false),
+        new("ยอดพรีออเดอร์คงเหลือ", summary.OutstandingPreOrderBalance, "แยกไว้และยังไม่นับเป็นยอดขาย", true),
+    ];
+
+    private static IEnumerable<MetricView> BreakdownMetrics(SalesBreakdownView breakdown) =>
+    [
+        new("รับชำระรวม", breakdown.GrossReceived, null, false),
+        new("คืนเงิน", -breakdown.Refunds, null, false),
+        new("ยอดขายสุทธิ", breakdown.NetSales, null, false),
+        new("พร้อมส่ง · ชำระเต็ม", breakdown.InStockFullPayments, null, false),
+        new("พรีออเดอร์ · มัดจำ", breakdown.PreOrderDeposits, null, false),
+        new("พรีออเดอร์ · ยอดคงเหลือ", breakdown.PreOrderBalancePayments, null, false),
+    ];
+
+    private double BarPercentage(decimal value)
+    {
+        if (report is null) return 0;
+        var maximum = report.Trend.Max(point => Math.Max(0m, point.NetSales));
+        return maximum <= 0 ? 0 : Math.Round((double)(Math.Max(0m, value) / maximum * 100m), 2);
+    }
+
+    private static bool HasTrendData(IReadOnlyList<SalesTrendPointView> points) =>
+        points.Any(point => point.GrossReceived != 0 || point.Refunds != 0);
+    private static string FormatMoney(decimal value) => $"฿{value.ToString("N2", ThaiCulture)}";
+    private static string FormatDate(DateOnly value) => value.ToDateTime(TimeOnly.MinValue).ToString("d MMM yyyy", ThaiCulture);
+    private static string FormatDateTime(DateTimeOffset value) => TimeZoneInfo.ConvertTime(value, BangkokTimeZone).ToString("d MMM yyyy HH:mm น.", ThaiCulture);
+    private static string SaleTypeLabel(ReportOrderSaleType value) => value == ReportOrderSaleType.PreOrder ? "พรีออเดอร์" : "พร้อมส่ง";
+    private static DateOnly? ParseDate(string? value) => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;
+    internal static string BuildUrl(DateOnly? from, DateOnly? to) => from is null || to is null ? BasePath : $"{BasePath}?from={from.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}&to={to.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+    private string CurrentRelativeUrl() => "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri).TrimStart('/');
+
+    private async Task CancelCurrentLoadAsync()
+    {
+        var current = Interlocked.Exchange(ref loadTokenSource, null);
+        if (current is null) return;
+        await current.CancelAsync();
+        current.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await disposalTokenSource.CancelAsync();
+        await CancelCurrentLoadAsync();
+        disposalTokenSource.Dispose();
+    }
+
+    private sealed class ReportPeriodModel { public string? From { get; set; } public string? To { get; set; } }
+    private sealed record MetricView(string Label, decimal Value, string? Description, bool IsSeparate);
+    private sealed record PeriodPreset(string Label, string Href, bool IsCurrent);
+}

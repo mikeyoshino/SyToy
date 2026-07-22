@@ -13,6 +13,8 @@
 
 ## Current focus
 
+- 2026-07-23: ทำ `/admin/reports` เป็น production Sales Reports ครบ: summary วันนี้/เดือน/ปี, gross/refund/net และ In-stock/Pre-order breakdown, daily trend ตาม `Asia/Bangkok`, top Product/Brand, AOV และ recent paid Orders จาก PostgreSQL aggregation พร้อมช่วงวันที่, accessible table fallback, responsive Muted Ocean UI, Payment time index และ authorization/test coverage
+- 2026-07-22: เพิ่ม Telegram Bot notification ให้ร้านเมื่อ verified Stripe payment สร้าง Order สำเร็จ ทั้ง In-stock/Pre-order พร้อม `NotificationDelivery` idempotency, PostgreSQL claim/retry, safe Thai payload และ Admin order link; provider failure ไม่ rollback commerce และ secrets อยู่ใน server configuration เท่านั้น
 - 2026-07-20: ปรับ Storefront Product list ทุกหน้าให้สินค้า Published ที่ Admin แก้ไขล่าสุดขึ้นก่อนตาม `UpdatedAtUtc` พร้อม stable Product Id tie-breaker และ PostgreSQL ordering regression test
 - 2026-07-20: เปิดให้ Admin ปรับจำนวนรับพรีออเดอร์ของสินค้า Published ก่อนปิดรอบ โดย lock Product/capacity และอัปเดต offer, capacity กับ append-only increase/decrease movement ใน transaction เดียว; ห้ามลดต่ำกว่า held + committed + retired และอัปเดต storefront coherence/migration/tests
 - 2026-07-20: เพิ่ม mobile customer logout ที่หน้า Account และ Search navigation hub ด้วย POST `/Account/Logout`, Antiforgery Token, safe `/` return URL, visible focus และ touch target อย่างน้อย 44px โดยไม่เปลี่ยน desktop logout
@@ -673,11 +675,12 @@ Exit criteria: no Order exists before verified payment; concurrent/retried check
   - Acceptance: carrier/format/transition/idempotency tests and customer tracking UI pass
   - Verified: Domain carrier/HTTPS validation, authorized Application command, PostgreSQL row lock + expected Order version + unique operation/order/tracking evidence, Admin confirm-before-commit, full detail audit, customer tracking link and escaped tracking search; build clean, 1,041 unit + 268 integration tests pass, idempotent migration SQL reviewed
 
-- [ ] **M8-08** Persist NotificationDelivery idempotency foundation
+- [x] **M8-08** Persist NotificationDelivery idempotency foundation
   - Depends on: M7-09, M8-02
   - Persist type, recipient key, idempotency key, pending/status, attempts, safe provider response and timestamps before dispatching email/LINE
   - Provide provider-agnostic after-commit delivery orchestration; duplicate idempotency key cannot create or send a second delivery
   - Acceptance: PostgreSQL uniqueness, after-commit, provider-failure and duplicate-dispatch tests pass without rolling back Order/Payment
+  - Verified: durable pending/sending/sent/failed delivery, unique provider/order key, row-lock claim with abandoned-attempt retry, after-commit fulfillment dispatch and safe provider result persistence; build clean, 1,073 unit + 278 integration tests pass and idempotent migration SQL reviewed
 
 - [ ] **M8-09** Implement transactional email delivery
   - Depends on: M8-03, M8-04, M8-05, M8-06, M8-07, M8-08
@@ -690,6 +693,12 @@ Exit criteria: no Order exists before verified payment; concurrent/retried check
   - Messaging API (not retired LINE Notify), verified group recipient and post-payment message with safe order/sale type/amount/Admin link only
   - Secrets stay in configuration and no address/phone/payment secret leaves the server
   - Acceptance: verified payment emits once after commit and provider retry is safe
+
+- [x] **M8-10A** Implement Telegram shop Order notifications
+  - Depends on: M7-09, M8-08
+  - Telegram Bot API sends verified-paid Order number, sale type, amount received and Admin detail link only; no customer address/phone/payment secret
+  - Secrets/config stay server-side; disabled by default and invalid enabled configuration fails startup safely
+  - Verified: In-stock/Pre-order handlers dispatch only after durable fulfillment, webhook replay reuses one delivery, provider failure preserves Order/Payment, and setup/runbook is documented
 
 - [ ] **M8-11** Implement notification failure page and manual retry
   - Depends on: M8-09, M8-10
@@ -710,13 +719,13 @@ Exit criteria: Order lifecycle, balance, cancellation/refund, shipment and email
 
 เป้าหมาย: Admin เห็นยอดขายและ operational queues ที่คำนวณจาก authoritative records ตามเวลาไทย
 
-- [ ] **M9-01** Implement sales summary read models
+- [x] **M9-01** Implement sales summary read models
   - Depends on: M7-09, M8-03, M8-05, M8-06
   - Net sales today/current month/current year from verified Payments minus successful refunds in `Asia/Bangkok`
   - Outstanding Pre-order balance is separate and never counted as sales
   - Acceptance: timezone/day-month-year/refund/deposit/balance boundaries pass PostgreSQL aggregation tests
 
-- [ ] **M9-02** Implement revenue drill-down and trend queries
+- [x] **M9-02** Implement revenue drill-down and trend queries
   - Depends on: M9-01
   - Gross received, refunds, net sales, In-stock full, Pre-order deposit/balance by selectable period
   - Database aggregation/indexes; do not load large Domain aggregate sets
@@ -727,16 +736,17 @@ Exit criteria: Order lifecycle, balance, cancellation/refund, shipment and email
   - ReadyToShip, AwaitingPreOrderArrival, AwaitingBalancePayment, overdue balance, low/out-of-stock and notification failures
   - Acceptance: actionable counts match filtered detail queries and respect effective expiry/overdue rules
 
-- [ ] **M9-04** Implement product/order analytics
+- [x] **M9-04** Implement product/order analytics
   - Depends on: M9-01
   - Recent verified-paid Orders, top Products, top Brands, order count and average order value
   - Acceptance: snapshot attribution, refund handling, tie/order and empty-period tests pass
 
-- [ ] **M9-05** Build responsive Admin dashboard and reports UI
+- [-] **M9-05** Build responsive Admin dashboard and reports UI
   - Depends on: M4-05, M9-02, M9-03, M9-04
   - Muted Ocean cards/charts/queues, overview/revenue/operations/product-performance top pills and Sales Reports drill-down
   - Thai `th-TH` formatting, loading/empty/error states, accessible chart alternatives and reduced motion
   - Acceptance: mobile/tablet/desktop visual, keyboard and data-consistency tests pass
+  - Sales Reports drill-down เสร็จและทดสอบแล้ว; Dashboard overview/operations queues ยังรอ M9-03
 
 Exit criteria: Admin can act on accurate operational queues and understand verified net sales without mixing outstanding Pre-order balance into revenue.
 

@@ -120,8 +120,8 @@ Shipping  Notifications
 รับผิดชอบ EF Core, PostgreSQL, Identity, migrations, local file storage, payment provider, email, shipping, in-memory caching และ observability โดย implement interface ที่ Application ประกาศ
 
 ```text
-Persistence/  Identity/  Payments/  Storage/
-Email/        Shipping/  Caching/   Observability/
+Persistence/  Identity/  Payments/      Storage/
+Email/        Notifications/ Shipping/  Caching/  Observability/
 ```
 
 ## 4. Dependency direction
@@ -166,6 +166,8 @@ NotificationDeliveries MediaCleanupEntries Settings
 ```
 
 `CheckoutAttempt` เป็น durable pre-payment record ที่ถือ authoritative item/price/address/shipping snapshot, reservation, provider session reference และ idempotency key ก่อนจ่ายยังไม่มี Order ระบบสร้าง `Order` exactly once หลัง verified Stripe payment เท่านั้น พร้อม consume reservation และบันทึก `Payment` ใน transaction/idempotent fulfillment flow
+
+หลัง transaction สร้าง Order commit แล้ว Application เรียก provider-neutral `IOrderPlacedNotificationDispatcher` ทุกครั้งรวมถึง webhook replay Infrastructure ใช้ idempotency key ต่อ Order/provider เพื่อสร้างหรือโหลด `NotificationDelivery`, claim attempt ด้วย PostgreSQL row lock แล้วจึงเรียก Telegram Bot API สำเร็จห้ามส่งซ้ำ ส่วน provider failure เก็บ safe response และ retry delivery row เดิมได้โดยไม่ rollback หรือสร้าง Order/Payment ซ้ำ
 
 ลำดับที่ห้ามสลับคือ `CheckoutAttempt -> verified Stripe/provider evidence -> Payment + Order exactly once` Browser completion และ Admin UI action ไม่ใช่หลักฐาน payment
 
@@ -252,7 +254,7 @@ Thai address catalog ใช้ version-pinned local JSON จาก `kongvut/thai
 
 เวลา persist เป็น UTC; UI/close-date/dashboard ใช้ `Asia/Bangkok` และ format ภาษาไทย `th-TH` วันที่ปิด Pre-order ที่ Admin เลือกแปลงจาก `23:59:59 Asia/Bangkok` เป็น UTC instant
 
-`IPaymentGateway` รองรับ Stripe Embedded Checkout/Checkout Sessions, signature/session retrieval และ provider references โดย browser ไม่ได้รับ secret `ITransactionalEmailSender` และ LINE Official Account/Messaging API ส่งหลัง durable commit เท่านั้นและบันทึกผลผ่าน `NotificationDelivery`; provider failure ไม่ rollback commerce transaction
+`IPaymentGateway` รองรับ Stripe Embedded Checkout/Checkout Sessions, signature/session retrieval และ provider references โดย browser ไม่ได้รับ secret `ITransactionalEmailSender`, Telegram Bot API และ LINE Official Account/Messaging API ส่งหลัง durable commit เท่านั้นและบันทึกผลผ่าน `NotificationDelivery`; provider failure ไม่ rollback commerce transaction Telegram token/chat configuration อยู่ใน server secret และข้อความแจ้งร้านห้ามมี address, phone หรือ payment secret
 
 ## 8. Cache and maintenance
 
